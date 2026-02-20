@@ -1,0 +1,4 @@
+add_executable(test_system_integration main.cpp)
+target_link_libraries(test_system_integration system_integration_lib)
+target_include_directories(test_system_integration PRIVATE ../src/system_integration_lib)
+add_test(NAME test_system_integration COMMAND test_system_integration)

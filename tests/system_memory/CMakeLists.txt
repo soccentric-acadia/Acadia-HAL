@@ -1,0 +1,4 @@
+add_executable(test_system_memory main.cpp)
+target_link_libraries(test_system_memory system_memory_lib)
+target_include_directories(test_system_memory PRIVATE ../src/system_memory_lib)
+add_test(NAME test_system_memory COMMAND test_system_memory)

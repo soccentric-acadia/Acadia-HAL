@@ -1,0 +1,4 @@
+add_executable(test_debug_and_development_interfaces main.cpp)
+target_link_libraries(test_debug_and_development_interfaces debug_and_development_interfaces)
+target_include_directories(test_debug_and_development_interfaces PRIVATE ../src)
+add_test(NAME test_debug_and_development_interfaces COMMAND test_debug_and_development_interfaces)

@@ -1,0 +1,4 @@
+add_executable(test_serializer_deserializer main.cpp)
+target_link_libraries(test_serializer_deserializer serializer_deserializer_lib)
+target_include_directories(test_serializer_deserializer PRIVATE ../src/serializer_deserializer_lib)
+add_test(NAME test_serializer_deserializer COMMAND test_serializer_deserializer)

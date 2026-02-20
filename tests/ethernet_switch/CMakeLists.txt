@@ -1,0 +1,4 @@
+add_executable(test_ethernet_switch main.cpp)
+target_link_libraries(test_ethernet_switch ethernet_switch_lib)
+target_include_directories(test_ethernet_switch PRIVATE ../src/ethernet_switch_lib)
+add_test(NAME test_ethernet_switch COMMAND test_ethernet_switch)

@@ -1,0 +1,4 @@
+add_executable(test_clock_and_timing main.cpp)
+target_link_libraries(test_clock_and_timing clock_and_timing_lib)
+target_include_directories(test_clock_and_timing PRIVATE ../src/clock_and_timing_lib)
+add_test(NAME test_clock_and_timing COMMAND test_clock_and_timing)

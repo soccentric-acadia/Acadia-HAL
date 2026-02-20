@@ -1,0 +1,4 @@
+add_executable(test_thermal_management main.cpp)
+target_link_libraries(test_thermal_management thermal_management_lib)
+target_include_directories(test_thermal_management PRIVATE ../src/thermal_management_lib)
+add_test(NAME test_thermal_management COMMAND test_thermal_management)

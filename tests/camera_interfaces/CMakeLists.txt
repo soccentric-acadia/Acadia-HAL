@@ -1,0 +1,4 @@
+add_executable(test_camera_interfaces main.cpp)
+target_link_libraries(test_camera_interfaces camera_interfaces_lib)
+target_include_directories(test_camera_interfaces PRIVATE ../src/camera_interfaces_lib)
+add_test(NAME test_camera_interfaces COMMAND test_camera_interfaces)

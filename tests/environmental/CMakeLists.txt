@@ -1,0 +1,4 @@
+add_executable(test_environmental main.cpp)
+target_link_libraries(test_environmental environmental_lib)
+target_include_directories(test_environmental PRIVATE ../src/environmental_lib)
+add_test(NAME test_environmental COMMAND test_environmental)
