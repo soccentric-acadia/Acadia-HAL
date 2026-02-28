@@ -26,6 +26,12 @@ RUN apt-get update && apt-get install -y \
 # Install build dependencies
 RUN apt-get update && apt-get install -y build-essential cmake git sudo
 
+# --no-log-init
+# woarkaround for "Docker build hangs when adding user with a large value of user ID / UID"
+# https://stackoverflow.com/questions/73351423/docker-build-hangs-when-adding-user-with-a-large-value-of-user-id-uid
+RUN groupadd -g ${GID:-1001} jetson && \
+useradd -m --no-log-init --uid ${UID:-1001} --gid ${GID:-1001} jetson && \
+usermod -aG sudo jetson
 
 RUN apt-get install -y sudo  file git
 
