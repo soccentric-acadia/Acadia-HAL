@@ -1,10 +1,9 @@
 # Master Makefile for ACU Full Test Project
 # Supports both native and Docker-based builds with Ninja
 
-.PHONY: all build configure clean format cppcheck doc test install help
-.PHONY: docker-build docker-shell docker-clean docker-format docker-cppcheck docker-doc
-.PHONY: install-docker build-docker docker-build-project deploy run-a run-b run-local list setup-completion
-.PHONY: install-docker build-docker docker-build-project
+.PHONY: all build configure clean format cppcheck doc test help
+.PHONY: docker-build docker-configure docker-clean docker-shell docker-install docker-image
+.PHONY: deploy deploy-a deploy-b run-a run-b list setup-completion
 
 # Build directory
 BUILD_DIR := build
@@ -15,13 +14,20 @@ DOCKER_BUILD_DIR := /workspace/build
 IP_A := 192.168.1.3
 IP_B := 192.168.1.13
 
-# User for SSH/SCP
+# User/Password for SSH/SCP
 USER := nvidia
+PASS := nvidia
+SSHPASS := sshpass -p $(PASS)
+SSH := $(SSHPASS) ssh -o StrictHostKeyChecking=no
+SCP := $(SSHPASS) scp -o StrictHostKeyChecking=no
 
 # Default target
-all: docker-build-project
+all: docker-build
 
-# Native build targets (existing)
+# =============================================================================
+# Native builds (host architecture)
+# =============================================================================
+
 configure:
 	@echo "Configuring project with Ninja..."
 	mkdir -p $(BUILD_DIR)
@@ -31,9 +37,107 @@ build: configure
 	@echo "Building project with Ninja..."
 	cd $(BUILD_DIR) && ninja
 
+test: build
+	@echo "Running tests..."
+	cd $(BUILD_DIR) && ninja test
+
 clean:
 	@echo "Cleaning build directory..."
 	rm -rf $(BUILD_DIR)
+
+# =============================================================================
+# Cross builds (Docker)
+# =============================================================================
+
+# -t: allocate a pseudo-TTY so Ctrl-C (SIGINT) is forwarded to the container
+# --init: use tini as PID 1 to properly propagate signals to child processes (e.g. ninja)
+DOCKER_RUN := docker run --rm -t --init --platform linux/arm64 -v $(PWD):/workspace $(DOCKER_IMAGE) bash -c
+
+docker-install:
+	@if ! command -v docker > /dev/null 2>&1; then \
+		echo "Docker not found. Installing Docker..."; \
+		sudo apt update && sudo apt install -y docker.io; \
+	else \
+		echo "Docker is already installed."; \
+	fi
+
+docker-image: docker-install
+	@if ! docker images | grep -q $(DOCKER_IMAGE); then \
+		echo "Building Docker image $(DOCKER_IMAGE)..."; \
+		make -C docker build; \
+	else \
+		echo "Docker image $(DOCKER_IMAGE) already exists."; \
+	fi
+
+docker-configure: docker-image
+	@echo "Configuring project with Docker/Ninja..."
+	$(DOCKER_RUN) "mkdir -p $(DOCKER_BUILD_DIR) && cd $(DOCKER_BUILD_DIR) && cmake -GNinja .."
+
+docker-build: docker-image
+	@echo "Building project with Docker/Ninja..."
+	$(DOCKER_RUN) "if [ ! -f $(DOCKER_BUILD_DIR)/build.ninja ]; then mkdir -p $(DOCKER_BUILD_DIR) && cd $(DOCKER_BUILD_DIR) && cmake -GNinja ..; fi && cd $(DOCKER_BUILD_DIR) && ninja"
+
+docker-clean: docker-image
+	@echo "Cleaning Docker build directory..."
+	$(DOCKER_RUN) "rm -rf $(DOCKER_BUILD_DIR)"
+
+docker-shell: docker-image
+	@echo "Starting Docker shell for development..."
+	docker run -it --rm --platform linux/arm64 -v $(PWD):/workspace $(DOCKER_IMAGE) bash
+
+# =============================================================================
+# Deploy & Run (on target device)
+# =============================================================================
+
+deploy: deploy-a deploy-b
+
+deploy-a: docker-build
+	@echo "Deploying to $(IP_A)..."
+	$(SSH) $(USER)@$(IP_A) "mkdir -p /tmp/acu-test"
+	$(SCP) -r $(BUILD_DIR)/lib $(USER)@$(IP_A):/tmp/acu-test/
+	$(SCP) -r $(BUILD_DIR)/bin $(USER)@$(IP_A):/tmp/acu-test/
+
+deploy-b: docker-build
+	@echo "Deploying to $(IP_B)..."
+	$(SSH) $(USER)@$(IP_B) "mkdir -p /tmp/acu-test"
+	$(SCP) -r $(BUILD_DIR)/lib $(USER)@$(IP_B):/tmp/acu-test/
+	$(SCP) -r $(BUILD_DIR)/bin $(USER)@$(IP_B):/tmp/acu-test/
+
+run-a: deploy-a
+	@APP="$(word 2, $(MAKECMDGOALS))"; \
+	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
+	if [ -z "$$APP" ]; then \
+		echo "Running all test applications on $(IP_A)..."; \
+		for name in $$($(SSH) $(USER)@$(IP_A) "ls /tmp/acu-test/bin/"); do \
+			echo "--- Running $$name ---"; \
+			$(SSH) $(USER)@$(IP_A) "cd /tmp/acu-test && ./bin/$$name" || true; \
+		done; \
+	else \
+		echo "Running $$APP on $(IP_A) with args: $$ARGS"; \
+		$(SSH) $(USER)@$(IP_A) "cd /tmp/acu-test && ./bin/$$APP $$ARGS"; \
+	fi
+
+run-b: deploy-b
+	@APP="$(word 2, $(MAKECMDGOALS))"; \
+	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
+	if [ -z "$$APP" ]; then \
+		echo "Running all test applications on $(IP_B)..."; \
+		for name in $$($(SSH) $(USER)@$(IP_B) "ls /tmp/acu-test/bin/"); do \
+			echo "--- Running $$name ---"; \
+			$(SSH) $(USER)@$(IP_B) "cd /tmp/acu-test && ./bin/$$name" || true; \
+		done; \
+	else \
+		echo "Running $$APP on $(IP_B) with args: $$ARGS"; \
+		$(SSH) $(USER)@$(IP_B) "cd /tmp/acu-test && ./bin/$$APP $$ARGS"; \
+	fi
+
+list:
+	@echo "Available test applications:"
+	@ls -1 $(BUILD_DIR)/bin/ 2>/dev/null | sed 's/^/    /' || echo "  (none - run 'make docker-build' first)"
+
+# =============================================================================
+# Code quality & Docs
+# =============================================================================
 
 format: configure
 	@echo "Formatting code..."
@@ -47,56 +151,9 @@ doc: configure
 	@echo "Generating documentation..."
 	cd $(BUILD_DIR) && ninja doc_doxygen
 
-test: configure
-	@echo "Running tests..."
-	cd $(BUILD_DIR) && ninja test
-
-install: build
-	@echo "Installing project..."
-	cd $(BUILD_DIR) && ninja install
-
-deploy:
-	@echo "Deploying to NVIDIA devices..."
-	ssh $(USER)@$(IP_A) "mkdir -p /tmp/acu-test"
-	scp -r $(BUILD_DIR)/lib $(USER)@$(IP_A):/tmp/acu-test/
-	scp -r $(BUILD_DIR)/bin $(USER)@$(IP_A):/tmp/acu-test/
-	ssh $(USER)@$(IP_B) "mkdir -p /tmp/acu-test"
-	scp -r $(BUILD_DIR)/lib $(USER)@$(IP_B):/tmp/acu-test/
-	scp -r $(BUILD_DIR)/bin $(USER)@$(IP_B):/tmp/acu-test/
-
-run-a:
-	@APP="$(word 2, $(MAKECMDGOALS))"; \
-	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
-	if [ -z "$$APP" ]; then \
-		echo "Usage: make run-a <test_app_name> [args...]"; \
-		exit 1; \
-	fi; \
-	echo "Running $$APP on $(IP_A) with args: $$ARGS"; \
-	ssh $(USER)@$(IP_A) "cd /tmp/acu-test && ./bin/$$APP $$ARGS"
-
-run-b:
-	@APP="$(word 2, $(MAKECMDGOALS))"; \
-	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
-	if [ -z "$$APP" ]; then \
-		echo "Usage: make run-b <test_app_name> [args...]"; \
-		exit 1; \
-	fi; \
-	echo "Running $$APP on $(IP_B) with args: $$ARGS"; \
-	ssh $(USER)@$(IP_B) "cd /tmp/acu-test && ./bin/$$APP $$ARGS"
-
-run-local:
-	@APP="$(word 2, $(MAKECMDGOALS))"; \
-	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
-	if [ -z "$$APP" ]; then \
-		echo "Usage: make run-local <test_app_name> [args...]"; \
-		exit 1; \
-	fi; \
-	echo "Running $$APP locally with args: $$ARGS"; \
-	./$(BUILD_DIR)/bin/$$APP $$ARGS
-
-rebuild:
-	@echo "Rebuilding project..."
-	cd $(BUILD_DIR) && ninja
+# =============================================================================
+# Misc
+# =============================================================================
 
 setup-completion:
 	@echo "Setting up bash completion for make..."
@@ -107,101 +164,39 @@ setup-completion:
 		echo "Completion already set up in ~/.bashrc."; \
 	fi
 
-# Docker build targets
-docker-build-image:
-	@echo "Building Docker image for aarch64 cross-compilation..."
-	docker build --platform linux/arm64 --build-arg UID=$(shell id -u) --build-arg GID=$(shell id -g) -t $(DOCKER_IMAGE) docker/
+# =============================================================================
+# Help
+# =============================================================================
 
-docker-configure: docker-build-image
-	@echo "Configuring project with Docker/Ninja for aarch64..."
-	docker run --rm -v $(PWD):/workspace $(DOCKER_IMAGE) \
-		bash -c "mkdir -p $(DOCKER_BUILD_DIR) && cd $(DOCKER_BUILD_DIR) && cmake -GNinja -DCMAKE_TOOLCHAIN_FILE=/workspace/toolchain-aarch64.cmake .."
-
-docker-build: docker-configure
-	@echo "Building project with Docker/Ninja for aarch64..."
-	docker run --rm -v $(PWD):/workspace $(DOCKER_IMAGE) \
-		bash -c "cd $(DOCKER_BUILD_DIR) && ninja"
-
-docker-clean:
-	@echo "Cleaning Docker build directory..."
-	docker run --rm -v $(PWD):/workspace $(DOCKER_IMAGE) \
-		bash -c "rm -rf $(DOCKER_BUILD_DIR)"
-
-docker-format: docker-configure
-	@echo "Formatting code with Docker..."
-	docker run --rm -v $(PWD):/workspace $(DOCKER_IMAGE) \
-		bash -c "cd $(DOCKER_BUILD_DIR) && ninja format"
-
-docker-cppcheck: docker-configure
-	@echo "Running cppcheck with Docker..."
-	docker run --rm -v $(PWD):/workspace $(DOCKER_IMAGE) \
-		bash -c "cd $(DOCKER_BUILD_DIR) && ninja cppcheck"
-
-docker-doc: docker-configure
-	@echo "Generating documentation with Docker..."
-	docker run --rm -v $(PWD):/workspace $(DOCKER_IMAGE) \
-		bash -c "cd $(DOCKER_BUILD_DIR) && ninja doc_doxygen"
-
-docker-shell: docker-build-image
-	@echo "Starting Docker shell for development..."
-	docker run -it --rm -v $(PWD):/workspace $(DOCKER_IMAGE) bash
-
-docker-all: docker-build-image docker-build
-
-# New Docker targets using the docker folder
-install-docker:
-	@if ! command -v docker > /dev/null 2>&1; then \
-		echo "Docker not found. Installing Docker..."; \
-		sudo apt update && sudo apt install -y docker.io; \
-	else \
-		echo "Docker is already installed."; \
-	fi
-
-build-docker: install-docker
-	@if ! docker images | grep -q $(DOCKER_IMAGE); then \
-		echo "Building Docker image $(DOCKER_IMAGE)..."; \
-		make -C docker build; \
-	else \
-		echo "Docker image $(DOCKER_IMAGE) already exists."; \
-	fi
-
-docker-build-project: build-docker
-	@echo "Building project using Docker..."
-	docker run --rm -v $(PWD):/workspace $(DOCKER_IMAGE) bash -c "rm -rf $(DOCKER_BUILD_DIR) && mkdir -p $(DOCKER_BUILD_DIR) && cd $(DOCKER_BUILD_DIR) && cmake -GNinja .. && ninja"
-# Show available targets
 help:
 	@echo "Available targets:"
 	@echo "  Native builds (host architecture):"
-	@echo "    all          - Configure and build the project (default)"
-	@echo "    build        - Build the project (configures if needed)"
 	@echo "    configure    - Configure the project with CMake/Ninja"
+	@echo "    build        - Build the project (configures if needed)"
+	@echo "    test         - Run tests"
 	@echo "    clean        - Remove build directory"
+	@echo ""
+	@echo "  Cross builds (Docker):"
+	@echo "    all                  - Alias for docker-build (default)"
+	@echo "    docker-install       - Install Docker if not present"
+	@echo "    docker-image         - Build Docker image if not exists"
+	@echo "    docker-configure     - Configure project with Docker/Ninja"
+	@echo "    docker-build         - Build project with Docker/Ninja"
+	@echo "    docker-clean         - Clean Docker build artifacts"
+	@echo "    docker-shell         - Start Docker shell for development"
+	@echo ""
+	@echo "  Deploy & Run (on target device):"
+	@echo "    deploy       - Deploy to all devices (deploy-a + deploy-b)"
+	@echo "    deploy-a     - Deploy lib and bin to $(IP_A)"
+	@echo "    deploy-b     - Deploy lib and bin to $(IP_B)"
+	@echo "    run-a        - Run test app on $(IP_A) (usage: make run-a [name] [args...], no args = run all)"
+	@echo "    run-b        - Run test app on $(IP_B) (usage: make run-b [name] [args...], no args = run all)"
+	@echo "    list         - List available test applications"
+	@echo ""
+	@echo "  Code quality & Docs:"
 	@echo "    format       - Format code with clang-format"
 	@echo "    cppcheck     - Run static analysis with cppcheck"
 	@echo "    doc          - Generate Doxygen documentation"
-	@echo "    test         - Run tests"
-	@echo "    install      - Install the project"
-	@echo "    deploy       - Deploy lib and bin to NVIDIA devices"
-	@echo "    run-a        - Run test app on $(IP_A) (usage: make run-a <name> [args...])"
-	@echo "    run-b        - Run test app on $(IP_B) (usage: make run-b <name> [args...])"
-	@echo "    run-local    - Run test app locally (usage: make run-local <name> [args...])"
-	@echo "    list         - List available test applications"
-	@echo "    rebuild      - Quick rebuild (assumes configured)"
-	@echo "    rebuild-all  - Clean and rebuild everything"
+	@echo ""
+	@echo "  Misc:"
 	@echo "    setup-completion - Set up bash completion for make (adds to ~/.bashrc)"
-	@echo ""
-	@echo "  Docker builds (aarch64 cross-compilation):"
-	@echo "    docker-build-image - Build Docker image"
-	@echo "    docker-configure   - Configure with Docker for aarch64"
-	@echo "    docker-build       - Build with Docker for aarch64"
-	@echo "    docker-clean       - Clean Docker build artifacts"
-	@echo "    docker-format      - Format code with Docker"
-	@echo "    docker-cppcheck    - Run cppcheck with Docker"
-	@echo "    docker-doc         - Generate docs with Docker"
-	@echo "    docker-shell       - Start Docker shell for development"
-	@echo "    docker-all         - Build Docker image and project"
-	@echo ""
-	@echo "  Docker builds using docker folder (Jetson):"
-	@echo "    install-docker      - Install Docker if not present"
-	@echo "    build-docker        - Build Docker image if missing"
-	@echo "    docker-build-project - Build project using Docker"

@@ -245,35 +245,6 @@ The Makefile handles all build configuration automatically. The project is confi
 - `IP_A`, `IP_B`: Target device IP addresses
 - `USER`: SSH username for deployment (default: `nvidia`)
 
-## Troubleshooting
-
-### Common Issues
-
-1. **Build Configuration Fails**
-   - Ensure all dependencies are installed
-   - Check CMake version (3.10+ required)
-   - Run `make configure` to see detailed configuration output
-
-2. **Docker Build Fails**
-   - Ensure Docker daemon is running
-   - Check available disk space
-   - Verify NVIDIA Docker support if using GPU
-
-3. **Cross-Compilation Issues**
-   - Ensure Docker image is built with correct base image
-   - Check toolchain configuration
-
-4. **Deployment Fails**
-   - Verify SSH keys are set up for target devices
-   - Check network connectivity to target IPs
-   - Ensure target devices have necessary permissions
-
-### Getting Help
-
-- Check the generated Doxygen documentation in `build/html/`
-- Review build output for detailed error messages
-- Use `make help` to see all available targets
-
 ## Contributing
 
 1. Follow the established code formatting (use `make format`)
@@ -281,6 +252,3 @@ The Makefile handles all build configuration automatically. The project is confi
 3. Add tests for new functionality
 4. Update documentation as needed
 
-## License
-
-[Specify your license here]
