@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
 
     auto printResults = [&](const std::vector<TestResult>& results) {
         if (mode == TestMode::MONITORING) {
-            system("clear");
+            int ret = system("clear"); (void)ret;
         }
         static int cycle = 0;
         cycle++;
