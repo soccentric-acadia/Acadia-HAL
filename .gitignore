@@ -32,3 +32,7 @@ massif.out.*
 
 # Cppcheck reports
 cppcheck_results.xml
+
+build_*/
+build_*/**/*
+build
