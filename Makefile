@@ -3,7 +3,7 @@
 
 .PHONY: all build configure clean format cppcheck doc test help
 .PHONY: docker-build docker-configure docker-clean docker-shell docker-install docker-image
-.PHONY: deploy deploy-a deploy-b run-a run-b list setup-completion
+.PHONY: deploy deploy-a deploy-b run run-a run-b list setup-completion
 
 # Build directory
 BUILD_DIR := build
@@ -24,6 +24,37 @@ SCP := $(SSHPASS) scp -o StrictHostKeyChecking=no
 # Default target
 all: docker-build
 
+# Run apps on remote target: $(1)=IP address
+define run_remote
+	@APP="$(word 2, $(MAKECMDGOALS))"; \
+	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
+	if [ -z "$$APP" ]; then \
+		echo "Running all test applications on $(1)..."; \
+		for name in $$($(SSH) $(USER)@$(1) "ls /tmp/acu-test/bin/"); do \
+			echo "--- Running $$name ---"; \
+			$(SSH) $(USER)@$(1) "cd /tmp/acu-test && ./bin/$$name" || true; \
+		done; \
+	else \
+		echo "Running $$APP on $(1) with args: $$ARGS"; \
+		$(SSH) $(USER)@$(1) "cd /tmp/acu-test && ./bin/$$APP $$ARGS"; \
+	fi
+endef
+
+define run_local
+	@APP="$(word 2, $(MAKECMDGOALS))"; \
+	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
+	if [ -z "$$APP" ]; then \
+		echo "Running all test applications locally..."; \
+		for name in $$(ls $(BUILD_DIR)/bin/); do \
+			echo "--- Running $$name ---"; \
+			LD_LIBRARY_PATH=$(BUILD_DIR)/lib $(BUILD_DIR)/bin/$$name || true; \
+		done; \
+	else \
+		echo "Running $$APP locally with args: $$ARGS"; \
+		LD_LIBRARY_PATH=$(BUILD_DIR)/lib $(BUILD_DIR)/bin/$$APP $$ARGS; \
+	fi
+endef
+
 # =============================================================================
 # Native builds (host architecture)
 # =============================================================================
@@ -40,6 +71,9 @@ build: configure
 test: build
 	@echo "Running tests..."
 	cd $(BUILD_DIR) && ninja test
+
+run: build
+	$(call run_local)
 
 clean:
 	@echo "Cleaning build directory..."
@@ -105,32 +139,10 @@ deploy-b: docker-build
 	$(SCP) -r $(BUILD_DIR)/bin $(USER)@$(IP_B):/tmp/acu-test/
 
 run-a: deploy-a
-	@APP="$(word 2, $(MAKECMDGOALS))"; \
-	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
-	if [ -z "$$APP" ]; then \
-		echo "Running all test applications on $(IP_A)..."; \
-		for name in $$($(SSH) $(USER)@$(IP_A) "ls /tmp/acu-test/bin/"); do \
-			echo "--- Running $$name ---"; \
-			$(SSH) $(USER)@$(IP_A) "cd /tmp/acu-test && ./bin/$$name" || true; \
-		done; \
-	else \
-		echo "Running $$APP on $(IP_A) with args: $$ARGS"; \
-		$(SSH) $(USER)@$(IP_A) "cd /tmp/acu-test && ./bin/$$APP $$ARGS"; \
-	fi
+	$(call run_remote,$(IP_A))
 
 run-b: deploy-b
-	@APP="$(word 2, $(MAKECMDGOALS))"; \
-	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
-	if [ -z "$$APP" ]; then \
-		echo "Running all test applications on $(IP_B)..."; \
-		for name in $$($(SSH) $(USER)@$(IP_B) "ls /tmp/acu-test/bin/"); do \
-			echo "--- Running $$name ---"; \
-			$(SSH) $(USER)@$(IP_B) "cd /tmp/acu-test && ./bin/$$name" || true; \
-		done; \
-	else \
-		echo "Running $$APP on $(IP_B) with args: $$ARGS"; \
-		$(SSH) $(USER)@$(IP_B) "cd /tmp/acu-test && ./bin/$$APP $$ARGS"; \
-	fi
+	$(call run_remote,$(IP_B))
 
 list:
 	@echo "Available test applications:"
@@ -175,6 +187,7 @@ help:
 	@echo "    configure    - Configure the project with CMake/Ninja"
 	@echo "    build        - Build the project (configures if needed)"
 	@echo "    test         - Run tests"
+	@echo "    run          - Run test app locally (usage: make run [name] [args...], no args = run all)"
 	@echo "    clean        - Remove build directory"
 	@echo ""
 	@echo "  Cross builds (Docker):"
