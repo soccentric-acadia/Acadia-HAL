@@ -5,10 +5,14 @@
 .PHONY: docker-build docker-configure docker-clean docker-shell docker-install docker-image
 .PHONY: deploy deploy-a deploy-b run run-a run-b list setup-completion
 
-# Build directory
-BUILD_DIR := build
+# Build directories (separate to avoid CMake cache conflicts)
+NATIVE_BUILD_DIR := build/native
+CROSS_BUILD_DIR := build/cross
 DOCKER_IMAGE := jetson-builder
-DOCKER_BUILD_DIR := /workspace/build
+DOCKER_CROSS_BUILD_DIR := /workspace/build/cross
+
+# Host architecture as shown by file(1) (e.g. x86-64, aarch64)
+HOST_ARCH := $(shell uname -m | sed 's/x86_64/x86-64/')
 
 # IP addresses for NVIDIA devices
 IP_A := 192.168.1.3
@@ -45,13 +49,13 @@ define run_local
 	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
 	if [ -z "$$APP" ]; then \
 		echo "Running all test applications locally..."; \
-		for name in $$(ls $(BUILD_DIR)/bin/); do \
+		for name in $$(ls $(NATIVE_BUILD_DIR)/bin/); do \
 			echo "--- Running $$name ---"; \
-			LD_LIBRARY_PATH=$(BUILD_DIR)/lib $(BUILD_DIR)/bin/$$name || true; \
+			LD_LIBRARY_PATH=$(NATIVE_BUILD_DIR)/lib $(NATIVE_BUILD_DIR)/bin/$$name || true; \
 		done; \
 	else \
 		echo "Running $$APP locally with args: $$ARGS"; \
-		LD_LIBRARY_PATH=$(BUILD_DIR)/lib $(BUILD_DIR)/bin/$$APP $$ARGS; \
+		LD_LIBRARY_PATH=$(NATIVE_BUILD_DIR)/lib $(NATIVE_BUILD_DIR)/bin/$$APP $$ARGS; \
 	fi
 endef
 
@@ -61,12 +65,12 @@ endef
 
 configure:
 	@echo "Configuring project with Ninja..."
-	mkdir -p $(BUILD_DIR)
-	cd $(BUILD_DIR) && cmake -GNinja ..
+	mkdir -p $(NATIVE_BUILD_DIR)
+	cd $(NATIVE_BUILD_DIR) && cmake -GNinja $(CURDIR)
 
 build: configure
 	@echo "Building project with Ninja..."
-	cd $(BUILD_DIR) && ninja
+	cd $(NATIVE_BUILD_DIR) && ninja
 
 run: build
 	$(call run_local)
@@ -77,11 +81,13 @@ run: build
 
 clean:
 	@echo "Cleaning build directory..."
-	rm -rf $(BUILD_DIR)
+	rm -rf build
 
 list:
-	@echo "Available test applications:"
-	@ls -1 $(BUILD_DIR)/bin/ 2>/dev/null | sed 's/^/    /' || echo "  (none - run 'make docker-build' first)"
+	@echo "Native ($(NATIVE_BUILD_DIR)):"
+	@ls -1 $(NATIVE_BUILD_DIR)/bin/ 2>/dev/null | sed 's/^/    /' || echo "    (none - run 'make build' first)"
+	@echo "Cross ($(CROSS_BUILD_DIR)):"
+	@ls -1 $(CROSS_BUILD_DIR)/bin/ 2>/dev/null | sed 's/^/    /' || echo "    (none - run 'make docker-build' first)"
 
 # =============================================================================
 # Cross builds (Docker)
@@ -110,15 +116,15 @@ docker-image: docker-install
 
 docker-configure: docker-image
 	@echo "Configuring project with Docker/Ninja..."
-	$(DOCKER_RUN) "mkdir -p $(DOCKER_BUILD_DIR) && cd $(DOCKER_BUILD_DIR) && cmake -GNinja .."
+	$(DOCKER_RUN) "mkdir -p $(DOCKER_CROSS_BUILD_DIR) && cd $(DOCKER_CROSS_BUILD_DIR) && cmake -GNinja /workspace"
 
 docker-build: docker-image
 	@echo "Building project with Docker/Ninja..."
-	$(DOCKER_RUN) "if [ ! -f $(DOCKER_BUILD_DIR)/build.ninja ]; then mkdir -p $(DOCKER_BUILD_DIR) && cd $(DOCKER_BUILD_DIR) && cmake -GNinja ..; fi && cd $(DOCKER_BUILD_DIR) && ninja"
+	$(DOCKER_RUN) "if [ ! -f $(DOCKER_CROSS_BUILD_DIR)/build.ninja ]; then mkdir -p $(DOCKER_CROSS_BUILD_DIR) && cd $(DOCKER_CROSS_BUILD_DIR) && cmake -GNinja /workspace; fi && cd $(DOCKER_CROSS_BUILD_DIR) && ninja"
 
 docker-clean: docker-image
 	@echo "Cleaning Docker build directory..."
-	$(DOCKER_RUN) "rm -rf $(DOCKER_BUILD_DIR)"
+	$(DOCKER_RUN) "rm -rf $(DOCKER_CROSS_BUILD_DIR)"
 
 docker-shell: docker-image
 	@echo "Starting Docker shell for development..."
@@ -133,14 +139,14 @@ deploy: deploy-a deploy-b
 deploy-a: docker-build
 	@echo "Deploying to $(IP_A)..."
 	$(SSH) $(USER)@$(IP_A) "mkdir -p /tmp/acu-test"
-	$(SCP) -r $(BUILD_DIR)/lib $(USER)@$(IP_A):/tmp/acu-test/
-	$(SCP) -r $(BUILD_DIR)/bin $(USER)@$(IP_A):/tmp/acu-test/
+	$(SCP) -r $(CROSS_BUILD_DIR)/lib $(USER)@$(IP_A):/tmp/acu-test/
+	$(SCP) -r $(CROSS_BUILD_DIR)/bin $(USER)@$(IP_A):/tmp/acu-test/
 
 deploy-b: docker-build
 	@echo "Deploying to $(IP_B)..."
 	$(SSH) $(USER)@$(IP_B) "mkdir -p /tmp/acu-test"
-	$(SCP) -r $(BUILD_DIR)/lib $(USER)@$(IP_B):/tmp/acu-test/
-	$(SCP) -r $(BUILD_DIR)/bin $(USER)@$(IP_B):/tmp/acu-test/
+	$(SCP) -r $(CROSS_BUILD_DIR)/lib $(USER)@$(IP_B):/tmp/acu-test/
+	$(SCP) -r $(CROSS_BUILD_DIR)/bin $(USER)@$(IP_B):/tmp/acu-test/
 
 run-a: deploy-a
 	$(call run_remote,$(IP_A))
@@ -154,15 +160,15 @@ run-b: deploy-b
 
 format: configure
 	@echo "Formatting code..."
-	cd $(BUILD_DIR) && ninja format
+	cd $(NATIVE_BUILD_DIR) && ninja format
 
 cppcheck: configure
 	@echo "Running cppcheck static analysis..."
-	cd $(BUILD_DIR) && ninja cppcheck
+	cd $(NATIVE_BUILD_DIR) && ninja cppcheck
 
 doc: configure
 	@echo "Generating documentation..."
-	cd $(BUILD_DIR) && ninja doc_doxygen
+	cd $(NATIVE_BUILD_DIR) && ninja doc_doxygen
 
 # =============================================================================
 # Misc
