@@ -45,6 +45,9 @@ int main(int argc, char* argv[]) {
         for (const auto &res : results) {
             std::cout << std::left << std::setw(40) << res.name << std::setw(10) << (res.output.passed ? "PASS" : "FAIL")
                       << std::setw(15) << std::fixed << std::setprecision(6) << res.duration.count() << std::endl;
+            for (const auto &line : res.output.data) {
+                std::cout << "    " << line << std::endl;
+            }
             if (res.output.passed) passed++;
             else failed++;
             totalTime += res.duration;
