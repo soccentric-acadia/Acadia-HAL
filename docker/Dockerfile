@@ -23,8 +23,9 @@ RUN apt-get update && apt-get install -y \
     libboost-date-time-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y build-essential cmake git sudo
+# Install additional dependencies
+RUN apt-get update && apt-get install -y build-essential cmake git sudo ccache file \
+    && rm -rf /var/lib/apt/lists/*
 
 # --no-log-init
 # woarkaround for "Docker build hangs when adding user with a large value of user ID / UID"
@@ -33,11 +34,13 @@ RUN groupadd -g ${GID:-1001} jetson && \
 useradd -m --no-log-init --uid ${UID:-1001} --gid ${GID:-1001} jetson && \
 usermod -aG sudo jetson
 
-RUN apt-get install -y sudo  file git
-
-RUN groupadd -g ${GID:-1001} jetson && useradd -m --uid ${UID:-1001} --gid ${GID:-1001} jetson && usermod -aG sudo jetson
-
 USER jetson
+
+# Enable ccache: prepend ccache symlinks to PATH so gcc/g++/cc/c++ go through ccache
+ENV PATH="/usr/lib/ccache:${PATH}"
+
+# Create ccache directory so Docker volume mount inherits correct ownership
+RUN mkdir -p /home/jetson/.ccache
 
 # Set working directory for build
 WORKDIR /workspace

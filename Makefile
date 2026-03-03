@@ -51,7 +51,8 @@ clean:
 
 # -t: allocate a pseudo-TTY so Ctrl-C (SIGINT) is forwarded to the container
 # --init: use tini as PID 1 to properly propagate signals to child processes (e.g. ninja)
-DOCKER_RUN := docker run --rm -t --init --platform linux/arm64 -v $(PWD):/workspace $(DOCKER_IMAGE) bash -c
+# ccache volume: persist compilation cache across docker runs
+DOCKER_RUN := docker run --rm -t --init --platform linux/arm64 -v $(PWD):/workspace -v ccache-acu:/home/jetson/.ccache $(DOCKER_IMAGE) bash -c
 
 docker-install:
 	@if ! command -v docker > /dev/null 2>&1; then \
@@ -83,7 +84,7 @@ docker-clean: docker-image
 
 docker-shell: docker-image
 	@echo "Starting Docker shell for development..."
-	docker run -it --rm --platform linux/arm64 -v $(PWD):/workspace $(DOCKER_IMAGE) bash
+	docker run -it --rm --platform linux/arm64 -v $(PWD):/workspace -v ccache-acu:/home/jetson/.ccache $(DOCKER_IMAGE) bash
 
 # =============================================================================
 # Deploy & Run (on target device)
