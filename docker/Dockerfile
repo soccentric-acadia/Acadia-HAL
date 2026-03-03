@@ -27,9 +27,6 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get update && apt-get install -y build-essential cmake git sudo
 
 
-
-
-
 RUN apt-get install -y sudo  file git
 
 RUN groupadd -g ${GID:-1001} jetson && useradd -m --uid ${UID:-1001} --gid ${GID:-1001} jetson && usermod -aG sudo jetson

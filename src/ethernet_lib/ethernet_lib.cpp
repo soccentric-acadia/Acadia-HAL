@@ -203,7 +203,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run test10GigabitLinkEstablishment
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test10GigabitLinkEstablishment();
+        TestOutput result = test10GigabitLinkEstablishment();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test10GigabitLinkEstablishment", result, duration});
@@ -212,7 +212,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run test10gbeTransmitThroughput
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test10gbeTransmitThroughput();
+        TestOutput result = test10gbeTransmitThroughput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test10gbeTransmitThroughput", result, duration});
@@ -221,7 +221,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run test10gbeReceiveThroughput
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test10gbeReceiveThroughput();
+        TestOutput result = test10gbeReceiveThroughput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test10gbeReceiveThroughput", result, duration});
@@ -230,7 +230,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testFullduplexOperation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testFullduplexOperation();
+        TestOutput result = testFullduplexOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testFullduplexOperation", result, duration});
@@ -239,7 +239,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testJumboFramesSupport
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testJumboFramesSupport();
+        TestOutput result = testJumboFramesSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testJumboFramesSupport", result, duration});
@@ -248,7 +248,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testFlowControl
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testFlowControl();
+        TestOutput result = testFlowControl();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testFlowControl", result, duration});
@@ -257,7 +257,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testVlanTagging
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testVlanTagging();
+        TestOutput result = testVlanTagging();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testVlanTagging", result, duration});
@@ -266,7 +266,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testChecksumOffload
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testChecksumOffload();
+        TestOutput result = testChecksumOffload();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testChecksumOffload", result, duration});
@@ -275,7 +275,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testIeee8021asTimeSynchronization
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testIeee8021asTimeSynchronization();
+        TestOutput result = testIeee8021asTimeSynchronization();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testIeee8021asTimeSynchronization", result, duration});
@@ -284,7 +284,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testIeee8021qbv
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testIeee8021qbv();
+        TestOutput result = testIeee8021qbv();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testIeee8021qbv", result, duration});
@@ -293,7 +293,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testIeee8021qbu
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testIeee8021qbu();
+        TestOutput result = testIeee8021qbu();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testIeee8021qbu", result, duration});
@@ -302,7 +302,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testIeee8021qav
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testIeee8021qav();
+        TestOutput result = testIeee8021qav();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testIeee8021qav", result, duration});
@@ -311,7 +311,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testTsnTrafficScheduling
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testTsnTrafficScheduling();
+        TestOutput result = testTsnTrafficScheduling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testTsnTrafficScheduling", result, duration});
@@ -320,7 +320,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testTsnLatencyGuarantees
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testTsnLatencyGuarantees();
+        TestOutput result = testTsnLatencyGuarantees();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testTsnLatencyGuarantees", result, duration});
@@ -329,7 +329,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testTsnTimePrecision
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testTsnTimePrecision();
+        TestOutput result = testTsnTimePrecision();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testTsnTimePrecision", result, duration});
@@ -338,7 +338,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run test1gPhyFunctionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test1gPhyFunctionality();
+        TestOutput result = test1gPhyFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test1gPhyFunctionality", result, duration});
@@ -347,7 +347,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testLinkSpeedNegotiation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testLinkSpeedNegotiation();
+        TestOutput result = testLinkSpeedNegotiation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testLinkSpeedNegotiation", result, duration});
@@ -356,7 +356,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testAutomdimdix
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAutomdimdix();
+        TestOutput result = testAutomdimdix();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAutomdimdix", result, duration});
@@ -365,7 +365,7 @@ std::vector<TestResult> EthernetTesting::runAllTests()
     // Run testEthernetCableDiagnostics
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEthernetCableDiagnostics();
+        TestOutput result = testEthernetCableDiagnostics();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEthernetCableDiagnostics", result, duration});
@@ -378,23 +378,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> EthernetTesting::getAvailableTests() {
+std::vector<std::string> EthernetTesting::getAvailableTests()
+{
     return {
-        "testFullduplexOperation",
-        "testJumboFramesSupport",
-        "testFlowControl",
-        "testVlanTagging",
-        "testChecksumOffload",
-        "testIeee8021asTimeSynchronization",
-        "testIeee8021qbv",
-        "testIeee8021qbu",
-        "testIeee8021qav",
-        "testTsnTrafficScheduling",
-        "testTsnLatencyGuarantees",
-        "testTsnTimePrecision",
-        "testLinkSpeedNegotiation",
-        "testAutomdimdix",
-        "testEthernetCableDiagnostics",
+        "testFullduplexOperation",  "testJumboFramesSupport",   "testFlowControl",
+        "testVlanTagging",          "testChecksumOffload",      "testIeee8021asTimeSynchronization",
+        "testIeee8021qbv",          "testIeee8021qbu",          "testIeee8021qav",
+        "testTsnTrafficScheduling", "testTsnLatencyGuarantees", "testTsnTimePrecision",
+        "testLinkSpeedNegotiation", "testAutomdimdix",          "testEthernetCableDiagnostics",
     };
 }
 
@@ -403,41 +394,73 @@ std::vector<std::string> EthernetTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult EthernetTesting::runSingleTest(const std::string& testName) {
+TestResult EthernetTesting::runSingleTest(const std::string &testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testFullduplexOperation") {
+    if (testName == "testFullduplexOperation")
+    {
         result = testFullduplexOperation();
-    } else if (testName == "testJumboFramesSupport") {
+    }
+    else if (testName == "testJumboFramesSupport")
+    {
         result = testJumboFramesSupport();
-    } else if (testName == "testFlowControl") {
+    }
+    else if (testName == "testFlowControl")
+    {
         result = testFlowControl();
-    } else if (testName == "testVlanTagging") {
+    }
+    else if (testName == "testVlanTagging")
+    {
         result = testVlanTagging();
-    } else if (testName == "testChecksumOffload") {
+    }
+    else if (testName == "testChecksumOffload")
+    {
         result = testChecksumOffload();
-    } else if (testName == "testIeee8021asTimeSynchronization") {
+    }
+    else if (testName == "testIeee8021asTimeSynchronization")
+    {
         result = testIeee8021asTimeSynchronization();
-    } else if (testName == "testIeee8021qbv") {
+    }
+    else if (testName == "testIeee8021qbv")
+    {
         result = testIeee8021qbv();
-    } else if (testName == "testIeee8021qbu") {
+    }
+    else if (testName == "testIeee8021qbu")
+    {
         result = testIeee8021qbu();
-    } else if (testName == "testIeee8021qav") {
+    }
+    else if (testName == "testIeee8021qav")
+    {
         result = testIeee8021qav();
-    } else if (testName == "testTsnTrafficScheduling") {
+    }
+    else if (testName == "testTsnTrafficScheduling")
+    {
         result = testTsnTrafficScheduling();
-    } else if (testName == "testTsnLatencyGuarantees") {
+    }
+    else if (testName == "testTsnLatencyGuarantees")
+    {
         result = testTsnLatencyGuarantees();
-    } else if (testName == "testTsnTimePrecision") {
+    }
+    else if (testName == "testTsnTimePrecision")
+    {
         result = testTsnTimePrecision();
-    } else if (testName == "testLinkSpeedNegotiation") {
+    }
+    else if (testName == "testLinkSpeedNegotiation")
+    {
         result = testLinkSpeedNegotiation();
-    } else if (testName == "testAutomdimdix") {
+    }
+    else if (testName == "testAutomdimdix")
+    {
         result = testAutomdimdix();
-    } else if (testName == "testEthernetCableDiagnostics") {
+    }
+    else if (testName == "testEthernetCableDiagnostics")
+    {
         result = testEthernetCableDiagnostics();
-    } else {
+    }
+    else
+    {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

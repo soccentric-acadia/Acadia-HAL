@@ -117,6 +117,7 @@ TestOutput CameraInterfacesTesting::testRaw12()
  */
 TestOutput CameraInterfacesTesting::testRaw14()
 {
+    printf("Executing testRaw14\n");
     return {true, {}};
 }
 
@@ -239,7 +240,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testAllCsi2LanesFunctionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAllCsi2LanesFunctionality();
+        TestOutput result = testAllCsi2LanesFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAllCsi2LanesFunctionality", result, duration});
@@ -248,7 +249,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testCsi2DphyOperation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCsi2DphyOperation();
+        TestOutput result = testCsi2DphyOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCsi2DphyOperation", result, duration});
@@ -257,7 +258,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testCsi2CphyOperation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCsi2CphyOperation();
+        TestOutput result = testCsi2CphyOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCsi2CphyOperation", result, duration});
@@ -266,7 +267,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testMultipleCameraSimultaneousOperation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMultipleCameraSimultaneousOperation();
+        TestOutput result = testMultipleCameraSimultaneousOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMultipleCameraSimultaneousOperation", result, duration});
@@ -275,7 +276,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testVirtualChannelSupport
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testVirtualChannelSupport();
+        TestOutput result = testVirtualChannelSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testVirtualChannelSupport", result, duration});
@@ -284,7 +285,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testCameraClockGeneration
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCameraClockGeneration();
+        TestOutput result = testCameraClockGeneration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCameraClockGeneration", result, duration});
@@ -293,7 +294,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testCameraPowerSequencing
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCameraPowerSequencing();
+        TestOutput result = testCameraPowerSequencing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCameraPowerSequencing", result, duration});
@@ -302,7 +303,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testRaw8
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testRaw8();
+        TestOutput result = testRaw8();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testRaw8", result, duration});
@@ -311,7 +312,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testRaw10
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testRaw10();
+        TestOutput result = testRaw10();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testRaw10", result, duration});
@@ -320,7 +321,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testRaw12
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testRaw12();
+        TestOutput result = testRaw12();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testRaw12", result, duration});
@@ -329,7 +330,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testRaw14
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testRaw14();
+        TestOutput result = testRaw14();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testRaw14", result, duration});
@@ -338,7 +339,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testYuv422
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testYuv422();
+        TestOutput result = testYuv422();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testYuv422", result, duration});
@@ -347,7 +348,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testRgbFormats
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testRgbFormats();
+        TestOutput result = testRgbFormats();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testRgbFormats", result, duration});
@@ -356,7 +357,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testIspPipelineProcessing
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testIspPipelineProcessing();
+        TestOutput result = testIspPipelineProcessing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testIspPipelineProcessing", result, duration});
@@ -365,7 +366,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testAutoExposure
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAutoExposure();
+        TestOutput result = testAutoExposure();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAutoExposure", result, duration});
@@ -374,7 +375,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testAutoWhiteBalance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAutoWhiteBalance();
+        TestOutput result = testAutoWhiteBalance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAutoWhiteBalance", result, duration});
@@ -383,7 +384,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testAutoFocus
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAutoFocus();
+        TestOutput result = testAutoFocus();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAutoFocus", result, duration});
@@ -392,7 +393,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testLensShadingCorrection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testLensShadingCorrection();
+        TestOutput result = testLensShadingCorrection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testLensShadingCorrection", result, duration});
@@ -401,7 +402,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testDemosaicing
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDemosaicing();
+        TestOutput result = testDemosaicing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDemosaicing", result, duration});
@@ -410,7 +411,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testNoiseReduction
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testNoiseReduction();
+        TestOutput result = testNoiseReduction();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testNoiseReduction", result, duration});
@@ -419,7 +420,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testEdgeEnhancement
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEdgeEnhancement();
+        TestOutput result = testEdgeEnhancement();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEdgeEnhancement", result, duration});
@@ -428,7 +429,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testColorCorrectionMatrix
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testColorCorrectionMatrix();
+        TestOutput result = testColorCorrectionMatrix();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testColorCorrectionMatrix", result, duration});
@@ -437,7 +438,7 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
     // Run testGammaCorrection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGammaCorrection();
+        TestOutput result = testGammaCorrection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGammaCorrection", result, duration});
@@ -450,7 +451,8 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> CameraInterfacesTesting::getAvailableTests() {
+std::vector<std::string> CameraInterfacesTesting::getAvailableTests()
+{
     return {
         "testAllCsi2LanesFunctionality",
         "testCsi2DphyOperation",
@@ -483,57 +485,105 @@ std::vector<std::string> CameraInterfacesTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult CameraInterfacesTesting::runSingleTest(const std::string& testName) {
+TestResult CameraInterfacesTesting::runSingleTest(const std::string &testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testAllCsi2LanesFunctionality") {
+    if (testName == "testAllCsi2LanesFunctionality")
+    {
         result = testAllCsi2LanesFunctionality();
-    } else if (testName == "testCsi2DphyOperation") {
+    }
+    else if (testName == "testCsi2DphyOperation")
+    {
         result = testCsi2DphyOperation();
-    } else if (testName == "testCsi2CphyOperation") {
+    }
+    else if (testName == "testCsi2CphyOperation")
+    {
         result = testCsi2CphyOperation();
-    } else if (testName == "testMultipleCameraSimultaneousOperation") {
+    }
+    else if (testName == "testMultipleCameraSimultaneousOperation")
+    {
         result = testMultipleCameraSimultaneousOperation();
-    } else if (testName == "testVirtualChannelSupport") {
+    }
+    else if (testName == "testVirtualChannelSupport")
+    {
         result = testVirtualChannelSupport();
-    } else if (testName == "testCameraClockGeneration") {
+    }
+    else if (testName == "testCameraClockGeneration")
+    {
         result = testCameraClockGeneration();
-    } else if (testName == "testCameraPowerSequencing") {
+    }
+    else if (testName == "testCameraPowerSequencing")
+    {
         result = testCameraPowerSequencing();
-    } else if (testName == "testRaw8") {
+    }
+    else if (testName == "testRaw8")
+    {
         result = testRaw8();
-    } else if (testName == "testRaw10") {
+    }
+    else if (testName == "testRaw10")
+    {
         result = testRaw10();
-    } else if (testName == "testRaw12") {
+    }
+    else if (testName == "testRaw12")
+    {
         result = testRaw12();
-    } else if (testName == "testRaw14") {
+    }
+    else if (testName == "testRaw14")
+    {
         result = testRaw14();
-    } else if (testName == "testYuv422") {
+    }
+    else if (testName == "testYuv422")
+    {
         result = testYuv422();
-    } else if (testName == "testRgbFormats") {
+    }
+    else if (testName == "testRgbFormats")
+    {
         result = testRgbFormats();
-    } else if (testName == "testIspPipelineProcessing") {
+    }
+    else if (testName == "testIspPipelineProcessing")
+    {
         result = testIspPipelineProcessing();
-    } else if (testName == "testAutoExposure") {
+    }
+    else if (testName == "testAutoExposure")
+    {
         result = testAutoExposure();
-    } else if (testName == "testAutoWhiteBalance") {
+    }
+    else if (testName == "testAutoWhiteBalance")
+    {
         result = testAutoWhiteBalance();
-    } else if (testName == "testAutoFocus") {
+    }
+    else if (testName == "testAutoFocus")
+    {
         result = testAutoFocus();
-    } else if (testName == "testLensShadingCorrection") {
+    }
+    else if (testName == "testLensShadingCorrection")
+    {
         result = testLensShadingCorrection();
-    } else if (testName == "testDemosaicing") {
+    }
+    else if (testName == "testDemosaicing")
+    {
         result = testDemosaicing();
-    } else if (testName == "testNoiseReduction") {
+    }
+    else if (testName == "testNoiseReduction")
+    {
         result = testNoiseReduction();
-    } else if (testName == "testEdgeEnhancement") {
+    }
+    else if (testName == "testEdgeEnhancement")
+    {
         result = testEdgeEnhancement();
-    } else if (testName == "testColorCorrectionMatrix") {
+    }
+    else if (testName == "testColorCorrectionMatrix")
+    {
         result = testColorCorrectionMatrix();
-    } else if (testName == "testGammaCorrection") {
+    }
+    else if (testName == "testGammaCorrection")
+    {
         result = testGammaCorrection();
-    } else {
+    }
+    else
+    {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
