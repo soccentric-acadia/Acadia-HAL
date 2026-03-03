@@ -502,19 +502,18 @@ TestOutput ClockAndTimingTesting::testAudioClock()
 {
     std::vector<std::string> data;
 
-    const std::vector<std::string> clkCandidates = {
-        "pll_a",      "pll_a_out0", "ape_clk",    "i2s1_clk",
-        "i2s2_clk",   "i2s3_clk",   "i2s4_clk",   "i2s5_clk",
-        "i2s6_clk",   "dspk",       "ape_apb_clk", "adsp_bus_clk"};
+    const std::vector<std::string> clkCandidates = {"pll_a",    "pll_a_out0", "ape_clk",     "i2s1_clk",
+                                                    "i2s2_clk", "i2s3_clk",   "i2s4_clk",    "i2s5_clk",
+                                                    "i2s6_clk", "dspk",       "ape_apb_clk", "adsp_bus_clk"};
 
     bool anyClk = false;
     for (const auto &name : clkCandidates)
     {
         unsigned long rateHz = readClkRate(name);
-        if (rateHz == 0) continue;
+        if (rateHz == 0)
+            continue;
         anyClk = true;
-        data.push_back("Audio clock '" + name + "': " +
-                       std::to_string(rateHz / 1'000'000UL) + " MHz (" +
+        data.push_back("Audio clock '" + name + "': " + std::to_string(rateHz / 1'000'000UL) + " MHz (" +
                        std::to_string(rateHz) + " Hz)");
     }
     if (!anyClk)
@@ -533,10 +532,8 @@ TestOutput ClockAndTimingTesting::testAudioClock()
     }
 
     // Check APE platform device
-    const std::vector<std::string> apePaths = {
-        "/sys/bus/platform/devices/2900000.ape",
-        "/sys/bus/platform/devices/2a00000.adsp",
-        "/sys/class/sound"};
+    const std::vector<std::string> apePaths = {"/sys/bus/platform/devices/2900000.ape",
+                                               "/sys/bus/platform/devices/2a00000.adsp", "/sys/class/sound"};
     for (const auto &p : apePaths)
     {
         if (pathExists(p))
@@ -570,19 +567,15 @@ TestOutput ClockAndTimingTesting::testPllLockStatus()
     std::vector<std::string> data;
 
     // Ordered list: first entry (PLLP) is mandatory
-    struct PllEntry { std::string name; bool required; };
+    struct PllEntry
+    {
+        std::string name;
+        bool required;
+    };
     const std::vector<PllEntry> plls = {
-        {"pllp",       true},
-        {"pllp_out0",  false},
-        {"pllc",       false},
-        {"pllc4",      false},
-        {"plla",       false},
-        {"plla_out0",  false},
-        {"pllu",       false},
-        {"plle",       false},
-        {"pllrefe",    false},
-        {"pllnvcsi",   false},
-        {"pllc_out1",  false},
+        {"pllp", true},     {"pllp_out0", false}, {"pllc", false},      {"pllc4", false},
+        {"plla", false},    {"plla_out0", false}, {"pllu", false},      {"plle", false},
+        {"pllrefe", false}, {"pllnvcsi", false},  {"pllc_out1", false},
     };
 
     bool pllpFound = false;
@@ -596,8 +589,7 @@ TestOutput ClockAndTimingTesting::testPllLockStatus()
         if (rateHz == 0 && enableCnt < 0)
             continue; // not present on this build
 
-        std::string line = "PLL '" + pll.name + "': rate=" +
-                           std::to_string(rateHz / 1'000'000UL) + " MHz" +
+        std::string line = "PLL '" + pll.name + "': rate=" + std::to_string(rateHz / 1'000'000UL) + " MHz" +
                            ", enable_count=" + std::to_string(enableCnt);
         if (pll.required)
             line += " [REQUIRED]";
@@ -605,7 +597,8 @@ TestOutput ClockAndTimingTesting::testPllLockStatus()
 
         if (pll.name == "pllp" || pll.name == "pllp_out0")
         {
-            if (rateHz > 0) pllpFound = true;
+            if (rateHz > 0)
+                pllpFound = true;
         }
 
         if (pll.required && rateHz == 0)
@@ -663,15 +656,16 @@ TestOutput ClockAndTimingTesting::testClockJitterMeasurements()
         struct timespec cur{};
         ::clock_gettime(CLOCK_MONOTONIC, &cur);
 
-        double dtNs = static_cast<double>(cur.tv_sec  - prev.tv_sec ) * 1e9 +
-                      static_cast<double>(cur.tv_nsec - prev.tv_nsec);
+        double dtNs =
+            static_cast<double>(cur.tv_sec - prev.tv_sec) * 1e9 + static_cast<double>(cur.tv_nsec - prev.tv_nsec);
         intervals.push_back(dtNs);
         prev = cur;
     }
 
     // Statistics
     double sum = 0;
-    for (double v : intervals) sum += v;
+    for (double v : intervals)
+        sum += v;
     double meanNs = sum / intervals.size();
 
     double jitterNs = stddev(intervals);
@@ -680,10 +674,10 @@ TestOutput ClockAndTimingTesting::testClockJitterMeasurements()
     double maxNs = *std::max_element(intervals.begin(), intervals.end());
 
     data.push_back("CLOCK_MONOTONIC jitter (" + std::to_string(samples) + " samples):");
-    data.push_back("  Mean interval : " + std::to_string(meanNs)   + " ns");
+    data.push_back("  Mean interval : " + std::to_string(meanNs) + " ns");
     data.push_back("  Jitter (1σ)   : " + std::to_string(jitterNs) + " ns");
-    data.push_back("  Min interval  : " + std::to_string(minNs)    + " ns");
-    data.push_back("  Max interval  : " + std::to_string(maxNs)    + " ns");
+    data.push_back("  Min interval  : " + std::to_string(minNs) + " ns");
+    data.push_back("  Max interval  : " + std::to_string(maxNs) + " ns");
 
     // Also report CLOCK_MONOTONIC_RAW if available
     struct timespec rawPrev{};
@@ -695,22 +689,21 @@ TestOutput ClockAndTimingTesting::testClockJitterMeasurements()
         {
             struct timespec cur{};
             ::clock_gettime(CLOCK_MONOTONIC_RAW, &cur);
-            double dtNs = static_cast<double>(cur.tv_sec  - rawPrev.tv_sec ) * 1e9 +
+            double dtNs = static_cast<double>(cur.tv_sec - rawPrev.tv_sec) * 1e9 +
                           static_cast<double>(cur.tv_nsec - rawPrev.tv_nsec);
             rawIntervals.push_back(dtNs);
             rawPrev = cur;
         }
         double rawJitter = stddev(rawIntervals);
-        data.push_back("  CLOCK_MONOTONIC_RAW jitter (1σ): " +
-                       std::to_string(rawJitter) + " ns");
+        data.push_back("  CLOCK_MONOTONIC_RAW jitter (1σ): " + std::to_string(rawJitter) + " ns");
     }
 
     // Pass if jitter < 10 µs = 10000 ns  (very lenient for a loaded system)
     const double thresholdNs = 10'000.0;
     bool passed = (jitterNs < thresholdNs);
     if (!passed)
-        data.push_back("FAIL: Jitter " + std::to_string(jitterNs) +
-                       " ns exceeds threshold " + std::to_string(thresholdNs) + " ns");
+        data.push_back("FAIL: Jitter " + std::to_string(jitterNs) + " ns exceeds threshold " +
+                       std::to_string(thresholdNs) + " ns");
 
     return {passed, data};
 }
@@ -735,8 +728,7 @@ TestOutput ClockAndTimingTesting::testRtcAccuracy()
     int fd = ::open("/dev/rtc0", O_RDONLY | O_CLOEXEC);
     if (fd < 0)
     {
-        data.push_back("WARN: Cannot open /dev/rtc0 (" +
-                       std::string(::strerror(errno)) + "); trying sysfs");
+        data.push_back("WARN: Cannot open /dev/rtc0 (" + std::string(::strerror(errno)) + "); trying sysfs");
 
         // Fallback: /sys/class/rtc/rtc0/{date,time}
         std::string rtcDate, rtcTime;
@@ -755,19 +747,18 @@ TestOutput ClockAndTimingTesting::testRtcAccuracy()
     if (::ioctl(fd, RTC_RD_TIME, &rtcTm) < 0)
     {
         ::close(fd);
-        data.push_back("FAIL: RTC_RD_TIME ioctl failed: " +
-                       std::string(::strerror(errno)));
+        data.push_back("FAIL: RTC_RD_TIME ioctl failed: " + std::string(::strerror(errno)));
         return {false, data};
     }
     ::close(fd);
 
     // Convert rtc_time → time_t (RTC stores UTC on Linux)
     struct tm rtcTmStd{};
-    rtcTmStd.tm_sec  = rtcTm.tm_sec;
-    rtcTmStd.tm_min  = rtcTm.tm_min;
+    rtcTmStd.tm_sec = rtcTm.tm_sec;
+    rtcTmStd.tm_min = rtcTm.tm_min;
     rtcTmStd.tm_hour = rtcTm.tm_hour;
     rtcTmStd.tm_mday = rtcTm.tm_mday;
-    rtcTmStd.tm_mon  = rtcTm.tm_mon;
+    rtcTmStd.tm_mon = rtcTm.tm_mon;
     rtcTmStd.tm_year = rtcTm.tm_year;
     rtcTmStd.tm_isdst = 0;
     time_t rtcEpoch = ::timegm(&rtcTmStd);
@@ -785,8 +776,7 @@ TestOutput ClockAndTimingTesting::testRtcAccuracy()
     const long threshSec = 5;
     if (diffSec > threshSec)
     {
-        data.push_back("FAIL: RTC / system time discrepancy > " +
-                       std::to_string(threshSec) + " s");
+        data.push_back("FAIL: RTC / system time discrepancy > " + std::to_string(threshSec) + " s");
         return {false, data};
     }
 
@@ -840,8 +830,8 @@ TestOutput ClockAndTimingTesting::testRtcBatteryBackup()
     int fd = ::open(rtcDev.c_str(), O_RDONLY | O_CLOEXEC);
     if (fd < 0)
     {
-        data.push_back("WARN: Cannot open " + rtcDev + " for oscillator check (" +
-                       std::string(::strerror(errno)) + ")");
+        data.push_back("WARN: Cannot open " + rtcDev + " for oscillator check (" + std::string(::strerror(errno)) +
+                       ")");
         return {true, data}; // device exists, treat as pass
     }
 
@@ -862,20 +852,28 @@ TestOutput ClockAndTimingTesting::testRtcBatteryBackup()
 
     // Compute delta via mktime
     struct tm s1{}, s2{};
-    s1.tm_sec=t1.tm_sec; s1.tm_min=t1.tm_min; s1.tm_hour=t1.tm_hour;
-    s1.tm_mday=t1.tm_mday; s1.tm_mon=t1.tm_mon; s1.tm_year=t1.tm_year;
-    s2.tm_sec=t2.tm_sec; s2.tm_min=t2.tm_min; s2.tm_hour=t2.tm_hour;
-    s2.tm_mday=t2.tm_mday; s2.tm_mon=t2.tm_mon; s2.tm_year=t2.tm_year;
+    s1.tm_sec = t1.tm_sec;
+    s1.tm_min = t1.tm_min;
+    s1.tm_hour = t1.tm_hour;
+    s1.tm_mday = t1.tm_mday;
+    s1.tm_mon = t1.tm_mon;
+    s1.tm_year = t1.tm_year;
+    s2.tm_sec = t2.tm_sec;
+    s2.tm_min = t2.tm_min;
+    s2.tm_hour = t2.tm_hour;
+    s2.tm_mday = t2.tm_mday;
+    s2.tm_mon = t2.tm_mon;
+    s2.tm_year = t2.tm_year;
     time_t e1 = ::timegm(&s1), e2 = ::timegm(&s2);
     long delta = static_cast<long>(e2 - e1);
 
-    data.push_back("RTC counter advanced by " + std::to_string(delta) +
-                   " s over 2 s sleep");
+    data.push_back("RTC counter advanced by " + std::to_string(delta) + " s over 2 s sleep");
 
     if (delta < 1 || delta > 4)
     {
         data.push_back("FAIL: RTC counter did not advance as expected "
-                       "(expected ~2 s, got " + std::to_string(delta) + " s)");
+                       "(expected ~2 s, got " +
+                       std::to_string(delta) + " s)");
         return {false, data};
     }
 
@@ -897,8 +895,7 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
     int fd = ::open("/dev/rtc0", O_RDWR | O_CLOEXEC);
     if (fd < 0)
     {
-        data.push_back("WARN: Cannot open /dev/rtc0 (" +
-                       std::string(::strerror(errno)) + ")");
+        data.push_back("WARN: Cannot open /dev/rtc0 (" + std::string(::strerror(errno)) + ")");
         // If we can't open the device, skip but do not hard-fail so that the
         // test suite can run without root on a development host as well.
         data.push_back("SKIP: RTC alarm test requires read-write access to /dev/rtc0");
@@ -910,34 +907,35 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
     if (::ioctl(fd, RTC_RD_TIME, &curTm) < 0)
     {
         ::close(fd);
-        data.push_back("FAIL: RTC_RD_TIME ioctl failed: " +
-                       std::string(::strerror(errno)));
+        data.push_back("FAIL: RTC_RD_TIME ioctl failed: " + std::string(::strerror(errno)));
         return {false, data};
     }
 
     // Set alarm 5 seconds ahead
     struct tm curStd{};
-    curStd.tm_sec=curTm.tm_sec; curStd.tm_min=curTm.tm_min;
-    curStd.tm_hour=curTm.tm_hour; curStd.tm_mday=curTm.tm_mday;
-    curStd.tm_mon=curTm.tm_mon; curStd.tm_year=curTm.tm_year;
+    curStd.tm_sec = curTm.tm_sec;
+    curStd.tm_min = curTm.tm_min;
+    curStd.tm_hour = curTm.tm_hour;
+    curStd.tm_mday = curTm.tm_mday;
+    curStd.tm_mon = curTm.tm_mon;
+    curStd.tm_year = curTm.tm_year;
     curStd.tm_isdst = 0;
     time_t futureEpoch = ::timegm(&curStd) + 5;
     struct tm *futureTm = ::gmtime(&futureEpoch);
 
     struct rtc_time alarmTm{};
-    alarmTm.tm_sec  = futureTm->tm_sec;
-    alarmTm.tm_min  = futureTm->tm_min;
+    alarmTm.tm_sec = futureTm->tm_sec;
+    alarmTm.tm_min = futureTm->tm_min;
     alarmTm.tm_hour = futureTm->tm_hour;
     alarmTm.tm_mday = futureTm->tm_mday;
-    alarmTm.tm_mon  = futureTm->tm_mon;
+    alarmTm.tm_mon = futureTm->tm_mon;
     alarmTm.tm_year = futureTm->tm_year;
 
     // Set the alarm
     if (::ioctl(fd, RTC_ALM_SET, &alarmTm) < 0)
     {
         ::close(fd);
-        data.push_back("FAIL: RTC_ALM_SET ioctl failed: " +
-                       std::string(::strerror(errno)));
+        data.push_back("FAIL: RTC_ALM_SET ioctl failed: " + std::string(::strerror(errno)));
         return {false, data};
     }
 
@@ -946,23 +944,19 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
     if (::ioctl(fd, RTC_ALM_READ, &readBackTm) < 0)
     {
         ::close(fd);
-        data.push_back("FAIL: RTC_ALM_READ ioctl failed: " +
-                       std::string(::strerror(errno)));
+        data.push_back("FAIL: RTC_ALM_READ ioctl failed: " + std::string(::strerror(errno)));
         return {false, data};
     }
 
     ::close(fd);
 
     // Verify the alarm was written correctly (seconds and minutes must match)
-    bool alarmOk = (readBackTm.tm_sec  == alarmTm.tm_sec  &&
-                    readBackTm.tm_min  == alarmTm.tm_min  &&
+    bool alarmOk = (readBackTm.tm_sec == alarmTm.tm_sec && readBackTm.tm_min == alarmTm.tm_min &&
                     readBackTm.tm_hour == alarmTm.tm_hour);
 
     char setBuf[32]{}, readBuf[32]{};
-    std::snprintf(setBuf,  sizeof(setBuf),  "%02d:%02d:%02d",
-                  alarmTm.tm_hour,    alarmTm.tm_min,    alarmTm.tm_sec);
-    std::snprintf(readBuf, sizeof(readBuf), "%02d:%02d:%02d",
-                  readBackTm.tm_hour, readBackTm.tm_min, readBackTm.tm_sec);
+    std::snprintf(setBuf, sizeof(setBuf), "%02d:%02d:%02d", alarmTm.tm_hour, alarmTm.tm_min, alarmTm.tm_sec);
+    std::snprintf(readBuf, sizeof(readBuf), "%02d:%02d:%02d", readBackTm.tm_hour, readBackTm.tm_min, readBackTm.tm_sec);
 
     data.push_back("Alarm set to    : " + std::string(setBuf));
     data.push_back("Alarm read back : " + std::string(readBuf));
@@ -993,8 +987,7 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
     int fd = ::open("/dev/rtc0", O_RDONLY | O_CLOEXEC);
     if (fd < 0)
     {
-        data.push_back("WARN: Cannot open /dev/rtc0 (" +
-                       std::string(::strerror(errno)) +
+        data.push_back("WARN: Cannot open /dev/rtc0 (" + std::string(::strerror(errno)) +
                        "); falling back to sysfs since_epoch");
 
         // Fallback: read since_epoch twice
@@ -1051,12 +1044,20 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
 
     // Epoch conversion
     struct tm s1{}, s2{};
-    s1.tm_sec=t1.tm_sec; s1.tm_min=t1.tm_min; s1.tm_hour=t1.tm_hour;
-    s1.tm_mday=t1.tm_mday; s1.tm_mon=t1.tm_mon; s1.tm_year=t1.tm_year;
-    s2.tm_sec=t2.tm_sec; s2.tm_min=t2.tm_min; s2.tm_hour=t2.tm_hour;
-    s2.tm_mday=t2.tm_mday; s2.tm_mon=t2.tm_mon; s2.tm_year=t2.tm_year;
+    s1.tm_sec = t1.tm_sec;
+    s1.tm_min = t1.tm_min;
+    s1.tm_hour = t1.tm_hour;
+    s1.tm_mday = t1.tm_mday;
+    s1.tm_mon = t1.tm_mon;
+    s1.tm_year = t1.tm_year;
+    s2.tm_sec = t2.tm_sec;
+    s2.tm_min = t2.tm_min;
+    s2.tm_hour = t2.tm_hour;
+    s2.tm_mday = t2.tm_mday;
+    s2.tm_mon = t2.tm_mon;
+    s2.tm_year = t2.tm_year;
     long rtcElapsed = static_cast<long>(::timegm(&s2) - ::timegm(&s1));
-    long sysElapsed = static_cast<long>(sysEnd.tv_sec  - sysStart.tv_sec);
+    long sysElapsed = static_cast<long>(sysEnd.tv_sec - sysStart.tv_sec);
 
     data.push_back("RTC elapsed    : " + std::to_string(rtcElapsed) + " s");
     data.push_back("System elapsed : " + std::to_string(sysElapsed) + " s");
