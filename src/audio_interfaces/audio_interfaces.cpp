@@ -324,8 +324,8 @@ TestOutput AudioInterfaces::testAudioOutput()
  * @brief Verify supported audio sample rates on Jetson Orin.
  *
  * The Tegra234 I2S + ADMAIF pipeline supports 8 kHz – 192 kHz.
- * We parse /proc/asound/card*/pcm*/sub*/hw_params (if a stream is active)
- * and also inspect the static capabilities via /proc/asound/card*/codec files.
+ * We parse /proc/asound/cardN/pcmN/sub0/hw_params (if a stream is active)
+ * and also inspect the static capabilities via /proc/asound/cardN/codec files.
  * As a fallback we parse /proc/asound/pcm to determine which rates are
  * listed for each device.
  *
