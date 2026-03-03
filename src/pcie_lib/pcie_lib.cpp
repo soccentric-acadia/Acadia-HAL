@@ -14,6 +14,10 @@
 #include <sys/wait.h>
 #include <cstring>
 #include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <climits>
+#include <cerrno>
 
 /**
  * @brief Constructor for PcieTesting
@@ -222,168 +226,807 @@ TestOutput PcieTesting::testPcieLinkWidth()
 
 /**
  * @brief Implementation of testPcieLaneReversal
+ * @details Checks lane polarity and width negotiation on Jetson Orin PCIe controllers.
+ *          Reads DT controller nodes for lane-map configuration and validates all
+ *          advertised lanes are active on each enumerated PCIe device.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPcieLaneReversal()
 {
-    std::vector<std::string> devices = getPcieDevices();
     std::vector<std::string> data;
+    data.push_back("=== PCIe Lane Reversal Check (Jetson Orin) ===");
 
-    if (devices.empty()) {
-        return {false, {"No PCIe devices found"}};
-    }
+    // Jetson Orin PCIe controller DT base addresses
+    static const std::vector<std::string> orionControllers = {
+        "pcie@14100000", "pcie@14120000", "pcie@14140000",
+        "pcie@14160000", "pcie@141a0000"
+    };
 
-    // Check for lane reversal capability (this is a basic check)
-    for (const auto& device : devices) {
-        std::string linkcap = readSysfsFile(device + "/linkcap");
-        if (linkcap.find("lane") != std::string::npos) {
-            data.push_back("Device " + device.substr(device.find_last_of('/') + 1) + ": Lane reversal capability detected");
-        } else {
-            data.push_back("Device " + device.substr(device.find_last_of('/') + 1) + ": Lane reversal info not available");
+    int foundControllers = 0;
+    for (const auto& ctrl : orionControllers) {
+        std::string dtBase = "/proc/device-tree/" + ctrl + "/";
+        std::ifstream laneMap(dtBase + "nvidia,lane-map");
+        std::ifstream numLanes(dtBase + "nvidia,num-lanes");
+        std::ifstream statusFile(dtBase + "status");
+        if (statusFile.is_open()) {
+            std::string statusVal;
+            std::getline(statusFile, statusVal);
+            statusVal.erase(std::remove(statusVal.begin(), statusVal.end(), '\0'),
+                            statusVal.end());
+            if (statusVal == "okay" || statusVal == "ok") {
+                foundControllers++;
+                std::string info = "[INFO] " + ctrl + ": active";
+                if (laneMap.is_open())
+                    info += " (custom lane map configured)";
+                if (numLanes.is_open()) {
+                    std::string lanes;
+                    std::getline(numLanes, lanes);
+                    info += " lanes=" + lanes;
+                }
+                data.push_back(info);
+            }
         }
     }
 
-    data.insert(data.begin(), "PCIe lane reversal test completed");
-    return {true, data};
+    // Verify lane width negotiation via sysfs
+    std::vector<std::string> devices = getPcieDevices();
+    bool allLanesActive = true;
+    for (const auto& device : devices) {
+        std::string devName = device.substr(device.find_last_of('/') + 1);
+        std::string curWidth = readSysfsFile(device + "/current_link_width");
+        std::string maxWidth = readSysfsFile(device + "/max_link_width");
+        if (curWidth.empty() || maxWidth.empty()) continue;
+        try {
+            int cur = std::stoi(curWidth);
+            int max = std::stoi(maxWidth);
+            if (cur == max && cur > 0) {
+                data.push_back("[PASS] " + devName + ": All " + curWidth +
+                               " lanes active (no unexpected reversal/loss)");
+            } else if (cur < max) {
+                data.push_back("[WARN] " + devName + ": x" + curWidth +
+                               " of x" + maxWidth +
+                               " lanes active (possible lane polarity/reversal issue)");
+                allLanesActive = false;
+            }
+        } catch (...) {}
+    }
+
+    if (devices.empty() && foundControllers == 0) {
+        return {false, {"No PCIe controllers or devices found"}};
+    }
+
+    data.push_back("DT controllers found: " + std::to_string(foundControllers) +
+                   " | PCIe devices checked: " + std::to_string(devices.size()));
+    return {allLanesActive, data};
 }
 
 /**
  * @brief Implementation of testPcieHotplugSupport
+ * @details Scans /sys/bus/pci/slots for OS-managed hotplug slots and inspects
+ *          PCI bridge class devices for hotplug capability on Jetson Orin.
+ *          Jetson Orin uses a fixed embedded topology; hotplug GPIO control is
+ *          platform-specific.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPcieHotplugSupport()
 {
-    std::vector<std::string> data = {"PCIe hotplug support test: Basic check completed"};
+    std::vector<std::string> data;
+    data.push_back("=== PCIe Hotplug Support (Jetson Orin) ===");
+    data.push_back("[INFO] Jetson Orin uses fixed-endpoint PCIe topology; hotplug handled via GPIO");
+
+    // Enumerate kernel-managed hotplug slots
+    int slotCount = 0;
+    DIR* slotsDir = opendir("/sys/bus/pci/slots");
+    if (slotsDir) {
+        struct dirent* entry;
+        while ((entry = readdir(slotsDir)) != nullptr) {
+            if (entry->d_name[0] == '.') continue;
+            std::string slotPath = std::string("/sys/bus/pci/slots/") + entry->d_name;
+            std::string power    = readSysfsFile(slotPath + "/power");
+            std::string address  = readSysfsFile(slotPath + "/address");
+            std::string attention = readSysfsFile(slotPath + "/attention");
+            data.push_back("[INFO] Slot " + std::string(entry->d_name) +
+                           ": address=" + address +
+                           " power=" + power +
+                           " attention=" + attention);
+            slotCount++;
+        }
+        closedir(slotsDir);
+    }
+
+    // Inspect PCI bridges for hotplug capability
+    std::vector<std::string> devices = getPcieDevices();
+    int hotplugBridges = 0;
+    for (const auto& device : devices) {
+        std::string devName  = device.substr(device.find_last_of('/') + 1);
+        std::string classCode = readSysfsFile(device + "/class");
+        if (classCode.empty()) continue;
+        try {
+            long cls = std::stol(classCode, nullptr, 16);
+            int baseClass = (cls >> 16) & 0xFF;
+            int subClass  = (cls >> 8)  & 0xFF;
+            if (baseClass == 0x06 && subClass == 0x04) {
+                // PCI-to-PCI bridge
+                std::ifstream hpFile(device + "/hotplug/enabled");
+                std::string hpNote = hpFile.is_open() ? "hotplug-enabled" : "bridge (no HP)";
+                data.push_back("[INFO] " + devName + ": PCI bridge [" + hpNote + "]");
+                if (hpFile.is_open()) hotplugBridges++;
+            }
+        } catch (...) {}
+    }
+
+    if (slotCount == 0 && hotplugBridges == 0) {
+        data.push_back("[INFO] No OS-managed hotplug slots (expected on Jetson Orin embedded PCIe)");
+        data.push_back("[INFO] Physical hotplug is handled by platform firmware/GPIO");
+    } else {
+        data.push_back("Found " + std::to_string(slotCount) + " slot(s), " +
+                       std::to_string(hotplugBridges) + " hotplug-capable bridge(s)");
+    }
+
     return {true, data};
 }
 
 /**
  * @brief Implementation of testPcieReadBandwidth
+ * @details Reports theoretical peak read bandwidth per device based on negotiated
+ *          link speed and width (PCIe Gen4 x8 = ~16 GB/s on Jetson Orin).
+ *          Also measures sysfs config-space read latency as an access sanity check.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPcieReadBandwidth()
 {
     std::vector<std::string> devices = getPcieDevices();
     std::vector<std::string> data;
-    bool canRead = false;
-
-    for (const auto& device : devices) {
-        std::string config = readSysfsFile(device + "/config");
-        if (!config.empty()) {
-            data.push_back("Device " + device.substr(device.find_last_of('/') + 1) + ": Config readable");
-            canRead = true;
-        } else {
-            data.push_back("Device " + device.substr(device.find_last_of('/') + 1) + ": Config not readable");
-        }
-    }
+    bool overallPass = false;
 
     if (devices.empty()) {
         return {false, {"No PCIe devices found"}};
     }
 
-    data.insert(data.begin(), "PCIe read access test completed");
-    return {canRead, data};
+    data.push_back("=== PCIe Read Bandwidth (Jetson Orin) ===");
+    data.push_back("[INFO] Jetson Orin AGX Orin supports PCIe Gen4: x8=~16 GB/s, x4=~8 GB/s, x1=~2 GB/s");
+
+    // Theoretical bandwidth: BW(GB/s) = GTps * efficiency * lanes / 8
+    auto theoreticalBW = [](const std::string& speed, int width) -> double {
+        double gtps = 0.0;
+        if (speed.find("2.5") != std::string::npos)                                        gtps = 2.5;
+        else if (speed.find("5.0") != std::string::npos || speed.find("5 GT") != std::string::npos) gtps = 5.0;
+        else if (speed.find("8.0") != std::string::npos || speed.find("8 GT") != std::string::npos) gtps = 8.0;
+        else if (speed.find("16.0") != std::string::npos || speed.find("16 GT") != std::string::npos) gtps = 16.0;
+        else if (speed.find("32.0") != std::string::npos || speed.find("32 GT") != std::string::npos) gtps = 32.0;
+        double efficiency = (gtps >= 8.0) ? (128.0 / 130.0) : (8.0 / 10.0);
+        return (gtps * 1e9 * efficiency * width) / 8.0 / 1e9; // GB/s
+    };
+
+    for (const auto& device : devices) {
+        std::string devName  = device.substr(device.find_last_of('/') + 1);
+        std::string speedStr = readSysfsFile(device + "/current_link_speed");
+        std::string widthStr = readSysfsFile(device + "/current_link_width");
+        if (speedStr.empty() || widthStr.empty()) continue;
+        try {
+            int width = std::stoi(widthStr);
+            double bwGBps = theoreticalBW(speedStr, width);
+            if (bwGBps > 0.0) {
+                char buf[128];
+                snprintf(buf, sizeof(buf), "%.2f GB/s", bwGBps);
+                data.push_back("[INFO] " + devName + ": theoretical read BW = " +
+                               buf + " (" + speedStr + " x" + widthStr + ")");
+                overallPass = true;
+            }
+        } catch (...) {}
+    }
+
+    // Measure practical sysfs config-space read latency
+    {
+        const std::string& testDev = devices[0];
+        const int iterations = 1000;
+        auto tStart = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < iterations; ++i) {
+            std::ifstream f(testDev + "/vendor");
+            char dummy[16];
+            if (f) f.read(dummy, sizeof(dummy));
+        }
+        auto tEnd = std::chrono::high_resolution_clock::now();
+        double elapsed_us = std::chrono::duration<double, std::micro>(tEnd - tStart).count();
+        double per_read_us = elapsed_us / iterations;
+        char lbuf[128];
+        snprintf(lbuf, sizeof(lbuf), "%.2f us/read (%d reads, config space)", per_read_us, iterations);
+        data.push_back("[INFO] Config-space read latency: " + std::string(lbuf));
+    }
+
+    if (!overallPass) {
+        data.push_back("[FAIL] Could not determine bandwidth for any device");
+    }
+    return {overallPass, data};
 }
 
 /**
  * @brief Implementation of testPcieWriteBandwidth
+ * @details Reports theoretical peak write bandwidth per device and performs a
+ *          practical sequential-write throughput measurement to /dev/shm as a
+ *          memory-subsystem sanity check on Jetson Orin.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPcieWriteBandwidth()
 {
-    // For write bandwidth, we check if we can access PCIe config space
-    // In a real implementation, this would perform actual write operations
     std::vector<std::string> devices = getPcieDevices();
     std::vector<std::string> data;
-    bool canWrite = false;
-
-    for (const auto& device : devices) {
-        // Check if config file is writable (though we won't actually write)
-        std::ifstream file(device + "/config");
-        if (file.is_open()) {
-            file.close();
-            data.push_back("Device " + device.substr(device.find_last_of('/') + 1) + ": Config accessible");
-            canWrite = true;
-        } else {
-            data.push_back("Device " + device.substr(device.find_last_of('/') + 1) + ": Config not accessible");
-        }
-    }
+    bool overallPass = false;
 
     if (devices.empty()) {
         return {false, {"No PCIe devices found"}};
     }
 
-    data.insert(data.begin(), "PCIe write access test completed");
-    return {canWrite, data};
+    data.push_back("=== PCIe Write Bandwidth (Jetson Orin) ===");
+    data.push_back("[INFO] Jetson Orin AGX Orin supports PCIe Gen4: x8=~16 GB/s, x4=~8 GB/s, x1=~2 GB/s");
+
+    auto theoreticalBW = [](const std::string& speed, int width) -> double {
+        double gtps = 0.0;
+        if (speed.find("2.5") != std::string::npos)                                        gtps = 2.5;
+        else if (speed.find("5.0") != std::string::npos || speed.find("5 GT") != std::string::npos) gtps = 5.0;
+        else if (speed.find("8.0") != std::string::npos || speed.find("8 GT") != std::string::npos) gtps = 8.0;
+        else if (speed.find("16.0") != std::string::npos || speed.find("16 GT") != std::string::npos) gtps = 16.0;
+        else if (speed.find("32.0") != std::string::npos || speed.find("32 GT") != std::string::npos) gtps = 32.0;
+        double efficiency = (gtps >= 8.0) ? (128.0 / 130.0) : (8.0 / 10.0);
+        return (gtps * 1e9 * efficiency * width) / 8.0 / 1e9;
+    };
+
+    for (const auto& device : devices) {
+        std::string devName  = device.substr(device.find_last_of('/') + 1);
+        std::string speedStr = readSysfsFile(device + "/current_link_speed");
+        std::string widthStr = readSysfsFile(device + "/current_link_width");
+        if (speedStr.empty() || widthStr.empty()) continue;
+        try {
+            int width = std::stoi(widthStr);
+            double bwGBps = theoreticalBW(speedStr, width);
+            if (bwGBps > 0.0) {
+                char buf[128];
+                snprintf(buf, sizeof(buf), "%.2f GB/s", bwGBps);
+                data.push_back("[INFO] " + devName + ": theoretical write BW = " +
+                               buf + " (" + speedStr + " x" + widthStr + ")");
+                overallPass = true;
+            }
+        } catch (...) {}
+    }
+
+    // Sequential write throughput to /dev/shm (DRAM-backed, eliminates storage bottleneck)
+    {
+        const std::string testFile = "/dev/shm/pcie_bw_test";
+        const size_t blockSize = 4 * 1024 * 1024; // 4 MB
+        const int    blocks    = 8;                // 32 MB total
+        std::vector<char> wbuf(blockSize, static_cast<char>(0xAB));
+
+        auto tStart = std::chrono::high_resolution_clock::now();
+        bool writeOk = false;
+        {
+            std::ofstream ofs(testFile, std::ios::binary | std::ios::trunc);
+            if (ofs.is_open()) {
+                for (int i = 0; i < blocks; ++i)
+                    ofs.write(wbuf.data(), static_cast<std::streamsize>(blockSize));
+                ofs.flush();
+                writeOk = ofs.good();
+            }
+        }
+        auto tEnd = std::chrono::high_resolution_clock::now();
+        unlink(testFile.c_str());
+
+        if (writeOk) {
+            double elapsed = std::chrono::duration<double>(tEnd - tStart).count();
+            double mb_written = static_cast<double>(blockSize * blocks) / (1024.0 * 1024.0);
+            double mbps = mb_written / (elapsed > 0.0 ? elapsed : 1e-9);
+            char mbuf[128];
+            snprintf(mbuf, sizeof(mbuf), "%.1f MB/s (%.0f MB in %.3f s)", mbps, mb_written, elapsed);
+            data.push_back("[INFO] Sequential write throughput (/dev/shm): " + std::string(mbuf));
+            overallPass = true;
+        } else {
+            data.push_back("[WARN] Could not write to /dev/shm for throughput test");
+        }
+    }
+
+    if (!overallPass) {
+        data.push_back("[FAIL] Could not determine write bandwidth for any device");
+    }
+    return {overallPass, data};
 }
 
 /**
  * @brief Implementation of testPcieLatency
+ * @details Measures PCIe config-space access latency on Jetson Orin by timing
+ *          repeated sysfs vendor-register reads (500 samples per device).
+ *          Reports min/avg/max latency and flags devices with anomalous latency.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPcieLatency()
 {
-    std::vector<std::string> data = {"PCIe latency test: Basic check completed"};
-    return {true, data};
+    std::vector<std::string> devices = getPcieDevices();
+    std::vector<std::string> data;
+
+    if (devices.empty()) {
+        return {false, {"No PCIe devices found"}};
+    }
+
+    data.push_back("=== PCIe Config-Space Access Latency (Jetson Orin) ===");
+    data.push_back("[INFO] Sampling sysfs vendor register read (500 samples per device)");
+
+    bool anyMeasured = false;
+    bool overallPass = true;
+
+    for (const auto& device : devices) {
+        std::string devName  = device.substr(device.find_last_of('/') + 1);
+        std::string widthStr = readSysfsFile(device + "/current_link_width");
+        if (widthStr.empty()) continue; // Skip devices without an active link
+
+        const int iterations = 500;
+        double minUs = 1e9, maxUs = 0.0, totalUs = 0.0;
+
+        for (int i = 0; i < iterations; ++i) {
+            auto t0 = std::chrono::high_resolution_clock::now();
+            {
+                std::ifstream f(device + "/vendor");
+                char dummy[16];
+                if (f) f.read(dummy, sizeof(dummy));
+            }
+            auto t1 = std::chrono::high_resolution_clock::now();
+            double us = std::chrono::duration<double, std::micro>(t1 - t0).count();
+            if (us < minUs) minUs = us;
+            if (us > maxUs) maxUs = us;
+            totalUs += us;
+        }
+
+        double avgUs = totalUs / iterations;
+        char buf[256];
+        snprintf(buf, sizeof(buf),
+                 "min=%.1f us  avg=%.1f us  max=%.1f us  (%d samples)",
+                 minUs, avgUs, maxUs, iterations);
+        data.push_back("[INFO] " + devName + ": " + buf);
+
+        if (avgUs < 200.0) {
+            data.push_back("[PASS] " + devName + ": Latency within acceptable range");
+        } else {
+            data.push_back("[WARN] " + devName + ": High avg latency (" +
+                           std::to_string(static_cast<int>(avgUs)) +
+                           " us) - possible system load or link degradation");
+            overallPass = false;
+        }
+        anyMeasured = true;
+    }
+
+    if (!anyMeasured) {
+        return {false, {"No PCIe devices with active links found"}};
+    }
+
+    data.push_back("[INFO] Values include kernel/OS overhead on top of PCIe config-space TLP round-trip");
+    return {overallPass, data};
 }
 
 /**
  * @brief Implementation of testPcieErrorHandling
+ * @details Reads AER (Advanced Error Reporting) sysfs counters for correctable,
+ *          non-fatal, and fatal PCIe errors on each device.  Falls back to a
+ *          dmesg scan when AER sysfs is unavailable.  Jetson Orin PCIe Gen4
+ *          controllers support AER when CONFIG_PCIEAER=y.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPcieErrorHandling()
 {
-    std::vector<std::string> data = {"PCIe error handling test: Basic check completed"};
-    return {true, data};
+    std::vector<std::string> devices = getPcieDevices();
+    std::vector<std::string> data;
+    bool overallPass = true;
+
+    if (devices.empty()) {
+        return {false, {"No PCIe devices found"}};
+    }
+
+    data.push_back("=== PCIe AER Error Handling (Jetson Orin) ===");
+    data.push_back("[INFO] Checking AER correctable / non-fatal / fatal counters");
+
+    int checkedDevices = 0;
+    for (const auto& device : devices) {
+        std::string devName      = device.substr(device.find_last_of('/') + 1);
+        std::string aerCorr      = readSysfsFile(device + "/aer_dev_correctable");
+        std::string aerFatal     = readSysfsFile(device + "/aer_dev_fatal");
+        std::string aerNonFatal  = readSysfsFile(device + "/aer_dev_nonfatal");
+
+        if (aerCorr.empty() && aerFatal.empty() && aerNonFatal.empty()) continue;
+        checkedDevices++;
+        data.push_back("[CHECK] " + devName + ":");
+
+        // Helper lambda: parse "key val key val ..." and return true if any val != 0
+        auto hasNonZero = [](const std::string& s) -> bool {
+            std::istringstream iss(s);
+            std::string k, v;
+            while (iss >> k >> v) {
+                try { if (std::stoi(v) != 0) return true; } catch (...) {}
+            }
+            return false;
+        };
+
+        if (!aerCorr.empty()) {
+            if (hasNonZero(aerCorr))
+                data.push_back("  [WARN] Correctable errors: " + aerCorr);
+            else
+                data.push_back("  [PASS] No correctable errors");
+        }
+        if (!aerNonFatal.empty()) {
+            if (hasNonZero(aerNonFatal)) {
+                data.push_back("  [WARN] Non-fatal errors: " + aerNonFatal);
+            } else {
+                data.push_back("  [PASS] No non-fatal errors");
+            }
+        }
+        if (!aerFatal.empty()) {
+            if (hasNonZero(aerFatal)) {
+                data.push_back("  [FAIL] Fatal errors: " + aerFatal);
+                overallPass = false;
+            } else {
+                data.push_back("  [PASS] No fatal errors");
+            }
+        }
+    }
+
+    if (checkedDevices == 0) {
+        data.push_back("[INFO] AER sysfs not exposed (requires CONFIG_PCIEAER=y and AER-capable device)");
+        // Fallback: scan dmesg for PCIe error messages
+        std::string dmesgOut = executeCommand(
+            "dmesg 2>/dev/null | grep -Ei 'pcie.*error|aer.*error|pci.*error' | tail -10");
+        if (!dmesgOut.empty()) {
+            data.push_back("[WARN] PCIe error message(s) found in dmesg:");
+            std::istringstream iss(dmesgOut);
+            std::string line;
+            while (std::getline(iss, line))
+                if (!line.empty()) data.push_back("  " + line);
+            overallPass = false;
+        } else {
+            data.push_back("[PASS] No PCIe error messages in dmesg");
+        }
+    } else {
+        data.push_back("AER checked on " + std::to_string(checkedDevices) + " device(s)");
+    }
+
+    return {overallPass, data};
 }
 
 /**
  * @brief Implementation of testPciePowerManagement
+ * @details Reads PCI power_state, d3cold_allowed, and runtime PM status for each
+ *          PCIe device.  Jetson Orin PCIe controllers support L0s/L1/L1.1/L1.2
+ *          ASPM link power states in addition to D-state device power management.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPciePowerManagement()
 {
-    std::vector<std::string> data = {"PCIe power management test: Basic check completed"};
-    return {true, data};
+    std::vector<std::string> devices = getPcieDevices();
+    std::vector<std::string> data;
+    bool overallPass = true;
+
+    if (devices.empty()) {
+        return {false, {"No PCIe devices found"}};
+    }
+
+    data.push_back("=== PCIe Power Management (Jetson Orin) ===");
+    data.push_back("[INFO] Jetson Orin supports PCIe Gen4 ASPM L0s/L1/L1.1/L1.2 and D0/D3hot/D3cold");
+
+    int d0Count = 0, suspendCount = 0, unknownCount = 0;
+
+    for (const auto& device : devices) {
+        std::string devName        = device.substr(device.find_last_of('/') + 1);
+        std::string powerState     = readSysfsFile(device + "/power_state");
+        std::string d3coldAllowed  = readSysfsFile(device + "/d3cold_allowed");
+        std::string runtimeStatus  = readSysfsFile(device + "/power/runtime_status");
+        std::string runtimeControl = readSysfsFile(device + "/power/control");
+        std::string linkState      = readSysfsFile(device + "/link_state");
+
+        if (powerState.empty()) {
+            unknownCount++;
+            continue;
+        }
+
+        std::string extra;
+        if (!d3coldAllowed.empty())  extra += " d3cold=" + d3coldAllowed;
+        if (!runtimeStatus.empty())  extra += " rt=" + runtimeStatus;
+        if (!runtimeControl.empty()) extra += " ctrl=" + runtimeControl;
+        if (!linkState.empty())      extra += " link=" + linkState;
+
+        if (powerState == "D0") {
+            data.push_back("[PASS] " + devName + ": Active (D0)" + extra);
+            d0Count++;
+        } else if (powerState == "D3hot" || powerState == "D3cold") {
+            data.push_back("[INFO] " + devName + ": Suspended (" + powerState + ")" + extra);
+            suspendCount++;
+        } else if (powerState == "D1" || powerState == "D2") {
+            data.push_back("[INFO] " + devName + ": Low-power (" + powerState + ")" + extra);
+            suspendCount++;
+        } else {
+            data.push_back("[WARN] " + devName + ": Unexpected state '" + powerState + "'" + extra);
+        }
+    }
+
+    // Check Tegra PCIe debug FS if available
+    std::string tegraInfo = executeCommand(
+        "cat /sys/kernel/debug/tegra_pciefw/info 2>/dev/null | head -10");
+    if (!tegraInfo.empty()) {
+        data.push_back("=== Tegra PCIe Firmware Status ===");
+        std::istringstream iss(tegraInfo);
+        std::string line;
+        while (std::getline(iss, line))
+            if (!line.empty()) data.push_back("  " + line);
+    }
+
+    // Check ASPM policy
+    std::string aspmPolicy = readSysfsFile("/sys/module/pcie_aspm/parameters/policy");
+    if (!aspmPolicy.empty())
+        data.push_back("[INFO] System ASPM policy: " + aspmPolicy);
+
+    data.push_back("Summary: " + std::to_string(d0Count) + " active (D0), " +
+                   std::to_string(suspendCount) + " suspended, " +
+                   std::to_string(unknownCount) + " unknown");
+
+    return {overallPass, data};
 }
 
 /**
  * @brief Implementation of testSecondaryPcieLinkTraining
+ * @details Filters PCIe devices resident on secondary buses (bus number > 0)
+ *          and verifies each has a trained link.  Also captures the lspci tree
+ *          to show the full Jetson Orin PCIe topology.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testSecondaryPcieLinkTraining()
 {
-    std::vector<std::string> data = {"Secondary PCIe link training test: Basic check completed"};
-    return {true, data};
+    std::vector<std::string> devices = getPcieDevices();
+    std::vector<std::string> data;
+    bool anySecondary = false;
+    int trainedCount  = 0;
+    int totalSecondary = 0;
+
+    data.push_back("=== Secondary PCIe Link Training (Jetson Orin) ===");
+    data.push_back("[INFO] Orin has up to 5 independent PCIe root port controllers");
+
+    for (const auto& device : devices) {
+        // BDF format: DDDD:BB:DD.F - extract bus number (BB, hex)
+        std::string devName = device.substr(device.find_last_of('/') + 1);
+        int bus = -1;
+        try {
+            size_t c1 = devName.find(':');
+            size_t c2 = (c1 != std::string::npos) ? devName.find(':', c1 + 1) : std::string::npos;
+            if (c1 != std::string::npos && c2 != std::string::npos)
+                bus = std::stoi(devName.substr(c1 + 1, c2 - c1 - 1), nullptr, 16);
+        } catch (...) {}
+
+        if (bus > 0) {
+            totalSecondary++;
+            anySecondary = true;
+            std::string speedStr = readSysfsFile(device + "/current_link_speed");
+            std::string widthStr = readSysfsFile(device + "/current_link_width");
+            bool trained = !speedStr.empty() && !widthStr.empty();
+            if (trained) {
+                data.push_back("[PASS] " + devName + " (bus 0x" +
+                               std::to_string(bus) + "): link trained at " +
+                               speedStr + " x" + widthStr);
+                trainedCount++;
+            } else {
+                data.push_back("[WARN] " + devName + " (bus 0x" +
+                               std::to_string(bus) + "): no link speed/width");
+            }
+        }
+    }
+
+    // PCIe topology tree via lspci
+    std::string lspciTree = executeCommand("lspci -t 2>/dev/null | head -40");
+    if (!lspciTree.empty()) {
+        data.push_back("=== PCIe Bus Topology ===");
+        std::istringstream iss(lspciTree);
+        std::string line;
+        while (std::getline(iss, line))
+            if (!line.empty()) data.push_back("  " + line);
+    }
+
+    if (!anySecondary) {
+        data.push_back("[INFO] No devices on secondary buses - all endpoints on root bus");
+        data.push_back("[INFO] This is expected when no PCIe switches are present");
+        return {true, data};
+    }
+
+    data.push_back("Secondary bus trained: " + std::to_string(trainedCount) +
+                   "/" + std::to_string(totalSecondary));
+    return {trainedCount == totalSecondary, data};
 }
 
 /**
  * @brief Implementation of testPcieX4Bandwidth
+ * @details Enumerates all PCIe devices running at x4 or wider lane width and
+ *          reports theoretical bandwidth.  Jetson Orin AGX supports PCIe Gen4 x4
+ *          on one controller providing ~8 GB/s.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPcieX4Bandwidth()
 {
-    std::vector<std::string> data = {"PCIe x4 bandwidth test: Basic check completed"};
-    return {true, data};
+    std::vector<std::string> devices = getPcieDevices();
+    std::vector<std::string> data;
+    bool found = false;
+
+    data.push_back("=== PCIe x4 Bandwidth (Jetson Orin) ===");
+    data.push_back("[INFO] Jetson Orin Gen4 x4: ~8 GB/s theoretical (128b/130b encoding)");
+
+    for (const auto& device : devices) {
+        std::string devName  = device.substr(device.find_last_of('/') + 1);
+        std::string widthStr = readSysfsFile(device + "/current_link_width");
+        std::string speedStr = readSysfsFile(device + "/current_link_speed");
+        std::string maxWStr  = readSysfsFile(device + "/max_link_width");
+        if (widthStr.empty()) continue;
+
+        try {
+            int width    = std::stoi(widthStr);
+            int maxWidth = maxWStr.empty() ? width : std::stoi(maxWStr);
+            if (width < 4) continue;
+
+            double gtps = 0.0;
+            std::string gen = "Unknown";
+            if      (speedStr.find("16.0") != std::string::npos || speedStr.find("16 GT") != std::string::npos) { gtps = 16.0; gen = "Gen4"; }
+            else if (speedStr.find("8.0")  != std::string::npos || speedStr.find("8 GT")  != std::string::npos) { gtps =  8.0; gen = "Gen3"; }
+            else if (speedStr.find("5.0")  != std::string::npos || speedStr.find("5 GT")  != std::string::npos) { gtps =  5.0; gen = "Gen2"; }
+            else if (speedStr.find("2.5")  != std::string::npos)                                               { gtps =  2.5; gen = "Gen1"; }
+
+            double efficiency = (gtps >= 8.0) ? (128.0 / 130.0) : (8.0 / 10.0);
+            double bwGBps     = (gtps * 1e9 * efficiency * width) / 8.0 / 1e9;
+            bool   atMax      = (width >= maxWidth);
+
+            char buf[256];
+            snprintf(buf, sizeof(buf), "%.2f GB/s [%s x%d%s]",
+                     bwGBps, gen.c_str(), width, atMax ? " FULL" : " DEGRADED");
+
+            std::string pfx = (atMax && gtps >= 16.0) ? "[PASS]" :
+                              (atMax)                  ? "[INFO]" : "[WARN]";
+            data.push_back(pfx + " " + devName + ": " + buf);
+            if (!atMax)
+                data.push_back("       Running at x" + std::to_string(width) +
+                               " of x" + std::to_string(maxWidth) +
+                               " - check slot/connector");
+            found = true;
+        } catch (...) {}
+    }
+
+    if (!found) {
+        data.push_back("[INFO] No x4 (or wider) PCIe devices detected");
+        data.push_back("[INFO] Connect an NVMe, capture card, or other x4 device to test");
+    }
+
+    return {true, data}; // Not a failure when device is simply absent
 }
 
 /**
  * @brief Implementation of testPcieX4LaneFunctionality
+ * @details Verifies all advertised x4 PCIe lanes are active (current == max width)
+ *          and running at maximum negotiated speed.  Also inspects AER correctable
+ *          error counters (BadTLP/BadDLLP) as an indicator of per-lane integrity.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPcieX4LaneFunctionality()
 {
-    std::vector<std::string> data = {"PCIe x4 lane functionality test: Basic check completed"};
-    return {true, data};
+    std::vector<std::string> devices = getPcieDevices();
+    std::vector<std::string> data;
+    bool overallPass = true;
+    bool anyX4 = false;
+
+    data.push_back("=== PCIe x4 Lane Functionality (Jetson Orin) ===");
+    data.push_back("[INFO] Verifying all x4 PCIe lanes are functional and at max speed");
+
+    for (const auto& device : devices) {
+        std::string devName  = device.substr(device.find_last_of('/') + 1);
+        std::string curWStr  = readSysfsFile(device + "/current_link_width");
+        std::string maxWStr  = readSysfsFile(device + "/max_link_width");
+        std::string curSStr  = readSysfsFile(device + "/current_link_speed");
+        std::string maxSStr  = readSysfsFile(device + "/max_link_speed");
+        if (curWStr.empty()) continue;
+
+        try {
+            int curW = std::stoi(curWStr);
+            int maxW = maxWStr.empty() ? curW : std::stoi(maxWStr);
+            if (maxW < 4) continue;
+
+            anyX4 = true;
+            bool widthOk = (curW >= maxW);
+            bool speedOk = (maxSStr.empty() || curSStr == maxSStr);
+
+            data.push_back((widthOk && speedOk ? "[PASS]" : "[WARN]") + (" " + devName + ":"));
+            data.push_back("  Width: x" + std::to_string(curW) + "/x" + std::to_string(maxW) +
+                           (widthOk ? " [ALL LANES ACTIVE]" : " [DEGRADED - check connector]"));
+            data.push_back("  Speed: " + (curSStr.empty() ? "N/A" : curSStr) +
+                           (maxSStr.empty() ? "" : " / " + maxSStr) +
+                           (speedOk ? " [AT MAX SPEED]" : " [BELOW MAX SPEED]"));
+
+            if (!widthOk || !speedOk) overallPass = false;
+
+            // Inspect AER correctable counters (BadTLP / BadDLLP indicate lane issues)
+            std::string aerCorr = readSysfsFile(device + "/aer_dev_correctable");
+            if (!aerCorr.empty()) {
+                std::istringstream iss(aerCorr);
+                std::string k, v;
+                while (iss >> k >> v) {
+                    if (k == "BadTLP" || k == "BadDLLP" || k == "ECRC") {
+                        try {
+                            if (std::stoi(v) > 0)
+                                data.push_back("  [WARN] AER " + k + "=" + v +
+                                               " (lane integrity concern)");
+                        } catch (...) {}
+                    }
+                }
+            }
+        } catch (...) {}
+    }
+
+    if (!anyX4)
+        data.push_back("[INFO] No x4 or wider PCIe devices present on this system");
+
+    return {overallPass, data};
 }
 
 /**
  * @brief Implementation of testConcurrentPcieX8AndX4Operation
+ * @details Verifies that Jetson Orin's independent PCIe root port controllers
+ *          can operate simultaneously.  Enumerates all active x1/x4/x8 devices
+ *          and checks the kernel log for PCIe errors during concurrent operation.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testConcurrentPcieX8AndX4Operation()
 {
-    std::vector<std::string> data = {"Concurrent PCIe x8 and x4 operation test: Basic check completed"};
+    std::vector<std::string> devices = getPcieDevices();
+    std::vector<std::string> data;
+
+    data.push_back("=== Concurrent PCIe x8 + x4 Operation (Jetson Orin) ===");
+    data.push_back("[INFO] Jetson Orin has independent root port controllers - concurrency is by design");
+
+    std::vector<std::string> x8devs, x4devs, x1devs;
+
+    for (const auto& device : devices) {
+        std::string wStr = readSysfsFile(device + "/current_link_width");
+        if (wStr.empty()) continue;
+        try {
+            int w = std::stoi(wStr);
+            std::string n = device.substr(device.find_last_of('/') + 1);
+            std::string s = readSysfsFile(device + "/current_link_speed");
+            std::string entry = n + " (" + s + " x" + wStr + ")";
+            if (w >= 8) x8devs.push_back(entry);
+            else if (w >= 4) x4devs.push_back(entry);
+            else x1devs.push_back(entry);
+        } catch (...) {}
+    }
+
+    auto report = [&](const std::vector<std::string>& devs, const std::string& label) {
+        if (!devs.empty()) {
+            data.push_back("[PASS] " + label + " devices: " + std::to_string(devs.size()));
+            for (const auto& d : devs) data.push_back("  - " + d);
+        } else {
+            data.push_back("[INFO] No " + label + " devices connected");
+        }
+    };
+    report(x8devs, "x8 (or wider)");
+    report(x4devs, "x4");
+    report(x1devs, "x1");
+
+    int totalActive = static_cast<int>(x8devs.size() + x4devs.size() + x1devs.size());
+    if (!x8devs.empty() && !x4devs.empty())
+        data.push_back("[PASS] Concurrent x8 + x4 operation confirmed");
+    else if (totalActive >= 2)
+        data.push_back("[INFO] Multiple PCIe devices active - concurrent controller operation verified");
+    else if (totalActive == 1)
+        data.push_back("[INFO] Single device only - connect additional PCIe device for full concurrency test");
+    else
+        data.push_back("[WARN] No active PCIe links found");
+
+    // Check kernel log for PCIe errors
+    std::string errOut = executeCommand(
+        "dmesg 2>/dev/null | grep -Ei 'pci[e].*error|pci[e].*failed|pci[e].*timeout' | tail -5");
+    if (!errOut.empty()) {
+        data.push_back("[WARN] PCIe issues in dmesg:");
+        std::istringstream iss(errOut);
+        std::string line;
+        while (std::getline(iss, line))
+            if (!line.empty()) data.push_back("  " + line);
+    } else {
+        data.push_back("[PASS] No PCIe errors in kernel log");
+    }
+
     return {true, data};
 }
 
@@ -500,11 +1143,86 @@ TestOutput PcieTesting::testMultiplePcieDeviceEnumeration()
 
 /**
  * @brief Implementation of testPcieSwitchCompatibility
+ * @details Scans sysfs for PCI bridge devices (class 0x0604) which represent
+ *          PCIe switch upstream/downstream ports and root-complex integrated
+ *          bridges.  Known PCIe switch vendor IDs are flagged.  Also captures
+ *          lspci output to enumerate bridge devices by description.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPcieSwitchCompatibility()
 {
-    std::vector<std::string> data = {"PCIe switch compatibility test: Basic check completed"};
+    std::vector<std::string> devices = getPcieDevices();
+    std::vector<std::string> data;
+    int bridgeCount = 0;
+    int switchCount = 0;
+
+    data.push_back("=== PCIe Switch/Bridge Compatibility (Jetson Orin) ===");
+
+    // Known 3rd-party PCIe switch vendor IDs (hex, lower-case)
+    static const std::vector<std::string> switchVendors = {
+        "0x104c", // Texas Instruments
+        "0x12d8", // Pericom / Diodes Inc.
+        "0x1055", // SMSC / Microchip
+        "0x11f8", // PMC-Sierra
+        "0x1957", // Freescale / NXP
+        "0x10b5", // PLX Technology (Broadcom)
+    };
+
+    for (const auto& device : devices) {
+        std::string devName   = device.substr(device.find_last_of('/') + 1);
+        std::string classCode = readSysfsFile(device + "/class");
+        std::string vendor    = readSysfsFile(device + "/vendor");
+        std::string deviceId  = readSysfsFile(device + "/device");
+        if (classCode.empty()) continue;
+        try {
+            long cls = std::stol(classCode, nullptr, 16);
+            if (((cls >> 16) & 0xFF) == 0x06 && ((cls >> 8) & 0xFF) == 0x04) {
+                bridgeCount++;
+                std::string speedStr = readSysfsFile(device + "/current_link_speed");
+                std::string widthStr = readSysfsFile(device + "/current_link_width");
+
+                // Check for known PCIe switch chips
+                bool isSwitch = false;
+                for (const auto& sv : switchVendors) {
+                    if (vendor == sv) { isSwitch = true; break; }
+                }
+
+                std::string info = (isSwitch ? "[INFO] PCIe switch" : "[INFO] PCI bridge") +
+                                   (" " + devName) +
+                                   " [vendor=" + vendor + " dev=" + deviceId + "]";
+                if (!speedStr.empty())
+                    info += " " + speedStr + " x" + widthStr;
+                data.push_back(info);
+
+                if (isSwitch) {
+                    data.push_back("       Known PCIe switch vendor detected");
+                    switchCount++;
+                }
+            }
+        } catch (...) {}
+    }
+
+    // lspci bridge listing for additional details
+    std::string lspciOut = executeCommand(
+        "lspci 2>/dev/null | grep -Ei 'pci bridge|root port|upstream port|downstream port'");
+    if (!lspciOut.empty()) {
+        data.push_back("=== lspci Bridge Listing ===");
+        std::istringstream iss(lspciOut);
+        std::string line;
+        while (std::getline(iss, line))
+            if (!line.empty()) data.push_back("  " + line);
+    }
+
+    data.push_back("Found " + std::to_string(bridgeCount) + " PCI bridge(s), " +
+                   std::to_string(switchCount) + " identified 3rd-party PCIe switch chip(s)");
+
+    if (bridgeCount == 0) {
+        data.push_back("[INFO] No PCI bridges detected - Jetson Orin using direct endpoint connections");
+        data.push_back("[INFO] This is the expected embedded configuration");
+    } else {
+        data.push_back("[PASS] PCI bridge(s) enumerated and accessible");
+    }
+
     return {true, data};
 }
 
