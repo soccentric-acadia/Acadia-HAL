@@ -68,16 +68,20 @@ build: configure
 	@echo "Building project with Ninja..."
 	cd $(BUILD_DIR) && ninja
 
-test: build
-	@echo "Running tests..."
-	cd $(BUILD_DIR) && ninja test
-
 run: build
 	$(call run_local)
+
+# =============================================================================
+# Common for native and Cross
+# =============================================================================
 
 clean:
 	@echo "Cleaning build directory..."
 	rm -rf $(BUILD_DIR)
+
+list:
+	@echo "Available test applications:"
+	@ls -1 $(BUILD_DIR)/bin/ 2>/dev/null | sed 's/^/    /' || echo "  (none - run 'make docker-build' first)"
 
 # =============================================================================
 # Cross builds (Docker)
@@ -144,10 +148,6 @@ run-a: deploy-a
 run-b: deploy-b
 	$(call run_remote,$(IP_B))
 
-list:
-	@echo "Available test applications:"
-	@ls -1 $(BUILD_DIR)/bin/ 2>/dev/null | sed 's/^/    /' || echo "  (none - run 'make docker-build' first)"
-
 # =============================================================================
 # Code quality & Docs
 # =============================================================================
@@ -188,7 +188,10 @@ help:
 	@echo "    build        - Build the project (configures if needed)"
 	@echo "    test         - Run tests"
 	@echo "    run          - Run test app locally (usage: make run [name] [args...], no args = run all)"
+	@echo ""
+	@echo "  Common (host an docker):"
 	@echo "    clean        - Remove build directory"
+	@echo "    list         - List available test applications"
 	@echo ""
 	@echo "  Cross builds (Docker):"
 	@echo "    all                  - Alias for docker-build (default)"
@@ -205,7 +208,6 @@ help:
 	@echo "    deploy-b     - Deploy lib and bin to $(IP_B)"
 	@echo "    run-a        - Run test app on $(IP_A) (usage: make run-a [name] [args...], no args = run all)"
 	@echo "    run-b        - Run test app on $(IP_B) (usage: make run-b [name] [args...], no args = run all)"
-	@echo "    list         - List available test applications"
 	@echo ""
 	@echo "  Code quality & Docs:"
 	@echo "    format       - Format code with clang-format"
