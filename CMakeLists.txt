@@ -31,15 +31,18 @@ file(GLOB_RECURSE ALL_SOURCES
 # Clang-format
 find_program(CLANG_FORMAT clang-format)
 if(CLANG_FORMAT)
+    # cmake-format: off
     add_custom_target(format
         COMMAND ${CLANG_FORMAT} -i ${ALL_SOURCES}
         COMMENT "Formatting code with clang-format"
     )
+    # cmake-format: on
 endif()
 
 # Cppcheck
 find_program(CPPCHECK cppcheck)
 if(CPPCHECK)
+    # cmake-format: off
     add_custom_target(cppcheck
         COMMAND ${CPPCHECK}
             --enable=all
@@ -54,6 +57,7 @@ if(CPPCHECK)
             ${ALL_SOURCES}
         COMMENT "Running cppcheck static analysis"
     )
+    # cmake-format: on
 endif()
 
 # Doxygen
@@ -65,12 +69,14 @@ if(DOXYGEN_FOUND)
     configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
     message("Doxygen build started")
 
+    # cmake-format: off
     add_custom_target(doc_doxygen
         COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM
     )
+    # cmake-format: on
 else()
     message("Doxygen need to be installed to generate the doxygen documentation")
 endif()

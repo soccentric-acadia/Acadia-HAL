@@ -165,6 +165,8 @@ run-b: deploy-b
 format: configure
 	@echo "Formatting code..."
 	cd $(NATIVE_BUILD_DIR) && ninja format
+	@echo "Formatting CMake files..."
+	find . -name CMakeLists.txt -not -path './build/*' | xargs cmake-format -i
 
 cppcheck: configure
 	@echo "Running cppcheck static analysis..."
