@@ -28,6 +28,14 @@ SCP := $(SSHPASS) scp -o StrictHostKeyChecking=no
 # Default target
 all: docker-build
 
+# Deploy to remote target: $(1)=IP address
+define deploy_remote
+	@echo "Deploying to $(1)..."
+	$(SSH) $(USER)@$(1) "rm -rf /tmp/acu-test && mkdir -p /tmp/acu-test"
+	$(SCP) -r $(CROSS_BUILD_DIR)/lib $(USER)@$(1):/tmp/acu-test/
+	$(SCP) -r $(CROSS_BUILD_DIR)/bin $(USER)@$(1):/tmp/acu-test/
+endef
+
 # Run apps on remote target: $(1)=IP address
 define run_remote
 	@APP="$(word 2, $(MAKECMDGOALS))"; \
@@ -137,16 +145,10 @@ docker-shell: docker-image
 deploy: deploy-a deploy-b
 
 deploy-a: docker-build
-	@echo "Deploying to $(IP_A)..."
-	$(SSH) $(USER)@$(IP_A) "rm -rf /tmp/acu-test && mkdir -p /tmp/acu-test"
-	$(SCP) -r $(CROSS_BUILD_DIR)/lib $(USER)@$(IP_A):/tmp/acu-test/
-	$(SCP) -r $(CROSS_BUILD_DIR)/bin $(USER)@$(IP_A):/tmp/acu-test/
+	$(call deploy_remote,$(IP_A))
 
 deploy-b: docker-build
-	@echo "Deploying to $(IP_B)..."
-	$(SSH) $(USER)@$(IP_B) "rm -rf /tmp/acu-test && mkdir -p /tmp/acu-test"
-	$(SCP) -r $(CROSS_BUILD_DIR)/lib $(USER)@$(IP_B):/tmp/acu-test/
-	$(SCP) -r $(CROSS_BUILD_DIR)/bin $(USER)@$(IP_B):/tmp/acu-test/
+	$(call deploy_remote,$(IP_B))
 
 run-a: deploy-a
 	$(call run_remote,$(IP_A))
