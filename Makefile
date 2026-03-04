@@ -59,10 +59,12 @@ define run_local
 		echo "Running all test applications locally..."; \
 		for name in $$(ls $(NATIVE_BUILD_DIR)/bin/); do \
 			echo "--- Running $$name ---"; \
+			$(if $(V),echo "LD_LIBRARY_PATH=$(NATIVE_BUILD_DIR)/lib $(NATIVE_BUILD_DIR)/bin/$$name";) \
 			LD_LIBRARY_PATH=$(NATIVE_BUILD_DIR)/lib $(NATIVE_BUILD_DIR)/bin/$$name || true; \
 		done; \
 	else \
 		echo "Running $$APP locally with args: $$ARGS"; \
+		$(if $(V),echo "LD_LIBRARY_PATH=$(NATIVE_BUILD_DIR)/lib $(NATIVE_BUILD_DIR)/bin/$$APP $$ARGS";) \
 		LD_LIBRARY_PATH=$(NATIVE_BUILD_DIR)/lib $(NATIVE_BUILD_DIR)/bin/$$APP $$ARGS; \
 	fi
 endef
