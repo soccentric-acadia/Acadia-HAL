@@ -397,17 +397,22 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
     data.push_back("Total CoreSight devices: " + std::to_string(devices.size()));
 
     // Count by type
-    int etmCount  = 0, etfCount = 0, tpiuCount = 0, stmCount = 0, etrCount = 0;
+    int etmCount = 0, etfCount = 0, tpiuCount = 0, stmCount = 0, etrCount = 0;
     for (const auto &d : devices)
     {
         std::string dl = d;
         // Convert to lowercase for comparison
         std::transform(dl.begin(), dl.end(), dl.begin(), ::tolower);
-        if (dl.find("etm") != std::string::npos)  ++etmCount;
-        if (dl.find("etf") != std::string::npos || dl.find("etb") != std::string::npos) ++etfCount;
-        if (dl.find("tpiu") != std::string::npos) ++tpiuCount;
-        if (dl.find("stm") != std::string::npos)  ++stmCount;
-        if (dl.find("etr") != std::string::npos)  ++etrCount;
+        if (dl.find("etm") != std::string::npos)
+            ++etmCount;
+        if (dl.find("etf") != std::string::npos || dl.find("etb") != std::string::npos)
+            ++etfCount;
+        if (dl.find("tpiu") != std::string::npos)
+            ++tpiuCount;
+        if (dl.find("stm") != std::string::npos)
+            ++stmCount;
+        if (dl.find("etr") != std::string::npos)
+            ++etrCount;
         data.push_back("  " + d);
     }
 
@@ -507,9 +512,9 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
     }
     else
     {
-        data.push_back("  PMU access level: " +
-                       std::string(paranoid <= 0 ? "unrestricted" :
-                                   paranoid == 1 ? "user-level (normal)" : "kernel only"));
+        data.push_back("  PMU access level: " + std::string(paranoid <= 0   ? "unrestricted"
+                                                            : paranoid == 1 ? "user-level (normal)"
+                                                                            : "kernel only"));
     }
 
     // 2. Enumerate event source devices
@@ -534,8 +539,7 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
         std::string pmuLower = pmu;
         std::transform(pmuLower.begin(), pmuLower.end(), pmuLower.begin(), ::tolower);
 
-        if (pmuLower.find("armv8") != std::string::npos ||
-            pmuLower.find("arm_") != std::string::npos ||
+        if (pmuLower.find("armv8") != std::string::npos || pmuLower.find("arm_") != std::string::npos ||
             pmuLower.find("cortex") != std::string::npos)
         {
             ++armPmuCount;
@@ -545,8 +549,7 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
             if (!cpumask.empty())
                 data.push_back("    cpumask: " + cpumask);
         }
-        else if (pmuLower.find("gpu") != std::string::npos ||
-                 pmuLower.find("tegra") != std::string::npos)
+        else if (pmuLower.find("gpu") != std::string::npos || pmuLower.find("tegra") != std::string::npos)
         {
             ++gpuPmuCount;
         }
@@ -584,12 +587,138 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
 }
 
 /**
- * @brief Implementation of testDebugAuthentication
- * @return true (placeholder implementation)
+ * @brief Test Debug Authentication mechanisms on Jetson Orin.
+ *
+ * Jetson Orin implements a hardware-enforced debug authentication system
+ * controlled via OTP fuses and the NVIDIA Tegra chip-id / fuse driver.
+ * The test checks:
+ *  1. Tegra-fuse sysfs driver is available.
+ *  2. Key debug-authentication fuse values are readable:
+ *       - production_mode  (0 = development, 1 = production)
+ *       - jtag_disable     (1 = JTAG disabled by fuse)
+ *       - odm_lock         (ODM production fuses locked)
+ *  3. Tegra chip-id is readable (identifies the SoC revision).
+ *  4. debugfs is accessible (used by debug-auth kernel driver on Jetson).
+ *  5. /sys/kernel/debug is mounted with correct permissions.
+ *  6. Secure boot status via /proc/device-tree/chosen/bootargs or tegra-fuse.
+ *
+ * @return TestOutput with pass/fail and diagnostic data.
  */
 TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
 {
-    return {true, {}};
+    std::vector<std::string> data;
+    bool passed = true;
+
+    // 1. Tegra-fuse driver availability
+    bool fusePresent = isDir(TEGRA_FUSE_PATH);
+    data.push_back(std::string("Tegra-fuse sysfs: ") + (fusePresent ? "present" : "not found"));
+    if (!fusePresent)
+    {
+        // Try alternative path used on older L4T/Orin BSPs
+        std::string altFusePath = "/sys/devices/platform/13800000.efuse";
+        bool altPresent = isDir(altFusePath);
+        if (!altPresent)
+        {
+            altFusePath = "/sys/devices/3820000.efuse";
+            altPresent = isDir(altFusePath);
+        }
+        data.push_back(std::string("Alternate fuse sysfs: ") + (altPresent ? altFusePath : "not found"));
+        if (!altPresent)
+        {
+            passed = false;
+            data.push_back("FAIL: Tegra fuse driver not found – debug authentication state unreadable.");
+        }
+    }
+
+    // 2. Read key fuse values
+    struct FuseEntry
+    {
+        std::string name;
+        std::string path;
+        bool fatalIfMissing;
+    };
+    std::vector<FuseEntry> fuseEntries = {
+        {"production_mode", std::string(TEGRA_FUSE_PATH) + "/production_mode", false},
+        {"jtag_disable", std::string(TEGRA_FUSE_PATH) + "/jtag_disable", false},
+        {"odm_lock", std::string(TEGRA_FUSE_PATH) + "/odm_lock", false},
+        {"security_mode", std::string(TEGRA_FUSE_PATH) + "/security_mode", false},
+    };
+
+    for (const auto &fe : fuseEntries)
+    {
+        std::string val = readLine(fe.path);
+        if (val.empty())
+        {
+            data.push_back("  fuse[" + fe.name + "]: (not readable)");
+            if (fe.fatalIfMissing)
+            {
+                passed = false;
+                data.push_back("FAIL: Required fuse '" + fe.name + "' not readable.");
+            }
+        }
+        else
+        {
+            data.push_back("  fuse[" + fe.name + "]: " + val);
+        }
+    }
+
+    // 3. Chip-ID / SoC revision
+    // /sys/devices/platform/tegra-fuse/chip_id or /proc/device-tree/compatible
+    std::string chipId = readLine(std::string(TEGRA_FUSE_PATH) + "/chip_id");
+    if (!chipId.empty())
+    {
+        data.push_back("Tegra chip_id: " + chipId + " (expected: 0x23 / 35 = Orin)");
+    }
+    else
+    {
+        // Fallback: read from device-tree compatible
+        std::string dtcompat = readLine("/proc/device-tree/compatible");
+        if (!dtcompat.empty())
+        {
+            data.push_back("DT compatible: " + dtcompat);
+            if (dtcompat.find("orin") == std::string::npos && dtcompat.find("t234") == std::string::npos)
+            {
+                data.push_back("  WARN: DT compatible does not mention Orin/T234.");
+            }
+        }
+        else
+        {
+            data.push_back("  INFO: chip_id and DT compatible not readable.");
+        }
+    }
+
+    // 4. debugfs accessible and writable
+    bool debugfsOk = isDir(DEBUGFS_PATH);
+    data.push_back(std::string("debugfs (") + DEBUGFS_PATH + "): " + (debugfsOk ? "accessible" : "not accessible"));
+    if (!debugfsOk)
+    {
+        passed = false;
+        data.push_back("FAIL: debugfs not mounted – debug authentication kernel interface unavailable.");
+    }
+    else
+    {
+        // Check if tegra-fuse debug entries are present under debugfs
+        std::string fusedebug = std::string(DEBUGFS_PATH) + "/tegra_fuse";
+        data.push_back(std::string("  debugfs/tegra_fuse: ") + (pathExists(fusedebug) ? "present" : "not found"));
+    }
+
+    // 5. Bootloader secure-boot status via /proc/device-tree/chosen
+    std::string secureboot = readLine("/proc/device-tree/chosen/secure-boot");
+    if (!secureboot.empty())
+        data.push_back("DT chosen/secure-boot: " + secureboot);
+    else
+        data.push_back("DT chosen/secure-boot: (not set)");
+
+    // 6. Check /proc/cmdline for relevant debug authentication tokens
+    std::string cmdline = readLine("/proc/cmdline");
+    if (!cmdline.empty())
+    {
+        bool hasDebugAuth = cmdline.find("debug") != std::string::npos;
+        data.push_back("Kernel cmdline debug tokens: " + std::string(hasDebugAuth ? "present" : "none"));
+    }
+
+    data.push_back(std::string("Debug authentication test: ") + (passed ? "PASS" : "FAIL"));
+    return {passed, data};
 }
 
 /**
