@@ -861,7 +861,7 @@ TestOutput CpuTesting::testSinglethreadedPerformance()
     data.push_back("Integer throughput : " + std::to_string(intMOPS) + " MOPS  (" + std::to_string(intSec) + " s)");
     data.push_back("FP throughput      : " + std::to_string(fpMFLOPS) + " MFLOPS (" + std::to_string(fpSec) + " s)");
 
-    if (intMOPS < 100.0)
+        if (intMOPS < 100.0)
     {
         passed = false;
         data.push_back("FAIL: Integer throughput " + std::to_string(intMOPS) + " MOPS below 100 MOPS threshold.");

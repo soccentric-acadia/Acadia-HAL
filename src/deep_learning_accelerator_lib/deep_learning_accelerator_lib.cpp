@@ -80,22 +80,6 @@ static long long readSysfsInt(const std::string &path)
     }
 }
 
-/** Read a double from a sysfs file. Returns -1.0 on failure. */
-static double readSysfsDouble(const std::string &path)
-{
-    std::string s = readSysfsLine(path);
-    if (s.empty())
-        return -1.0;
-    try
-    {
-        return std::stod(s);
-    }
-    catch (...)
-    {
-        return -1.0;
-    }
-}
-
 /** Check whether a filesystem path exists (file, directory, device node, …) */
 static bool pathExists(const std::string &path)
 {
