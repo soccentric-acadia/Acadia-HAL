@@ -33,7 +33,7 @@
  * @param path Absolute path to the sysfs file
  * @return Trimmed content of the file, or empty string on error
  */
-static std::string readSysfs(const std::string &path)
+static std::string readSysfs(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open())
@@ -51,10 +51,10 @@ static std::string readSysfs(const std::string &path)
  * @param cmd Command to run (passed to /bin/sh -c)
  * @return Captured output string
  */
-static std::string runCommand(const std::string &cmd)
+static std::string runCommand(const std::string& cmd)
 {
     std::string result;
-    FILE *pipe = popen(cmd.c_str(), "r");
+    FILE* pipe = popen(cmd.c_str(), "r");
     if (!pipe)
         return result;
     char buf[256];
@@ -72,12 +72,11 @@ static std::vector<std::string> getUsbDevices()
 {
     std::vector<std::string> devs;
     const std::string base = "/sys/bus/usb/devices";
-    DIR *dir = opendir(base.c_str());
+    DIR* dir = opendir(base.c_str());
     if (!dir)
         return devs;
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != nullptr)
-    {
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
         std::string name = entry->d_name;
         if (name == "." || name == "..")
             continue;
@@ -91,7 +90,7 @@ static std::vector<std::string> getUsbDevices()
 /**
  * @brief Check whether a path exists in the filesystem
  */
-static bool pathExists(const std::string &p)
+static bool pathExists(const std::string& p)
 {
     struct stat s;
     return stat(p.c_str(), &s) == 0;
@@ -144,13 +143,11 @@ TestOutput UsbTesting::testUsbHostMode()
     // Also accept xhci-tegra or xhci-hcd
     const std::string xhciTegra = "/sys/bus/platform/drivers/xhci-tegra";
     const std::string xhciHcd = "/sys/bus/platform/drivers/xhci-hcd";
-    if (!driverPresent && pathExists(xhciTegra))
-    {
+    if (!driverPresent && pathExists(xhciTegra)) {
         driverPresent = true;
         data.push_back("[PASS] xhci-tegra platform driver is bound: " + xhciTegra);
     }
-    if (!driverPresent && pathExists(xhciHcd))
-    {
+    if (!driverPresent && pathExists(xhciHcd)) {
         driverPresent = true;
         data.push_back("[PASS] xhci-hcd driver bound: " + xhciHcd);
     }
@@ -158,13 +155,10 @@ TestOutput UsbTesting::testUsbHostMode()
     // Enumerate USB root hubs (usb1, usb2, …) – these represent host controllers
     std::vector<std::string> allDevs = getUsbDevices();
     int rootHubCount = 0;
-    for (const auto &dev : allDevs)
-    {
+    for (const auto& dev : allDevs) {
         std::string devName = dev.substr(dev.find_last_of('/') + 1);
         // Root hubs are named "usb1", "usb2", etc.
-        if (devName.size() >= 4 && devName.substr(0, 3) == "usb" &&
-            std::all_of(devName.begin() + 3, devName.end(), ::isdigit))
-        {
+        if (devName.size() >= 4 && devName.substr(0, 3) == "usb" && std::all_of(devName.begin() + 3, devName.end(), ::isdigit)) {
             std::string speed = readSysfs(dev + "/speed");
             std::string product = readSysfs(dev + "/product");
             data.push_back("[INFO] Root hub " + devName + ": speed=" + speed + "  product=\"" + product + "\"");
@@ -172,13 +166,10 @@ TestOutput UsbTesting::testUsbHostMode()
         }
     }
 
-    if (rootHubCount > 0)
-    {
+    if (rootHubCount > 0) {
         data.push_back("[PASS] Found " + std::to_string(rootHubCount) + " USB root hub(s) – host mode active");
         passed = true;
-    }
-    else
-    {
+    } else {
         data.push_back("[FAIL] No USB root hubs found under /sys/bus/usb/devices/");
     }
 
@@ -200,17 +191,15 @@ TestOutput UsbTesting::testUsbDeviceMode()
     data.push_back("=== USB Device (Gadget) Mode (Jetson Orin / tegra-xudc) ===");
 
     const std::string udcClass = "/sys/class/udc";
-    DIR *dir = opendir(udcClass.c_str());
-    if (!dir)
-    {
+    DIR* dir = opendir(udcClass.c_str());
+    if (!dir) {
         data.push_back("[FAIL] /sys/class/udc not found – USB gadget framework not loaded");
         return {false, data};
     }
 
     int udcCount = 0;
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != nullptr)
-    {
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
         std::string name = entry->d_name;
         if (name == "." || name == "..")
             continue;
@@ -221,13 +210,10 @@ TestOutput UsbTesting::testUsbDeviceMode()
     }
     closedir(dir);
 
-    if (udcCount > 0)
-    {
+    if (udcCount > 0) {
         data.push_back("[PASS] Found " + std::to_string(udcCount) + " UDC controller(s) – device mode capable");
         passed = true;
-    }
-    else
-    {
+    } else {
         data.push_back("[FAIL] No UDC controllers found under /sys/class/udc");
     }
 
@@ -258,33 +244,27 @@ TestOutput UsbTesting::testUsb32Gen2Speed()
     std::vector<std::string> devs = getUsbDevices();
     int ssPlus = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string speed = readSysfs(dev + "/speed");
         std::string name = dev.substr(dev.find_last_of('/') + 1);
 
         // USB 3.2 Gen2 reports 10000 Mbps in sysfs
-        if (speed == "10000")
-        {
+        if (speed == "10000") {
             std::string product = readSysfs(dev + "/product");
             std::string manufacturer = readSysfs(dev + "/manufacturer");
-            data.push_back("[PASS] USB 3.2 Gen2 device/hub: " + name + "  product=\"" + product + "\"  manuf=\"" +
-                           manufacturer + "\"");
+            data.push_back("[PASS] USB 3.2 Gen2 device/hub: " + name + "  product=\"" + product + "\"  manuf=\"" + manufacturer + "\"");
             ssPlus++;
             found = true;
         }
     }
 
-    if (!found)
-    {
+    if (!found) {
         data.push_back("[INFO] No USB 3.2 Gen2 (10000 Mbps) devices currently enumerated");
         data.push_back("[INFO] Jetson Orin Type-C controller supports Gen2 – connect a 10G device to verify");
         // Presence of the SuperSpeedPlus capable root hub still counts as support
-        for (const auto &dev : devs)
-        {
+        for (const auto& dev : devs) {
             std::string speed = readSysfs(dev + "/speed");
-            if (speed == "5000" || speed == "10000")
-            {
+            if (speed == "5000" || speed == "10000") {
                 data.push_back("[PASS] SuperSpeed capable USB port detected (speed=" + speed +
                                " Mbps): " + dev.substr(dev.find_last_of('/') + 1));
                 found = true;
@@ -311,13 +291,11 @@ TestOutput UsbTesting::testUsb31Gen1BackwardCompatibility()
     std::vector<std::string> devs = getUsbDevices();
     int ss5Count = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string speed = readSysfs(dev + "/speed");
         std::string name = dev.substr(dev.find_last_of('/') + 1);
 
-        if (speed == "5000")
-        {
+        if (speed == "5000") {
             std::string product = readSysfs(dev + "/product");
             data.push_back("[PASS] USB 3.1 Gen1 (5Gbps) device: " + name + "  product=\"" + product + "\"");
             ss5Count++;
@@ -326,13 +304,10 @@ TestOutput UsbTesting::testUsb31Gen1BackwardCompatibility()
     }
 
     // Even if no 5G devices attached, presence of a SuperSpeed root hub confirms support
-    if (!found)
-    {
-        for (const auto &dev : devs)
-        {
+    if (!found) {
+        for (const auto& dev : devs) {
             std::string speed = readSysfs(dev + "/speed");
-            if (speed == "5000" || speed == "10000")
-            {
+            if (speed == "5000" || speed == "10000") {
                 data.push_back("[PASS] SuperSpeed-capable port present (speed=" + speed + " Mbps)");
                 found = true;
                 break;
@@ -364,26 +339,20 @@ TestOutput UsbTesting::testUsb20BackwardCompatibility()
     int fs12 = 0;
     int ls15 = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string speed = readSysfs(dev + "/speed");
         std::string name = dev.substr(dev.find_last_of('/') + 1);
         std::string product = readSysfs(dev + "/product");
 
-        if (speed == "480")
-        {
+        if (speed == "480") {
             data.push_back("[PASS] USB 2.0 HS device: " + name + "  product=\"" + product + "\"");
             hs480++;
             found = true;
-        }
-        else if (speed == "12")
-        {
+        } else if (speed == "12") {
             data.push_back("[INFO] USB 1.1 FS device: " + name + "  product=\"" + product + "\"");
             fs12++;
             found = true;
-        }
-        else if (speed == "1.5")
-        {
+        } else if (speed == "1.5") {
             data.push_back("[INFO] USB 1.0 LS device: " + name + "  product=\"" + product + "\"");
             ls15++;
             found = true;
@@ -418,8 +387,7 @@ TestOutput UsbTesting::testUsbPowerDelivery()
     int selfPoweredCount = 0;
     int busPoweredCount = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string bmAttrs = readSysfs(dev + "/bmAttributes");
         std::string maxPower = readSysfs(dev + "/bMaxPower");
         std::string name = dev.substr(dev.find_last_of('/') + 1);
@@ -428,48 +396,39 @@ TestOutput UsbTesting::testUsbPowerDelivery()
             continue;
 
         // bmAttributes bit 6: self-powered
-        try
-        {
+        try {
             int attrs = std::stoi(bmAttrs, nullptr, 16);
             bool selfPowered = (attrs & 0x40) != 0;
-            if (selfPowered)
-            {
+            if (selfPowered) {
                 data.push_back("[INFO] " + name + ": self-powered, maxPower=" + maxPower + " mA");
                 selfPoweredCount++;
-            }
-            else
-            {
+            } else {
                 data.push_back("[INFO] " + name + ": bus-powered, maxPower=" + maxPower + " mA");
                 busPoweredCount++;
             }
         }
-        catch (...)
-        {
+        catch (...) {
         }
     }
 
     // Check USB-C / PD power supply entries
     const std::string psSysfs = "/sys/class/power_supply";
-    DIR *dir = opendir(psSysfs.c_str());
+    DIR* dir = opendir(psSysfs.c_str());
     int pdEntries = 0;
-    if (dir)
-    {
-        struct dirent *entry;
-        while ((entry = readdir(dir)) != nullptr)
-        {
+    if (dir) {
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != nullptr) {
             std::string name = entry->d_name;
             if (name == "." || name == "..")
                 continue;
             // Look for USB-PD / UCSI-related entries
-            if (name.find("usb") != std::string::npos || name.find("pd") != std::string::npos ||
-                name.find("tcpm") != std::string::npos || name.find("charger") != std::string::npos)
-            {
+            if (name.find("usb") != std::string::npos || name.find("pd") != std::string::npos || name.find("tcpm") != std::string::npos ||
+                name.find("charger") != std::string::npos) {
                 std::string psPath = psSysfs + "/" + name;
                 std::string type = readSysfs(psPath + "/type");
                 std::string online = readSysfs(psPath + "/online");
                 std::string voltageMv = readSysfs(psPath + "/voltage_now");
-                data.push_back("[INFO] Power supply: " + name + "  type=" + type + "  online=" + online +
-                               "  voltage=" + voltageMv + " uV");
+                data.push_back("[INFO] Power supply: " + name + "  type=" + type + "  online=" + online + "  voltage=" + voltageMv + " uV");
                 pdEntries++;
                 passed = true;
             }
@@ -478,8 +437,7 @@ TestOutput UsbTesting::testUsbPowerDelivery()
     }
 
     // Even without PD, being able to enumerate devices implies VBUS works
-    if (!passed && (selfPoweredCount + busPoweredCount) > 0)
-    {
+    if (!passed && (selfPoweredCount + busPoweredCount) > 0) {
         data.push_back("[PASS] VBUS active – " + std::to_string(busPoweredCount) + " bus-powered device(s) enumerated");
         passed = true;
     }
@@ -511,15 +469,13 @@ TestOutput UsbTesting::testMultipleUsbDeviceEnumeration()
     int totalDevices = 0;
     int validDevices = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string name = dev.substr(dev.find_last_of('/') + 1);
 
         // Skip root hubs (usb1, usb2, …) and interface directories (contain ':')
         if (name.find(':') != std::string::npos)
             continue;
-        bool isRootHub =
-            (name.size() >= 4 && name.substr(0, 3) == "usb" && std::all_of(name.begin() + 3, name.end(), ::isdigit));
+        bool isRootHub = (name.size() >= 4 && name.substr(0, 3) == "usb" && std::all_of(name.begin() + 3, name.end(), ::isdigit));
 
         std::string idVendor = readSysfs(dev + "/idVendor");
         std::string idProduct = readSysfs(dev + "/idProduct");
@@ -535,8 +491,8 @@ TestOutput UsbTesting::testMultipleUsbDeviceEnumeration()
         std::string deviceClass = readSysfs(dev + "/bDeviceClass");
 
         std::string tag = isRootHub ? "[HUB]" : "[DEV]";
-        data.push_back(tag + " " + name + ": " + idVendor + ":" + idProduct + "  speed=" + speed + " Mbps" +
-                       "  class=0x" + deviceClass + "  \"" + product + "\"");
+        data.push_back(tag + " " + name + ": " + idVendor + ":" + idProduct + "  speed=" + speed + " Mbps" + "  class=0x" + deviceClass +
+                       "  \"" + product + "\"");
 
         if (valid)
             validDevices++;
@@ -545,13 +501,10 @@ TestOutput UsbTesting::testMultipleUsbDeviceEnumeration()
     data.push_back("Total USB devices (incl. root hubs): " + std::to_string(totalDevices));
     data.push_back("Devices with valid VID:PID        : " + std::to_string(validDevices));
 
-    if (validDevices > 0)
-    {
+    if (validDevices > 0) {
         data.push_back("[PASS] USB device enumeration successful");
         passed = true;
-    }
-    else
-    {
+    } else {
         data.push_back("[FAIL] No USB devices with valid VID:PID found");
     }
 
@@ -575,31 +528,26 @@ TestOutput UsbTesting::testUsbHotplugDetection()
 
     // Check if systemd-udevd or udevd is running
     std::string udevCheck = runCommand("pgrep -x systemd-udevd 2>/dev/null || pgrep -x udevd 2>/dev/null");
-    if (!udevCheck.empty())
-    {
+    if (!udevCheck.empty()) {
         // trim newlines
         while (!udevCheck.empty() && (udevCheck.back() == '\n' || udevCheck.back() == '\r'))
             udevCheck.pop_back();
         data.push_back("[PASS] udevd is running (PID " + udevCheck + ")");
         passed = true;
-    }
-    else
-    {
+    } else {
         data.push_back("[WARN] udevd process not detected via pgrep");
     }
 
     // Check udev runtime directory
     const std::string udevRun = "/run/udev";
-    if (pathExists(udevRun))
-    {
+    if (pathExists(udevRun)) {
         data.push_back("[PASS] udev runtime directory present: " + udevRun);
         passed = true;
     }
 
     // Check /sys/kernel/uevent_seqnum – increments on every hotplug event
     std::string seqnum = readSysfs("/sys/kernel/uevent_seqnum");
-    if (!seqnum.empty())
-    {
+    if (!seqnum.empty()) {
         data.push_back("[PASS] Kernel uevent_seqnum=" + seqnum + " (hotplug event counter)");
         passed = true;
     }
@@ -607,12 +555,10 @@ TestOutput UsbTesting::testUsbHotplugDetection()
     // Check USB autosuspend / wakeup-capable root hubs (Jetson Orin power mgmt)
     std::vector<std::string> devs = getUsbDevices();
     int wakeupCapable = 0;
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string name = dev.substr(dev.find_last_of('/') + 1);
         std::string wakeup = readSysfs(dev + "/power/wakeup");
-        if (!wakeup.empty())
-        {
+        if (!wakeup.empty()) {
             data.push_back("[INFO] " + name + ": power/wakeup=" + wakeup);
             wakeupCapable++;
         }
@@ -649,8 +595,7 @@ TestOutput UsbTesting::testUsbSuspendresume()
     int activeCount = 0;
     int autosuspendCount = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string name = dev.substr(dev.find_last_of('/') + 1);
 
         // Skip interface directories
@@ -664,8 +609,8 @@ TestOutput UsbTesting::testUsbSuspendresume()
         if (control.empty())
             continue;
 
-        data.push_back("[INFO] " + name + ": control=" + control + "  runtime_status=" + runtimeStatus +
-                       "  autosuspend=" + autosuspend + "s");
+        data.push_back("[INFO] " + name + ": control=" + control + "  runtime_status=" + runtimeStatus + "  autosuspend=" + autosuspend +
+                       "s");
 
         if (runtimeStatus == "suspended")
             suspendedCount++;
@@ -681,18 +626,13 @@ TestOutput UsbTesting::testUsbSuspendresume()
     data.push_back("Autosuspend-enabled: " + std::to_string(autosuspendCount));
 
     // Jetson Orin supports USB runtime PM; having the sysfs attributes is enough to pass
-    if (suspendedCount > 0 || autosuspendCount > 0)
-    {
+    if (suspendedCount > 0 || autosuspendCount > 0) {
         data.push_back("[PASS] USB suspend/resume runtime PM is functional");
         passed = true;
-    }
-    else if (activeCount > 0)
-    {
+    } else if (activeCount > 0) {
         data.push_back("[PASS] USB devices are active; runtime PM attributes accessible");
         passed = true;
-    }
-    else
-    {
+    } else {
         data.push_back("[WARN] No USB devices with runtime PM attributes found");
     }
 
@@ -716,22 +656,18 @@ TestOutput UsbTesting::testUsbMassStorageDevices()
     std::vector<std::string> devs = getUsbDevices();
     int storageCount = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string name = dev.substr(dev.find_last_of('/') + 1);
 
         // Interface entries contain ':'
-        if (name.find(':') == std::string::npos)
-        {
+        if (name.find(':') == std::string::npos) {
             // Device level: check class
             std::string devClass = readSysfs(dev + "/bDeviceClass");
             // Class 0x00 means look at interface; 0x08 is mass storage directly
-            if (devClass == "08")
-            {
+            if (devClass == "08") {
                 std::string product = readSysfs(dev + "/product");
                 std::string speed = readSysfs(dev + "/speed");
-                data.push_back("[PASS] USB Mass Storage device: " + name + "  speed=" + speed + " Mbps  product=\"" +
-                               product + "\"");
+                data.push_back("[PASS] USB Mass Storage device: " + name + "  speed=" + speed + " Mbps  product=\"" + product + "\"");
                 storageCount++;
                 passed = true;
             }
@@ -744,8 +680,7 @@ TestOutput UsbTesting::testUsbMassStorageDevices()
         std::string ifProtocol = readSysfs(dev + "/bInterfaceProtocol");
         std::string driver = readSysfs(dev + "/driver"); // symlink target name
 
-        if (ifClass == "08")
-        {
+        if (ifClass == "08") {
             // Check for block device node created by the driver
             std::string blockPath = dev + "/host";
             bool hasBlock = pathExists(blockPath);
@@ -756,8 +691,8 @@ TestOutput UsbTesting::testUsbMassStorageDevices()
                 driverName.pop_back();
             std::string driverBase = driverName.substr(driverName.find_last_of('/') + 1);
 
-            data.push_back("[PASS] USB Mass Storage interface: " + name + "  subClass=0x" + ifSub +
-                           "  driver=" + driverBase + (hasBlock ? "  [block device present]" : ""));
+            data.push_back("[PASS] USB Mass Storage interface: " + name + "  subClass=0x" + ifSub + "  driver=" + driverBase +
+                           (hasBlock ? "  [block device present]" : ""));
             storageCount++;
             passed = true;
         }
@@ -765,12 +700,10 @@ TestOutput UsbTesting::testUsbMassStorageDevices()
 
     // Also check /dev/sd* for USB-backed block devices
     std::string sdList = runCommand("ls /dev/sd? 2>/dev/null | head -8");
-    if (!sdList.empty())
-    {
+    if (!sdList.empty()) {
         std::istringstream iss(sdList);
         std::string line;
-        while (std::getline(iss, line))
-        {
+        while (std::getline(iss, line)) {
             if (!line.empty())
                 data.push_back("[INFO] Block device node: " + line);
         }
@@ -800,16 +733,14 @@ TestOutput UsbTesting::testUsbCameras()
     std::vector<std::string> devs = getUsbDevices();
     int uvcCount = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string name = dev.substr(dev.find_last_of('/') + 1);
         if (name.find(':') == std::string::npos)
             continue;
 
         std::string ifClass = readSysfs(dev + "/bInterfaceClass");
         // Video class = 0x0E
-        if (ifClass == "0e")
-        {
+        if (ifClass == "0e") {
             std::string ifSub = readSysfs(dev + "/bInterfaceSubClass");
             data.push_back("[PASS] UVC interface: " + name + "  subClass=0x" + ifSub);
             uvcCount++;
@@ -819,12 +750,10 @@ TestOutput UsbTesting::testUsbCameras()
 
     // Check /dev/video* nodes
     std::string videoNodes = runCommand("ls /dev/video* 2>/dev/null | head -8");
-    if (!videoNodes.empty())
-    {
+    if (!videoNodes.empty()) {
         std::istringstream iss(videoNodes);
         std::string line;
-        while (std::getline(iss, line))
-        {
+        while (std::getline(iss, line)) {
             if (!line.empty())
                 data.push_back("[INFO] Video device node: " + line);
         }
@@ -855,8 +784,7 @@ TestOutput UsbTesting::testUsbNetworkAdapters()
     std::vector<std::string> devs = getUsbDevices();
     int netCount = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string name = dev.substr(dev.find_last_of('/') + 1);
         if (name.find(':') == std::string::npos)
             continue;
@@ -869,11 +797,10 @@ TestOutput UsbTesting::testUsbNetworkAdapters()
         bool isCdc = (ifClass == "02" && (ifSub == "06" || ifSub == "0d" || ifSub == "0e" || ifSub == "01"));
         bool isRndis = (ifClass == "e0" || (ifClass == "ff" && ifProtocol == "ff"));
 
-        if (isCdc || isRndis)
-        {
+        if (isCdc || isRndis) {
             std::string typeStr = isCdc ? "CDC-NET" : "RNDIS/vendor-net";
-            data.push_back("[PASS] USB network interface: " + name + "  class=0x" + ifClass + "  subClass=0x" + ifSub +
-                           "  (" + typeStr + ")");
+            data.push_back("[PASS] USB network interface: " + name + "  class=0x" + ifClass + "  subClass=0x" + ifSub + "  (" + typeStr +
+                           ")");
             netCount++;
             passed = true;
         }
@@ -881,26 +808,22 @@ TestOutput UsbTesting::testUsbNetworkAdapters()
 
     // Check /sys/class/net for usb-backed interfaces (e.g. usb0, eth1, rndis0)
     const std::string netClass = "/sys/class/net";
-    DIR *dir = opendir(netClass.c_str());
-    if (dir)
-    {
-        struct dirent *entry;
-        while ((entry = readdir(dir)) != nullptr)
-        {
+    DIR* dir = opendir(netClass.c_str());
+    if (dir) {
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != nullptr) {
             std::string iface = entry->d_name;
             if (iface == "." || iface == ".." || iface == "lo")
                 continue;
             // Check if this net interface has a USB device parent
             std::string usbLink = netClass + "/" + iface + "/device/../../idVendor";
             std::string vendor = readSysfs(usbLink);
-            if (vendor.empty())
-            {
+            if (vendor.empty()) {
                 // Try one extra level for CDC interfaces
                 usbLink = netClass + "/" + iface + "/device/../../../idVendor";
                 vendor = readSysfs(usbLink);
             }
-            if (!vendor.empty())
-            {
+            if (!vendor.empty()) {
                 data.push_back("[PASS] USB-backed net interface: " + iface + "  VID=" + vendor);
                 passed = true;
             }
@@ -932,16 +855,14 @@ TestOutput UsbTesting::testUsbHubs()
     int hubCount = 0;
     int totalPorts = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string name = dev.substr(dev.find_last_of('/') + 1);
         if (name.find(':') != std::string::npos)
             continue; // skip interface entries
 
         std::string devClass = readSysfs(dev + "/bDeviceClass");
         // 0x09 = Hub
-        if (devClass == "09")
-        {
+        if (devClass == "09") {
             std::string product = readSysfs(dev + "/product");
             std::string speed = readSysfs(dev + "/speed");
             std::string numPorts = readSysfs(dev + "/maxchild");
@@ -949,37 +870,31 @@ TestOutput UsbTesting::testUsbHubs()
             std::string idProduct = readSysfs(dev + "/idProduct");
 
             int ports = 0;
-            try
-            {
+            try {
                 ports = std::stoi(numPorts);
             }
-            catch (...)
-            {
+            catch (...) {
             }
             totalPorts += ports;
 
-            data.push_back("[PASS] USB Hub: " + name + "  " + idVendor + ":" + idProduct + "  speed=" + speed +
-                           " Mbps" + "  ports=" + numPorts + "  \"" + product + "\"");
+            data.push_back("[PASS] USB Hub: " + name + "  " + idVendor + ":" + idProduct + "  speed=" + speed + " Mbps" +
+                           "  ports=" + numPorts + "  \"" + product + "\"");
             hubCount++;
             passed = true;
         }
     }
 
     // Root hubs (usb1, usb2, …) are also hubs; count them
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string name = dev.substr(dev.find_last_of('/') + 1);
-        if (name.size() >= 4 && name.substr(0, 3) == "usb" && std::all_of(name.begin() + 3, name.end(), ::isdigit))
-        {
+        if (name.size() >= 4 && name.substr(0, 3) == "usb" && std::all_of(name.begin() + 3, name.end(), ::isdigit)) {
             std::string numPorts = readSysfs(dev + "/maxchild");
             std::string speed = readSysfs(dev + "/speed");
             int ports = 0;
-            try
-            {
+            try {
                 ports = std::stoi(numPorts);
             }
-            catch (...)
-            {
+            catch (...) {
             }
             totalPorts += ports;
             data.push_back("[INFO] Root hub: " + name + "  speed=" + speed + "  downstream ports=" + numPorts);
@@ -1013,8 +928,7 @@ TestOutput UsbTesting::testUsbAudioDevices()
     std::vector<std::string> devs = getUsbDevices();
     int audioCount = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string name = dev.substr(dev.find_last_of('/') + 1);
         if (name.find(':') == std::string::npos)
             continue;
@@ -1023,11 +937,8 @@ TestOutput UsbTesting::testUsbAudioDevices()
         std::string ifSub = readSysfs(dev + "/bInterfaceSubClass");
 
         // Audio class = 0x01;  subclass: 0x01=AudioControl, 0x02=AudioStreaming
-        if (ifClass == "01" && (ifSub == "01" || ifSub == "02" || ifSub == "03"))
-        {
-            std::string subName = (ifSub == "01")   ? "AudioControl"
-                                  : (ifSub == "02") ? "AudioStreaming"
-                                                    : "MidiStreaming";
+        if (ifClass == "01" && (ifSub == "01" || ifSub == "02" || ifSub == "03")) {
+            std::string subName = (ifSub == "01") ? "AudioControl" : (ifSub == "02") ? "AudioStreaming" : "MidiStreaming";
             data.push_back("[PASS] USB Audio interface: " + name + "  subClass=" + subName);
             audioCount++;
             passed = true;
@@ -1036,22 +947,17 @@ TestOutput UsbTesting::testUsbAudioDevices()
 
     // Check ALSA USB sound cards
     const std::string procSound = "/proc/asound";
-    if (pathExists(procSound))
-    {
+    if (pathExists(procSound)) {
         std::string cards = runCommand("cat /proc/asound/cards 2>/dev/null | grep -i usb | head -5");
-        if (!cards.empty())
-        {
+        if (!cards.empty()) {
             std::istringstream iss(cards);
             std::string line;
-            while (std::getline(iss, line))
-            {
+            while (std::getline(iss, line)) {
                 if (!line.empty())
                     data.push_back("[PASS] ALSA USB sound card: " + line);
             }
             passed = true;
-        }
-        else
-        {
+        } else {
             data.push_back("[INFO] No USB sound cards in /proc/asound/cards");
         }
     }
@@ -1080,8 +986,7 @@ TestOutput UsbTesting::testUsbHidDevices()
     std::vector<std::string> devs = getUsbDevices();
     int hidCount = 0;
 
-    for (const auto &dev : devs)
-    {
+    for (const auto& dev : devs) {
         std::string name = dev.substr(dev.find_last_of('/') + 1);
         if (name.find(':') == std::string::npos)
             continue;
@@ -1091,8 +996,7 @@ TestOutput UsbTesting::testUsbHidDevices()
         std::string ifProtocol = readSysfs(dev + "/bInterfaceProtocol");
 
         // HID class = 0x03
-        if (ifClass == "03")
-        {
+        if (ifClass == "03") {
             std::string protoName = (ifProtocol == "01") ? "Keyboard" : (ifProtocol == "02") ? "Mouse" : "Generic";
             data.push_back("[PASS] USB HID interface: " + name + "  protocol=" + protoName + " (0x" + ifProtocol + ")");
             hidCount++;
@@ -1102,12 +1006,10 @@ TestOutput UsbTesting::testUsbHidDevices()
 
     // Check /dev/input/event* nodes
     std::string inputNodes = runCommand("ls /dev/input/event* 2>/dev/null | head -8");
-    if (!inputNodes.empty())
-    {
+    if (!inputNodes.empty()) {
         std::istringstream iss(inputNodes);
         std::string line;
-        while (std::getline(iss, line))
-        {
+        while (std::getline(iss, line)) {
             if (!line.empty())
                 data.push_back("[INFO] Input event node: " + line);
         }
@@ -1116,12 +1018,10 @@ TestOutput UsbTesting::testUsbHidDevices()
 
     // Check /proc/bus/input/devices for USB-backed HID entries
     std::string usbHid = runCommand("grep -A5 'Bus=0003' /proc/bus/input/devices 2>/dev/null | grep 'Name=' | head -5");
-    if (!usbHid.empty())
-    {
+    if (!usbHid.empty()) {
         std::istringstream iss(usbHid);
         std::string line;
-        while (std::getline(iss, line))
-        {
+        while (std::getline(iss, line)) {
             if (!line.empty())
                 data.push_back("[PASS] USB HID input device: " + line);
         }
@@ -1311,73 +1211,42 @@ std::vector<std::string> UsbTesting::getAvailableTests()
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult UsbTesting::runSingleTest(const std::string &testName)
+TestResult UsbTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testUsbHostMode")
-    {
+    if (testName == "testUsbHostMode") {
         result = testUsbHostMode();
-    }
-    else if (testName == "testUsbDeviceMode")
-    {
+    } else if (testName == "testUsbDeviceMode") {
         result = testUsbDeviceMode();
-    }
-    else if (testName == "testUsb32Gen2Speed")
-    {
+    } else if (testName == "testUsb32Gen2Speed") {
         result = testUsb32Gen2Speed();
-    }
-    else if (testName == "testUsb31Gen1BackwardCompatibility")
-    {
+    } else if (testName == "testUsb31Gen1BackwardCompatibility") {
         result = testUsb31Gen1BackwardCompatibility();
-    }
-    else if (testName == "testUsb20BackwardCompatibility")
-    {
+    } else if (testName == "testUsb20BackwardCompatibility") {
         result = testUsb20BackwardCompatibility();
-    }
-    else if (testName == "testUsbPowerDelivery")
-    {
+    } else if (testName == "testUsbPowerDelivery") {
         result = testUsbPowerDelivery();
-    }
-    else if (testName == "testMultipleUsbDeviceEnumeration")
-    {
+    } else if (testName == "testMultipleUsbDeviceEnumeration") {
         result = testMultipleUsbDeviceEnumeration();
-    }
-    else if (testName == "testUsbHotplugDetection")
-    {
+    } else if (testName == "testUsbHotplugDetection") {
         result = testUsbHotplugDetection();
-    }
-    else if (testName == "testUsbSuspendresume")
-    {
+    } else if (testName == "testUsbSuspendresume") {
         result = testUsbSuspendresume();
-    }
-    else if (testName == "testUsbMassStorageDevices")
-    {
+    } else if (testName == "testUsbMassStorageDevices") {
         result = testUsbMassStorageDevices();
-    }
-    else if (testName == "testUsbCameras")
-    {
+    } else if (testName == "testUsbCameras") {
         result = testUsbCameras();
-    }
-    else if (testName == "testUsbNetworkAdapters")
-    {
+    } else if (testName == "testUsbNetworkAdapters") {
         result = testUsbNetworkAdapters();
-    }
-    else if (testName == "testUsbHubs")
-    {
+    } else if (testName == "testUsbHubs") {
         result = testUsbHubs();
-    }
-    else if (testName == "testUsbAudioDevices")
-    {
+    } else if (testName == "testUsbAudioDevices") {
         result = testUsbAudioDevices();
-    }
-    else if (testName == "testUsbHidDevices")
-    {
+    } else if (testName == "testUsbHidDevices") {
         result = testUsbHidDevices();
-    }
-    else
-    {
+    } else {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

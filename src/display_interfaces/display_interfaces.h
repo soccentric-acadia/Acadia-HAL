@@ -16,14 +16,14 @@
  */
 class DisplayInterfaces : public TestBase
 {
-  public:    /**
-     * @brief Constructor for DisplayInterfaces
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function DisplayInterfaces
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for DisplayInterfaces
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function DisplayInterfaces
+           * @return TestOutput with pass/fail and data
+           */
 
     DisplayInterfaces();
     /**
@@ -39,10 +39,10 @@ class DisplayInterfaces : public TestBase
      * @brief Constructor for DisplayInterfaces
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the displayportoutput functionality
+    /**
+     * @brief Tests the displayportoutput functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testDisplayPortOutput();
     /**
@@ -100,13 +100,11 @@ class DisplayInterfaces : public TestBase
      */
     TestOutput testDisplayHotPlugDetection();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -119,10 +117,9 @@ class DisplayInterfaces : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
-    std::vector<TestResult> runAllTests() override;
 
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
 
 #endif // DISPLAYINTERFACES_H

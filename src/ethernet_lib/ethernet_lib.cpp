@@ -394,73 +394,42 @@ std::vector<std::string> EthernetTesting::getAvailableTests()
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult EthernetTesting::runSingleTest(const std::string &testName)
+TestResult EthernetTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testFullduplexOperation")
-    {
+    if (testName == "testFullduplexOperation") {
         result = testFullduplexOperation();
-    }
-    else if (testName == "testJumboFramesSupport")
-    {
+    } else if (testName == "testJumboFramesSupport") {
         result = testJumboFramesSupport();
-    }
-    else if (testName == "testFlowControl")
-    {
+    } else if (testName == "testFlowControl") {
         result = testFlowControl();
-    }
-    else if (testName == "testVlanTagging")
-    {
+    } else if (testName == "testVlanTagging") {
         result = testVlanTagging();
-    }
-    else if (testName == "testChecksumOffload")
-    {
+    } else if (testName == "testChecksumOffload") {
         result = testChecksumOffload();
-    }
-    else if (testName == "testIeee8021asTimeSynchronization")
-    {
+    } else if (testName == "testIeee8021asTimeSynchronization") {
         result = testIeee8021asTimeSynchronization();
-    }
-    else if (testName == "testIeee8021qbv")
-    {
+    } else if (testName == "testIeee8021qbv") {
         result = testIeee8021qbv();
-    }
-    else if (testName == "testIeee8021qbu")
-    {
+    } else if (testName == "testIeee8021qbu") {
         result = testIeee8021qbu();
-    }
-    else if (testName == "testIeee8021qav")
-    {
+    } else if (testName == "testIeee8021qav") {
         result = testIeee8021qav();
-    }
-    else if (testName == "testTsnTrafficScheduling")
-    {
+    } else if (testName == "testTsnTrafficScheduling") {
         result = testTsnTrafficScheduling();
-    }
-    else if (testName == "testTsnLatencyGuarantees")
-    {
+    } else if (testName == "testTsnLatencyGuarantees") {
         result = testTsnLatencyGuarantees();
-    }
-    else if (testName == "testTsnTimePrecision")
-    {
+    } else if (testName == "testTsnTimePrecision") {
         result = testTsnTimePrecision();
-    }
-    else if (testName == "testLinkSpeedNegotiation")
-    {
+    } else if (testName == "testLinkSpeedNegotiation") {
         result = testLinkSpeedNegotiation();
-    }
-    else if (testName == "testAutomdimdix")
-    {
+    } else if (testName == "testAutomdimdix") {
         result = testAutomdimdix();
-    }
-    else if (testName == "testEthernetCableDiagnostics")
-    {
+    } else if (testName == "testEthernetCableDiagnostics") {
         result = testEthernetCableDiagnostics();
-    }
-    else
-    {
+    } else {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

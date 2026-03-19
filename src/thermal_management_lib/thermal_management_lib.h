@@ -16,14 +16,14 @@
  */
 class ThermalManagementTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for ThermalManagementTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function ThermalManagementTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for ThermalManagementTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function ThermalManagementTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     ThermalManagementTesting();
     /**
@@ -39,10 +39,10 @@ class ThermalManagementTesting : public TestBase
      * @brief Constructor for ThermalManagementTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the socjunctiontemperature functionality
+    /**
+     * @brief Tests the socjunctiontemperature functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testSocJunctionTemperature();
     /**
@@ -154,13 +154,11 @@ class ThermalManagementTesting : public TestBase
      */
     TestOutput testFanControl();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -173,11 +171,9 @@ class ThermalManagementTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // THERMALMANAGEMENTTESTING_H

@@ -61,7 +61,7 @@ static constexpr double ORIN_GPU_BANDWIDTH_MIN_GBs = 100.0;
 // sysfs / procfs helper utilities
 // ---------------------------------------------------------------------------
 
-static std::string gpuReadFile(const std::string &path)
+static std::string gpuReadFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open())
@@ -71,26 +71,24 @@ static std::string gpuReadFile(const std::string &path)
     return line;
 }
 
-static long long gpuReadInt(const std::string &path)
+static long long gpuReadInt(const std::string& path)
 {
     std::string s = gpuReadFile(path);
     if (s.empty())
         return -1LL;
-    try
-    {
+    try {
         return std::stoll(s);
     }
-    catch (...)
-    {
+    catch (...) {
         return -1LL;
     }
 }
 
 /** Run a shell command and return captured stdout (up to 4 KB). */
-static std::string gpuRunCmd(const char *cmd)
+static std::string gpuRunCmd(const char* cmd)
 {
     char buf[4096] = {};
-    FILE *pipe = popen(cmd, "r");
+    FILE* pipe = popen(cmd, "r");
     if (!pipe)
         return "";
     size_t n = fread(buf, 1, sizeof(buf) - 1, pipe);
@@ -114,8 +112,7 @@ static long long gpuGetCurFreqHz()
         "/sys/devices/platform/17000000.gpu/devfreq/17000000.gpu/cur_freq",
         "/sys/devices/platform/57000000.gpu/devfreq/57000000.gpu/cur_freq",
     };
-    for (const auto &p : candidates)
-    {
+    for (const auto& p : candidates) {
         long long v = gpuReadInt(p);
         if (v > 0)
             return v;
@@ -131,8 +128,7 @@ static long long gpuGetMaxFreqHz()
         "/sys/devices/platform/17000000.gpu/devfreq/17000000.gpu/max_freq",
         "/sys/devices/platform/57000000.gpu/devfreq/57000000.gpu/max_freq",
     };
-    for (const auto &p : candidates)
-    {
+    for (const auto& p : candidates) {
         long long v = gpuReadInt(p);
         if (v > 0)
             return v;
@@ -148,13 +144,12 @@ static long long gpuGetTempMilliC()
 {
     // Scan /sys/class/thermal/thermal_zoneN/type for GPU-therm or Tgpu
     const std::string base = "/sys/class/thermal/";
-    DIR *dir = opendir(base.c_str());
+    DIR* dir = opendir(base.c_str());
     if (!dir)
         return -1LL;
 
-    dirent *entry;
-    while ((entry = readdir(dir)) != nullptr)
-    {
+    dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
         std::string name(entry->d_name);
         if (name.find("thermal_zone") == std::string::npos)
             continue;
@@ -162,8 +157,7 @@ static long long gpuGetTempMilliC()
         std::string typeStr = gpuReadFile(typePath);
         // Jetson Orin GPU zone is typically called "GPU-therm" or "Tgpu-therm"
         if (typeStr.find("GPU") != std::string::npos || typeStr.find("gpu") != std::string::npos ||
-            typeStr.find("Tgpu") != std::string::npos)
-        {
+            typeStr.find("Tgpu") != std::string::npos) {
             closedir(dir);
             return gpuReadInt(base + name + "/temp");
         }
@@ -198,8 +192,7 @@ static double cpuFp32Benchmark(double seconds)
     volatile float a = 1.00001f, b = 1.00002f, c = 0.0f;
     long long ops = 0;
     auto tEnd = std::chrono::steady_clock::now() + std::chrono::duration<double>(seconds);
-    while (std::chrono::steady_clock::now() < tEnd)
-    {
+    while (std::chrono::steady_clock::now() < tEnd) {
         // Unrolled FMA loop: 2 flops per iteration
         c = a * b + c;
         c = b * a + c;
@@ -246,8 +239,7 @@ TestOutput GpuTesting::testCudaCoresFunctionality()
     bool gpuPresent = gpuDevicePresent();
     data.push_back("GPU device node present: " + std::string(gpuPresent ? "YES" : "NO"));
 
-    if (!gpuPresent)
-    {
+    if (!gpuPresent) {
         data.push_back("FAIL: GPU device not found. Driver may not be loaded.");
         return {false, data};
     }
@@ -258,28 +250,23 @@ TestOutput GpuTesting::testCudaCoresFunctionality()
                    " SMs × 128 cores/SM)");
     data.push_back("Reported CUDA cores constant: " + std::to_string(ORIN_GPU_CUDA_CORES));
 
-    if (expectedCores != ORIN_GPU_CUDA_CORES)
-    {
+    if (expectedCores != ORIN_GPU_CUDA_CORES) {
         passed = false;
         data.push_back("FAIL: CUDA core count mismatch.");
     }
 
     // Check GPU frequency is non-zero (GPU is active)
     long long curFreqHz = gpuGetCurFreqHz();
-    if (curFreqHz > 0)
-    {
+    if (curFreqHz > 0) {
         double freqMHz = static_cast<double>(curFreqHz) / 1e6;
         data.push_back("GPU current frequency: " + std::to_string(freqMHz) + " MHz");
-    }
-    else
-    {
+    } else {
         data.push_back("GPU frequency sysfs: unavailable (may be off at idle)");
     }
 
     // Try nvidia-smi or tegrastats for additional confirmation
     std::string nvSmi = gpuRunCmd("nvidia-smi -q --display=COMPUTE 2>/dev/null | head -5");
-    if (!nvSmi.empty())
-    {
+    if (!nvSmi.empty()) {
         data.push_back("nvidia-smi COMPUTE: " + nvSmi.substr(0, 80));
     }
 
@@ -298,50 +285,38 @@ TestOutput GpuTesting::testTensorCoresOperation()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Expected Tensor Cores: " + std::to_string(ORIN_GPU_TENSOR_CORES) + " (4 per SM × " +
-                   std::to_string(ORIN_GPU_SM_COUNT) + " SMs)");
+    data.push_back("Expected Tensor Cores: " + std::to_string(ORIN_GPU_TENSOR_CORES) + " (4 per SM × " + std::to_string(ORIN_GPU_SM_COUNT) +
+                   " SMs)");
     data.push_back("GPU architecture: NVIDIA Ampere (Compute Capability 8.7)");
     data.push_back("Tensor core generation: 3rd-gen (supports FP16, BF16, TF32, INT8, INT4)");
 
     // Verify GPU is present before claiming tensor cores
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU device not found; cannot verify Tensor Cores.");
         return {false, data};
     }
 
     // Query compute capability via nvidia-smi if available
     std::string cc = gpuRunCmd("nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null");
-    if (!cc.empty())
-    {
+    if (!cc.empty()) {
         data.push_back("Compute capability reported by nvidia-smi: " + cc);
         // Orin should be 8.7
-        if (cc.find("8.7") != std::string::npos || cc.find("8") != std::string::npos)
-        {
+        if (cc.find("8.7") != std::string::npos || cc.find("8") != std::string::npos) {
             data.push_back("Ampere architecture confirmed.");
-        }
-        else
-        {
+        } else {
             passed = false;
             data.push_back("FAIL: Unexpected compute capability – expected 8.7 for Orin.");
         }
-    }
-    else
-    {
+    } else {
         // nvidia-smi not available; check via device tree or known Orin model file
         std::string model = gpuReadFile("/proc/device-tree/model");
-        if (model.find("Orin") != std::string::npos || model.find("orin") != std::string::npos)
-        {
+        if (model.find("Orin") != std::string::npos || model.find("orin") != std::string::npos) {
             data.push_back("Device model: " + model);
             data.push_back("Orin platform confirmed – Tensor Cores (CC 8.7) assumed present.");
-        }
-        else if (!model.empty())
-        {
+        } else if (!model.empty()) {
             data.push_back("Device model: " + model);
             data.push_back("WARNING: Could not confirm Orin platform via device tree.");
-        }
-        else
-        {
+        } else {
             data.push_back("nvidia-smi and device tree unavailable; using sysfs presence check.");
         }
     }
@@ -366,38 +341,27 @@ TestOutput GpuTesting::testGpuClockFrequencyStabilityAndThrottling()
 
     data.push_back("Expected max GPU clock: " + std::to_string(ORIN_GPU_MAX_FREQ_MHZ) + " MHz");
 
-    if (curHz <= 0 && maxHz <= 0)
-    {
+    if (curHz <= 0 && maxHz <= 0) {
         data.push_back("GPU devfreq sysfs unavailable; querying via nvidia-smi.");
-        std::string clkSmi =
-            gpuRunCmd("nvidia-smi --query-gpu=clocks.gr,clocks.max.gr --format=csv,noheader 2>/dev/null");
-        if (!clkSmi.empty())
-        {
+        std::string clkSmi = gpuRunCmd("nvidia-smi --query-gpu=clocks.gr,clocks.max.gr --format=csv,noheader 2>/dev/null");
+        if (!clkSmi.empty()) {
             data.push_back("nvidia-smi clocks: " + clkSmi);
-        }
-        else
-        {
+        } else {
             data.push_back("WARNING: GPU clock sysfs and nvidia-smi both unavailable.");
         }
-    }
-    else
-    {
-        if (curHz > 0)
-        {
+    } else {
+        if (curHz > 0) {
             double curMHz = static_cast<double>(curHz) / 1e6;
             data.push_back("GPU current clock: " + std::to_string(curMHz) + " MHz");
-            if (curMHz < ORIN_GPU_MIN_FREQ_MHZ / 2.0)
-            {
+            if (curMHz < ORIN_GPU_MIN_FREQ_MHZ / 2.0) {
                 passed = false;
                 data.push_back("FAIL: GPU clock suspiciously low – possible stall.");
             }
         }
-        if (maxHz > 0)
-        {
+        if (maxHz > 0) {
             double maxMHz = static_cast<double>(maxHz) / 1e6;
             data.push_back("GPU max clock (devfreq): " + std::to_string(maxMHz) + " MHz");
-            if (maxMHz < ORIN_GPU_MAX_FREQ_MHZ * 0.5)
-            {
+            if (maxMHz < ORIN_GPU_MAX_FREQ_MHZ * 0.5) {
                 passed = false;
                 data.push_back("FAIL: GPU max clock is unexpectedly low.");
             }
@@ -405,14 +369,11 @@ TestOutput GpuTesting::testGpuClockFrequencyStabilityAndThrottling()
     }
 
     // Check throttling status
-    std::string throttle =
-        gpuRunCmd("nvidia-smi --query-gpu=clocks_throttle_reasons.active --format=csv,noheader 2>/dev/null");
-    if (!throttle.empty())
-    {
+    std::string throttle = gpuRunCmd("nvidia-smi --query-gpu=clocks_throttle_reasons.active --format=csv,noheader 2>/dev/null");
+    if (!throttle.empty()) {
         data.push_back("Active throttle reasons: " + throttle);
-        if (throttle.find("Not Active") == std::string::npos &&
-            throttle.find("0x0000000000000000") == std::string::npos && !throttle.empty())
-        {
+        if (throttle.find("Not Active") == std::string::npos && throttle.find("0x0000000000000000") == std::string::npos &&
+            !throttle.empty()) {
             data.push_back("WARNING: Throttling is active.");
         }
     }
@@ -434,8 +395,7 @@ TestOutput GpuTesting::testGraphicsProcessingClustersBothClusters()
     data.push_back("Expected GPCs: " + std::to_string(ORIN_GPU_GPC_COUNT));
     data.push_back("GPU architecture: Ampere (Jetson Orin AGX)");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
@@ -446,13 +406,10 @@ TestOutput GpuTesting::testGraphicsProcessingClustersBothClusters()
     data.push_back("Total SMs: " + std::to_string(ORIN_GPU_SM_COUNT));
 
     // nvidia-smi doesn't expose GPC count directly; validate via SM / TPC hierarchy
-    if (ORIN_GPU_SM_COUNT == ORIN_GPU_GPC_COUNT * 4 * 2)
-    { // 4 TPCs/GPC × 2 SMs/TPC
+    if (ORIN_GPU_SM_COUNT == ORIN_GPU_GPC_COUNT * 4 * 2) { // 4 TPCs/GPC × 2 SMs/TPC
         data.push_back("Topology verification: GPCs × TPCs × SMs = " + std::to_string(ORIN_GPU_GPC_COUNT) +
                        " × 4 × 2 = " + std::to_string(ORIN_GPU_SM_COUNT) + " SMs – consistent.");
-    }
-    else
-    {
+    } else {
         passed = false;
         data.push_back("FAIL: SM count does not match expected GPC topology.");
     }
@@ -477,22 +434,19 @@ TestOutput GpuTesting::testTextureProcessingClustersAll8Tpcs()
 
     data.push_back("Expected TPCs: " + std::to_string(ORIN_GPU_TPC_COUNT) + " (4 per GPC × 2 GPCs)");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
 
     // Each TPC contains 2 SMs; verify the count is consistent
     int tpcDerived = ORIN_GPU_SM_COUNT / 2;
-    data.push_back("Derived TPC count from SMs: " + std::to_string(tpcDerived) + " (" +
-                   std::to_string(ORIN_GPU_SM_COUNT) + " SMs / 2 SMs per TPC)");
+    data.push_back("Derived TPC count from SMs: " + std::to_string(tpcDerived) + " (" + std::to_string(ORIN_GPU_SM_COUNT) +
+                   " SMs / 2 SMs per TPC)");
 
-    if (tpcDerived != ORIN_GPU_TPC_COUNT)
-    {
+    if (tpcDerived != ORIN_GPU_TPC_COUNT) {
         passed = false;
-        data.push_back("FAIL: TPC count derived from SM count does not match expected " +
-                       std::to_string(ORIN_GPU_TPC_COUNT));
+        data.push_back("FAIL: TPC count derived from SM count does not match expected " + std::to_string(ORIN_GPU_TPC_COUNT));
     }
 
     // TMUs per TPC = ORIN_GPU_TMU_COUNT / ORIN_GPU_TPC_COUNT = 8
@@ -515,40 +469,32 @@ TestOutput GpuTesting::testStreamingMultiprocessorsAll16Sms()
 
     data.push_back("Expected SMs: " + std::to_string(ORIN_GPU_SM_COUNT));
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
 
     // Query nvidia-smi for multiprocessor count
     std::string smCount = gpuRunCmd("nvidia-smi --query-gpu=sm_count --format=csv,noheader 2>/dev/null");
-    if (!smCount.empty())
-    {
+    if (!smCount.empty()) {
         data.push_back("nvidia-smi SM count: " + smCount);
-        try
-        {
+        try {
             int reported = std::stoi(smCount);
-            if (reported != ORIN_GPU_SM_COUNT)
-            {
+            if (reported != ORIN_GPU_SM_COUNT) {
                 passed = false;
                 data.push_back("FAIL: Reported SM count (" + std::to_string(reported) + ") does not match expected (" +
                                std::to_string(ORIN_GPU_SM_COUNT) + ").");
             }
         }
-        catch (...)
-        {
+        catch (...) {
             data.push_back("WARNING: Could not parse SM count from nvidia-smi.");
         }
-    }
-    else
-    {
+    } else {
         // Alternatively derive from CUDA core count
         int derivedSMs = ORIN_GPU_CUDA_CORES / 128;
-        data.push_back("Derived SM count from CUDA cores: " + std::to_string(derivedSMs) + " (" +
-                       std::to_string(ORIN_GPU_CUDA_CORES) + " cores / 128)");
-        if (derivedSMs != ORIN_GPU_SM_COUNT)
-        {
+        data.push_back("Derived SM count from CUDA cores: " + std::to_string(derivedSMs) + " (" + std::to_string(ORIN_GPU_CUDA_CORES) +
+                       " cores / 128)");
+        if (derivedSMs != ORIN_GPU_SM_COUNT) {
             passed = false;
             data.push_back("FAIL: Derived SM count mismatch.");
         }
@@ -570,8 +516,7 @@ TestOutput GpuTesting::testRenderOutputUnitsAll32Rops()
 
     data.push_back("Expected ROPs: " + std::to_string(ORIN_GPU_ROP_COUNT));
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
@@ -579,12 +524,10 @@ TestOutput GpuTesting::testRenderOutputUnitsAll32Rops()
     // nvidia-smi doesn't directly expose ROPs; use the known Orin specification
     // and confirm via GPU name
     std::string gpuName = gpuRunCmd("nvidia-smi --query-gpu=gpu_name --format=csv,noheader 2>/dev/null");
-    if (!gpuName.empty())
-    {
+    if (!gpuName.empty()) {
         data.push_back("GPU: " + gpuName);
         // All Jetson Orin AGX variants with 16 SMs have 32 ROPs
-        if (gpuName.find("Orin") != std::string::npos || gpuName.find("orin") != std::string::npos)
-        {
+        if (gpuName.find("Orin") != std::string::npos || gpuName.find("orin") != std::string::npos) {
             data.push_back("Orin GPU confirmed – 32 ROPs expected.");
         }
     }
@@ -594,8 +537,7 @@ TestOutput GpuTesting::testRenderOutputUnitsAll32Rops()
     data.push_back("ROPs per GPC: " + std::to_string(ORIN_GPU_ROP_COUNT / ORIN_GPU_GPC_COUNT));
     data.push_back("Total ROPs (derived): " + std::to_string(ropDerived));
 
-    if (ropDerived != ORIN_GPU_ROP_COUNT)
-    {
+    if (ropDerived != ORIN_GPU_ROP_COUNT) {
         passed = false;
         data.push_back("FAIL: ROP count derivation mismatch.");
     }
@@ -616,19 +558,16 @@ TestOutput GpuTesting::testTextureMappingUnitsAll64Tmus()
 
     data.push_back("Expected TMUs: " + std::to_string(ORIN_GPU_TMU_COUNT));
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
 
     // TMUs = SMs × 4 (4 TMUs per SM on Ampere)
     int tmuDerived = ORIN_GPU_SM_COUNT * 4;
-    data.push_back("Derived TMUs: " + std::to_string(tmuDerived) + " (" + std::to_string(ORIN_GPU_SM_COUNT) +
-                   " SMs × 4 TMUs/SM)");
+    data.push_back("Derived TMUs: " + std::to_string(tmuDerived) + " (" + std::to_string(ORIN_GPU_SM_COUNT) + " SMs × 4 TMUs/SM)");
 
-    if (tmuDerived != ORIN_GPU_TMU_COUNT)
-    {
+    if (tmuDerived != ORIN_GPU_TMU_COUNT) {
         passed = false;
         data.push_back("FAIL: TMU count mismatch.");
     }
@@ -650,16 +589,14 @@ TestOutput GpuTesting::testL1CachePerSm()
     data.push_back("Expected L1 cache per SM: " + std::to_string(ORIN_GPU_L1_CACHE_KB_PER_SM) + " KB");
     data.push_back("Note: On Ampere, L1 and shared memory share a 192 KB pool per SM.");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
 
     // Query total L1 cache across all SMs
     long long totalL1KB = ORIN_GPU_L1_CACHE_KB_PER_SM * ORIN_GPU_SM_COUNT;
-    data.push_back("Total L1 cache (all SMs): " + std::to_string(totalL1KB) + " KB (" +
-                   std::to_string(totalL1KB / 1024) + " MB)");
+    data.push_back("Total L1 cache (all SMs): " + std::to_string(totalL1KB) + " KB (" + std::to_string(totalL1KB / 1024) + " MB)");
 
     // Check via nvidia-smi if possible
     std::string l1Info = gpuRunCmd("nvidia-smi --query-gpu=memory.used --format=csv,noheader 2>/dev/null");
@@ -669,8 +606,7 @@ TestOutput GpuTesting::testL1CachePerSm()
     // The existence and correct SM count already validates per-SM L1
     if (ORIN_GPU_L1_CACHE_KB_PER_SM == 192)
         data.push_back("Ampere Orin L1 cache per SM: 192 KB – specification match.");
-    else
-    {
+    else {
         passed = false;
         data.push_back("FAIL: L1 cache constant does not match Ampere specification.");
     }
@@ -691,20 +627,17 @@ TestOutput GpuTesting::testL2Cache()
 
     data.push_back("Expected L2 cache: " + std::to_string(ORIN_GPU_L2_CACHE_KB) + " KB (4 MB)");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
 
     // Query via nvidia-smi
     std::string l2 = gpuRunCmd("nvidia-smi --query-gpu=l2-cache --format=csv,noheader 2>/dev/null");
-    if (!l2.empty())
-    {
+    if (!l2.empty()) {
         data.push_back("nvidia-smi L2 cache: " + l2);
         // Parse value – may be returned in KB or MB
-        try
-        {
+        try {
             // Format: "4096 KB" or "4 MiB" etc.
             std::istringstream iss(l2);
             long long val;
@@ -714,22 +647,17 @@ TestOutput GpuTesting::testL2Cache()
             if (unit.find("M") != std::string::npos)
                 valKB = val * 1024;
             data.push_back("Parsed L2 cache: " + std::to_string(valKB) + " KB");
-            if (valKB != ORIN_GPU_L2_CACHE_KB)
-            {
+            if (valKB != ORIN_GPU_L2_CACHE_KB) {
                 passed = false;
                 data.push_back("FAIL: L2 cache mismatch (expected " + std::to_string(ORIN_GPU_L2_CACHE_KB) + " KB).");
             }
         }
-        catch (...)
-        {
+        catch (...) {
             data.push_back("Note: Could not parse L2 cache value; using specification.");
         }
-    }
-    else
-    {
+    } else {
         data.push_back("nvidia-smi L2 query unavailable; relying on specification.");
-        if (ORIN_GPU_L2_CACHE_KB != 4096)
-        {
+        if (ORIN_GPU_L2_CACHE_KB != 4096) {
             passed = false;
             data.push_back("FAIL: L2 cache constant incorrect.");
         }
@@ -785,16 +713,12 @@ TestOutput GpuTesting::testCacheCoherencyAndHitRates()
     data.push_back("Large-stride (cache-miss) access time: " + std::to_string(randMs) + " ms");
 
     // Expect sequential to be significantly faster
-    if (seqMs > 0 && randMs > 0)
-    {
+    if (seqMs > 0 && randMs > 0) {
         double ratio = randMs / seqMs;
         data.push_back("Random / sequential time ratio: " + std::to_string(ratio));
-        if (ratio < 1.0)
-        {
+        if (ratio < 1.0) {
             data.push_back("WARNING: Cache-miss pattern not slower; memory subsystem may be unusual.");
-        }
-        else
-        {
+        } else {
             data.push_back("Cache effect confirmed (sequential access faster).");
         }
     }
@@ -818,15 +742,13 @@ TestOutput GpuTesting::testMemoryBandwidthToGpu()
     data.push_back("Jetson Orin AGX unified LPDDR5 memory bandwidth: 204.8 GB/s theoretical");
     data.push_back("Minimum expected bandwidth: " + std::to_string(ORIN_GPU_BANDWIDTH_MIN_GBs) + " GB/s");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
 
     // Query VRAM info via nvidia-smi (unified memory is shared)
-    std::string memInfo =
-        gpuRunCmd("nvidia-smi --query-gpu=memory.total,memory.free --format=csv,noheader 2>/dev/null");
+    std::string memInfo = gpuRunCmd("nvidia-smi --query-gpu=memory.total,memory.free --format=csv,noheader 2>/dev/null");
     if (!memInfo.empty())
         data.push_back("GPU memory (unified): " + memInfo);
 
@@ -841,11 +763,9 @@ TestOutput GpuTesting::testMemoryBandwidthToGpu()
     double elapsedS = std::chrono::duration<double>(t1 - t0).count();
 
     double bwGBs = static_cast<double>(BUF_BYTES) / 1e9 / elapsedS;
-    data.push_back("CPU-side memcpy bandwidth: " + std::to_string(bwGBs) + " GB/s " +
-                   "(256 MB buffer, unified memory path)");
+    data.push_back("CPU-side memcpy bandwidth: " + std::to_string(bwGBs) + " GB/s " + "(256 MB buffer, unified memory path)");
 
-    if (bwGBs < ORIN_GPU_BANDWIDTH_MIN_GBs * 0.1)
-    {
+    if (bwGBs < ORIN_GPU_BANDWIDTH_MIN_GBs * 0.1) {
         // Even CPU-side bandwidth well below threshold indicates a problem
         passed = false;
         data.push_back("FAIL: Memory bandwidth critically low (< 10 GB/s).");
@@ -868,12 +788,10 @@ TestOutput GpuTesting::testInt8PerformanceVerification()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Expected GPU INT8 performance: >= " + std::to_string(ORIN_GPU_INT8_TOPS_MIN) +
-                   " TOPS (no sparsity)");
+    data.push_back("Expected GPU INT8 performance: >= " + std::to_string(ORIN_GPU_INT8_TOPS_MIN) + " TOPS (no sparsity)");
     data.push_back("Orin AGX specification: ~105.6 TOPS INT8 (without sparsity)");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
@@ -882,8 +800,7 @@ TestOutput GpuTesting::testInt8PerformanceVerification()
     const long long OPS = 500000000LL;
     volatile int8_t a = 1, b = 2, c = 0;
     auto t0 = std::chrono::steady_clock::now();
-    for (long long i = 0; i < OPS; ++i)
-    {
+    for (long long i = 0; i < OPS; ++i) {
         c = (int8_t)(a + b);
         c = (int8_t)(b - a);
         c = (int8_t)(a + b);
@@ -899,8 +816,7 @@ TestOutput GpuTesting::testInt8PerformanceVerification()
     double gpuInt8Tops = ORIN_GPU_CUDA_CORES * 2 * (ORIN_GPU_MAX_FREQ_MHZ * 1e6) / 1e12;
     data.push_back("Theoretical GPU INT8 TOPS (clock-based): " + std::to_string(gpuInt8Tops) + " TOPS");
 
-    if (gpuInt8Tops < ORIN_GPU_INT8_TOPS_MIN)
-    {
+    if (gpuInt8Tops < ORIN_GPU_INT8_TOPS_MIN) {
         passed = false;
         data.push_back("FAIL: Theoretical INT8 TOPS below threshold.");
     }
@@ -923,8 +839,7 @@ TestOutput GpuTesting::testInt8SparsePerformance()
     data.push_back("Ampere Sparse Tensor Core INT8: 2× dense INT8 throughput");
     data.push_back("Orin AGX sparse INT8 specification: ~211 TOPS");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
@@ -940,8 +855,7 @@ TestOutput GpuTesting::testInt8SparsePerformance()
     data.push_back("Sparsity pattern: 2:4 structured (50% zeros in every 4-element group)");
     data.push_back("Supported data type for sparsity: INT8, FP16, BF16");
 
-    if (sparseInt8Tops < ORIN_GPU_INT8_TOPS_MIN * 1.5)
-    {
+    if (sparseInt8Tops < ORIN_GPU_INT8_TOPS_MIN * 1.5) {
         passed = false;
         data.push_back("FAIL: Sparse INT8 TOPS below expected 1.5× dense threshold.");
     }
@@ -963,8 +877,7 @@ TestOutput GpuTesting::testFp32ComputePerformance()
     data.push_back("Expected GPU FP32 peak: ~5.3 TFLOPS (Orin AGX at 1.3 GHz)");
     data.push_back("Test threshold: >= " + std::to_string(ORIN_GPU_FP32_TFLOPS_MIN) + " TFLOPS");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
@@ -977,8 +890,7 @@ TestOutput GpuTesting::testFp32ComputePerformance()
     double cpuGflops = cpuFp32Benchmark(0.5);
     data.push_back("CPU FP32 throughput (validation): " + std::to_string(cpuGflops) + " GFLOPS");
 
-    if (fp32Tflops < ORIN_GPU_FP32_TFLOPS_MIN)
-    {
+    if (fp32Tflops < ORIN_GPU_FP32_TFLOPS_MIN) {
         passed = false;
         data.push_back("FAIL: Theoretical FP32 TFLOPS below expected minimum.");
     }
@@ -1005,8 +917,7 @@ TestOutput GpuTesting::testFp16ComputePerformance()
     data.push_back("Expected GPU FP16 (non-tensor) peak: ~10.6 TFLOPS (2× FP32)");
     data.push_back("Test threshold: >= " + std::to_string(ORIN_GPU_FP16_TFLOPS_MIN) + " TFLOPS");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
@@ -1024,8 +935,7 @@ TestOutput GpuTesting::testFp16ComputePerformance()
     (void)sum;
     data.push_back("FP16 emulation sanity check: completed.");
 
-    if (fp16Tflops < ORIN_GPU_FP16_TFLOPS_MIN)
-    {
+    if (fp16Tflops < ORIN_GPU_FP16_TFLOPS_MIN) {
         passed = false;
         data.push_back("FAIL: FP16 TFLOPS below expected minimum.");
     }
@@ -1048,8 +958,7 @@ TestOutput GpuTesting::testFp16TensorCorePerformance()
     data.push_back("Expected FP16 Tensor Core peak: ~170 TFLOPS (Orin AGX)");
     data.push_back("Tensor Cores: " + std::to_string(ORIN_GPU_TENSOR_CORES) + " × 3rd-gen (4 per SM)");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
@@ -1066,8 +975,7 @@ TestOutput GpuTesting::testFp16TensorCorePerformance()
     // Cross-check against specification
     double specTflops = 170.0;
     double tolerance = 0.3; // 30% tolerance
-    if (tcTflopsTotal < specTflops * (1.0 - tolerance))
-    {
+    if (tcTflopsTotal < specTflops * (1.0 - tolerance)) {
         data.push_back("WARNING: Calculated TC TFLOPS lower than spec – may depend on TF32 vs FP16 mode.");
     }
 
@@ -1089,8 +997,7 @@ TestOutput GpuTesting::testMixedPrecisionOperations()
     data.push_back("Mixed precision: FP16 inputs, FP32 accumulation (Ampere native support)");
     data.push_back("Ampere also supports: TF32, BF16, FP64, INT8, INT4, INT1");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
@@ -1138,47 +1045,32 @@ TestOutput GpuTesting::testGpuThermalThrottlingBehavior()
 
     // Read GPU temperature from thermal sysfs
     long long tempMC = gpuGetTempMilliC();
-    if (tempMC > 0)
-    {
+    if (tempMC > 0) {
         double tempC = static_cast<double>(tempMC) / 1000.0;
         data.push_back("GPU temperature: " + std::to_string(tempC) + " °C");
-        if (tempC >= ORIN_GPU_TEMP_MAX_C)
-        {
+        if (tempC >= ORIN_GPU_TEMP_MAX_C) {
             passed = false;
-            data.push_back("FAIL: GPU temperature at or above thermal limit (" + std::to_string(ORIN_GPU_TEMP_MAX_C) +
-                           " °C).");
-        }
-        else if (tempC >= ORIN_GPU_TEMP_MAX_C * 0.85)
-        {
+            data.push_back("FAIL: GPU temperature at or above thermal limit (" + std::to_string(ORIN_GPU_TEMP_MAX_C) + " °C).");
+        } else if (tempC >= ORIN_GPU_TEMP_MAX_C * 0.85) {
             data.push_back("WARNING: GPU temperature is high (>85% of limit).");
-        }
-        else
-        {
+        } else {
             data.push_back("GPU temperature within safe operating range.");
         }
-    }
-    else
-    {
+    } else {
         // Try nvidia-smi
         std::string tempSmi = gpuRunCmd("nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader 2>/dev/null");
-        if (!tempSmi.empty())
-        {
+        if (!tempSmi.empty()) {
             data.push_back("GPU temperature (nvidia-smi): " + tempSmi + " °C");
-            try
-            {
+            try {
                 double tempC = std::stod(tempSmi);
-                if (tempC >= ORIN_GPU_TEMP_MAX_C)
-                {
+                if (tempC >= ORIN_GPU_TEMP_MAX_C) {
                     passed = false;
                     data.push_back("FAIL: GPU temperature at or above thermal limit.");
                 }
             }
-            catch (...)
-            {
+            catch (...) {
             }
-        }
-        else
-        {
+        } else {
             data.push_back("GPU temperature: sysfs unavailable.");
         }
     }
@@ -1212,53 +1104,42 @@ TestOutput GpuTesting::testGpuPowerConsumptionAtVariousLoads()
     data.push_back("Jetson Orin AGX GPU TDP: ~60 W (MAX-N power mode)");
     data.push_back("Expected idle GPU power: < 5 W");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
 
     // Try nvidia-smi power reading
     std::string powerSmi = gpuRunCmd("nvidia-smi --query-gpu=power.draw --format=csv,noheader 2>/dev/null");
-    if (!powerSmi.empty())
-    {
+    if (!powerSmi.empty()) {
         data.push_back("GPU power draw (nvidia-smi): " + powerSmi);
-        try
-        {
+        try {
             double powerW = std::stod(powerSmi);
             data.push_back("GPU power: " + std::to_string(powerW) + " W");
-            if (powerW > 70.0)
-            {
+            if (powerW > 70.0) {
                 passed = false;
                 data.push_back("FAIL: GPU power exceeds maximum TDP (70 W limit).");
             }
         }
-        catch (...)
-        {
+        catch (...) {
         }
-    }
-    else
-    {
+    } else {
         // Try INA3221 sysfs (Jetson carrier board power rail VDD_GPU_SOC)
         // Typical path: /sys/bus/i2c/drivers/ina3221x/X-00YY/iio:device0/
         std::string ina3221Base = "/sys/bus/i2c/drivers/ina3221x/";
-        DIR *dir = opendir(ina3221Base.c_str());
+        DIR* dir = opendir(ina3221Base.c_str());
         bool foundPower = false;
-        if (dir)
-        {
-            dirent *entry;
-            while ((entry = readdir(dir)) != nullptr)
-            {
+        if (dir) {
+            dirent* entry;
+            while ((entry = readdir(dir)) != nullptr) {
                 std::string name(entry->d_name);
                 if (name.size() < 3 || name[0] == '.')
                     continue;
                 // Look for VDD_GPU power channel
                 std::string chanLabel = gpuReadFile(ina3221Base + name + "/iio:device0/in_power0_label");
-                if (chanLabel.find("GPU") != std::string::npos || chanLabel.find("gpu") != std::string::npos)
-                {
+                if (chanLabel.find("GPU") != std::string::npos || chanLabel.find("gpu") != std::string::npos) {
                     std::string powerRaw = gpuReadFile(ina3221Base + name + "/iio:device0/in_power0_input");
-                    if (!powerRaw.empty())
-                    {
+                    if (!powerRaw.empty()) {
                         data.push_back("INA3221 GPU power: " + powerRaw + " mW");
                         foundPower = true;
                     }
@@ -1298,8 +1179,7 @@ TestOutput GpuTesting::testSustainedPerformanceOverTime()
 
     data.push_back("Sustained performance test duration: " + std::to_string(DURATION_S) + " seconds");
 
-    if (!gpuDevicePresent())
-    {
+    if (!gpuDevicePresent()) {
         data.push_back("FAIL: GPU not present.");
         return {false, data};
     }
@@ -1318,8 +1198,7 @@ TestOutput GpuTesting::testSustainedPerformanceOverTime()
                 acc = acc * 1.000001 + 0.0000001;
     });
 
-    while (std::chrono::steady_clock::now() < tEnd)
-    {
+    while (std::chrono::steady_clock::now() < tEnd) {
         long long freqHz = gpuGetCurFreqHz();
         if (freqHz > 0)
             freqSamples.push_back(static_cast<double>(freqHz) / 1e6);
@@ -1334,26 +1213,20 @@ TestOutput GpuTesting::testSustainedPerformanceOverTime()
     stopWork = true;
     worker.join();
 
-    if (!freqSamples.empty())
-    {
+    if (!freqSamples.empty()) {
         double minFreq = *std::min_element(freqSamples.begin(), freqSamples.end());
         double maxFreq = *std::max_element(freqSamples.begin(), freqSamples.end());
         double avgFreq = std::accumulate(freqSamples.begin(), freqSamples.end(), 0.0) / freqSamples.size();
 
-        data.push_back("GPU freq samples (" + std::to_string(freqSamples.size()) +
-                       "): " + "min=" + std::to_string(minFreq) + " MHz, " + "max=" + std::to_string(maxFreq) +
-                       " MHz, " + "avg=" + std::to_string(avgFreq) + " MHz");
+        data.push_back("GPU freq samples (" + std::to_string(freqSamples.size()) + "): " + "min=" + std::to_string(minFreq) + " MHz, " +
+                       "max=" + std::to_string(maxFreq) + " MHz, " + "avg=" + std::to_string(avgFreq) + " MHz");
 
         // GPU should not drop below 50% of max during short sustained test
         double freqThreshold = ORIN_GPU_MAX_FREQ_MHZ * 0.50;
-        if (minFreq < freqThreshold && minFreq > 0)
-        {
-            data.push_back("WARNING: GPU dropped below 50% of max clock (" + std::to_string(freqThreshold) +
-                           " MHz) during test.");
+        if (minFreq < freqThreshold && minFreq > 0) {
+            data.push_back("WARNING: GPU dropped below 50% of max clock (" + std::to_string(freqThreshold) + " MHz) during test.");
         }
-    }
-    else
-    {
+    } else {
         // Fall back to nvidia-smi if sysfs not available
         std::string clkSmi = gpuRunCmd("nvidia-smi --query-gpu=clocks.gr --format=csv,noheader 2>/dev/null");
         if (!clkSmi.empty())
@@ -1362,12 +1235,10 @@ TestOutput GpuTesting::testSustainedPerformanceOverTime()
             data.push_back("GPU frequency monitoring: sysfs unavailable on this host.");
     }
 
-    if (!tempSamples.empty())
-    {
+    if (!tempSamples.empty()) {
         double maxTemp = *std::max_element(tempSamples.begin(), tempSamples.end());
         data.push_back("GPU max temperature during test: " + std::to_string(maxTemp) + " °C");
-        if (maxTemp >= ORIN_GPU_TEMP_MAX_C)
-        {
+        if (maxTemp >= ORIN_GPU_TEMP_MAX_C) {
             passed = false;
             data.push_back("FAIL: GPU hit thermal limit during sustained test.");
         }
@@ -1614,97 +1485,54 @@ std::vector<std::string> GpuTesting::getAvailableTests()
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult GpuTesting::runSingleTest(const std::string &testName)
+TestResult GpuTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testCudaCoresFunctionality")
-    {
+    if (testName == "testCudaCoresFunctionality") {
         result = testCudaCoresFunctionality();
-    }
-    else if (testName == "testTensorCoresOperation")
-    {
+    } else if (testName == "testTensorCoresOperation") {
         result = testTensorCoresOperation();
-    }
-    else if (testName == "testGpuClockFrequencyStabilityAndThrottling")
-    {
+    } else if (testName == "testGpuClockFrequencyStabilityAndThrottling") {
         result = testGpuClockFrequencyStabilityAndThrottling();
-    }
-    else if (testName == "testGraphicsProcessingClustersBothClusters")
-    {
+    } else if (testName == "testGraphicsProcessingClustersBothClusters") {
         result = testGraphicsProcessingClustersBothClusters();
-    }
-    else if (testName == "testTextureProcessingClustersAll8Tpcs")
-    {
+    } else if (testName == "testTextureProcessingClustersAll8Tpcs") {
         result = testTextureProcessingClustersAll8Tpcs();
-    }
-    else if (testName == "testStreamingMultiprocessorsAll16Sms")
-    {
+    } else if (testName == "testStreamingMultiprocessorsAll16Sms") {
         result = testStreamingMultiprocessorsAll16Sms();
-    }
-    else if (testName == "testRenderOutputUnitsAll32Rops")
-    {
+    } else if (testName == "testRenderOutputUnitsAll32Rops") {
         result = testRenderOutputUnitsAll32Rops();
-    }
-    else if (testName == "testTextureMappingUnitsAll64Tmus")
-    {
+    } else if (testName == "testTextureMappingUnitsAll64Tmus") {
         result = testTextureMappingUnitsAll64Tmus();
-    }
-    else if (testName == "testL1CachePerSm")
-    {
+    } else if (testName == "testL1CachePerSm") {
         result = testL1CachePerSm();
-    }
-    else if (testName == "testL2Cache")
-    {
+    } else if (testName == "testL2Cache") {
         result = testL2Cache();
-    }
-    else if (testName == "testCacheCoherencyAndHitRates")
-    {
+    } else if (testName == "testCacheCoherencyAndHitRates") {
         result = testCacheCoherencyAndHitRates();
-    }
-    else if (testName == "testMemoryBandwidthToGpu")
-    {
+    } else if (testName == "testMemoryBandwidthToGpu") {
         result = testMemoryBandwidthToGpu();
-    }
-    else if (testName == "testInt8PerformanceVerification")
-    {
+    } else if (testName == "testInt8PerformanceVerification") {
         result = testInt8PerformanceVerification();
-    }
-    else if (testName == "testInt8SparsePerformance")
-    {
+    } else if (testName == "testInt8SparsePerformance") {
         result = testInt8SparsePerformance();
-    }
-    else if (testName == "testFp32ComputePerformance")
-    {
+    } else if (testName == "testFp32ComputePerformance") {
         result = testFp32ComputePerformance();
-    }
-    else if (testName == "testFp16ComputePerformance")
-    {
+    } else if (testName == "testFp16ComputePerformance") {
         result = testFp16ComputePerformance();
-    }
-    else if (testName == "testFp16TensorCorePerformance")
-    {
+    } else if (testName == "testFp16TensorCorePerformance") {
         result = testFp16TensorCorePerformance();
-    }
-    else if (testName == "testMixedPrecisionOperations")
-    {
+    } else if (testName == "testMixedPrecisionOperations") {
         result = testMixedPrecisionOperations();
-    }
-    else if (testName == "testGpuThermalThrottlingBehavior")
-    {
+    } else if (testName == "testGpuThermalThrottlingBehavior") {
         result = testGpuThermalThrottlingBehavior();
-    }
-    else if (testName == "testGpuPowerConsumptionAtVariousLoads")
-    {
+    } else if (testName == "testGpuPowerConsumptionAtVariousLoads") {
         result = testGpuPowerConsumptionAtVariousLoads();
-    }
-    else if (testName == "testSustainedPerformanceOverTime")
-    {
+    } else if (testName == "testSustainedPerformanceOverTime") {
         result = testSustainedPerformanceOverTime();
-    }
-    else
-    {
+    } else {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

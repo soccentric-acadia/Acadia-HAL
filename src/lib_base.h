@@ -7,39 +7,42 @@
 #ifndef TEST_BASE_H
 #define TEST_BASE_H
 
-#include <chrono>
-#include <string>
-#include <vector>
 #include <atomic>
-#include <thread>
+#include <chrono>
 #include <functional>
+#include <string>
+#include <thread>
+#include <vector>
 
 /**
  * @enum TestMode
  * @brief Enumeration for test modes
  */
-enum class TestMode {
-    ONE_SHOT,   ///< Run tests once
-    MONITORING  ///< Run tests in a loop until stopped
+enum class TestMode
+{
+    ONE_SHOT,  ///< Run tests once
+    MONITORING ///< Run tests in a loop until stopped
 };
 
 /**
  * @struct TestOutput
  * @brief Structure to hold test output information
  */
-struct TestOutput {
-    bool passed;                                ///< Whether the test passed
-    std::vector<std::string> data;              ///< Additional data returned by the test
+struct TestOutput
+{
+    bool passed;                   ///< Whether the test passed
+    std::vector<std::string> data; ///< Additional data returned by the test
 };
 
 /**
  * @struct TestResult
  * @brief Structure to hold test result information
  */
-struct TestResult {
-    std::string name;                           ///< Name of the test
-    TestOutput output;                          ///< Test output (passed and data)
-    std::chrono::duration<double> duration;     ///< Time taken for the test
+struct TestResult
+{
+    std::string name;                       ///< Name of the test
+    TestOutput output;                      ///< Test output (passed and data)
+    std::chrono::duration<double> duration; ///< Time taken for the test
 };
 
 /**
@@ -47,8 +50,9 @@ struct TestResult {
  * @brief Base class for all testing classes
  * @details Provides common functionality for running tests in different modes
  */
-class TestBase {
-public:
+class TestBase
+{
+  public:
     /**
      * @brief Constructor
      */
@@ -85,7 +89,7 @@ public:
      */
     void stop();
 
-protected:
+  protected:
     /**
      * @brief Pure virtual method to run all tests once
      * @return Vector of test results
@@ -99,9 +103,9 @@ protected:
      */
     virtual TestResult runSingleTest(const std::string& testName) = 0;
 
-private:
-    std::atomic<bool> stopped_;  ///< Flag to stop monitoring
-    std::thread monitoring_thread_;  ///< Thread for monitoring mode
+  private:
+    std::atomic<bool> stopped_;     ///< Flag to stop monitoring
+    std::thread monitoring_thread_; ///< Thread for monitoring mode
 };
 
 #endif // TEST_BASE_H

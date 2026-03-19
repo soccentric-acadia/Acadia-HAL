@@ -16,14 +16,14 @@
  */
 class EthernetSwitchTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for EthernetSwitchTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function EthernetSwitchTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for EthernetSwitchTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function EthernetSwitchTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     EthernetSwitchTesting();
     /**
@@ -39,10 +39,10 @@ class EthernetSwitchTesting : public TestBase
      * @brief Constructor for EthernetSwitchTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the switchportfunctionality functionality
+    /**
+     * @brief Tests the switchportfunctionality functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testSwitchPortFunctionality();
     /**
@@ -109,13 +109,11 @@ class EthernetSwitchTesting : public TestBase
      */
     TestOutput testSwitchFailover();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -128,11 +126,9 @@ class EthernetSwitchTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // ETHERNETSWITCHTESTING_H

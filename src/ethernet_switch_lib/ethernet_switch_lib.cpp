@@ -104,7 +104,7 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
     // Run testSwitchPortFunctionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSwitchPortFunctionality();
+        TestOutput result = testSwitchPortFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSwitchPortFunctionality", result, duration});
@@ -113,7 +113,7 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
     // Run testSwitchForwardingTable
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSwitchForwardingTable();
+        TestOutput result = testSwitchForwardingTable();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSwitchForwardingTable", result, duration});
@@ -122,7 +122,7 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
     // Run testSwitchVlanSupport
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSwitchVlanSupport();
+        TestOutput result = testSwitchVlanSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSwitchVlanSupport", result, duration});
@@ -131,7 +131,7 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
     // Run testSwitchQos
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSwitchQos();
+        TestOutput result = testSwitchQos();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSwitchQos", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
     // Run testSwitchPortMirroring
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSwitchPortMirroring();
+        TestOutput result = testSwitchPortMirroring();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSwitchPortMirroring", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
     // Run testSwitchStatistics
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSwitchStatistics();
+        TestOutput result = testSwitchStatistics();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSwitchStatistics", result, duration});
@@ -158,7 +158,7 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
     // Run testRedundantSwitchOperation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testRedundantSwitchOperation();
+        TestOutput result = testRedundantSwitchOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testRedundantSwitchOperation", result, duration});
@@ -167,7 +167,7 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
     // Run testSwitchFailover
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSwitchFailover();
+        TestOutput result = testSwitchFailover();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSwitchFailover", result, duration});
@@ -180,16 +180,11 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> EthernetSwitchTesting::getAvailableTests() {
+std::vector<std::string> EthernetSwitchTesting::getAvailableTests()
+{
     return {
-        "testSwitchPortFunctionality",
-        "testSwitchForwardingTable",
-        "testSwitchVlanSupport",
-        "testSwitchQos",
-        "testSwitchPortMirroring",
-        "testSwitchStatistics",
-        "testRedundantSwitchOperation",
-        "testSwitchFailover",
+        "testSwitchPortFunctionality", "testSwitchForwardingTable", "testSwitchVlanSupport",        "testSwitchQos",
+        "testSwitchPortMirroring",     "testSwitchStatistics",      "testRedundantSwitchOperation", "testSwitchFailover",
     };
 }
 
@@ -198,7 +193,8 @@ std::vector<std::string> EthernetSwitchTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult EthernetSwitchTesting::runSingleTest(const std::string& testName) {
+TestResult EthernetSwitchTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

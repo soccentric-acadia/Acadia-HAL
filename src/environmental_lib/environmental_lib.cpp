@@ -95,7 +95,7 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
     // Run testTemperatureRange
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testTemperatureRange();
+        TestOutput result = testTemperatureRange();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testTemperatureRange", result, duration});
@@ -104,7 +104,7 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
     // Run testHumidityResistance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testHumidityResistance();
+        TestOutput result = testHumidityResistance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testHumidityResistance", result, duration});
@@ -113,7 +113,7 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
     // Run testVibrationResistance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testVibrationResistance();
+        TestOutput result = testVibrationResistance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testVibrationResistance", result, duration});
@@ -122,7 +122,7 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
     // Run testShockResistance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testShockResistance();
+        TestOutput result = testShockResistance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testShockResistance", result, duration});
@@ -131,7 +131,7 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
     // Run testEmiemcCompliance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEmiemcCompliance();
+        TestOutput result = testEmiemcCompliance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEmiemcCompliance", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
     // Run testEsdProtection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEsdProtection();
+        TestOutput result = testEsdProtection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEsdProtection", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
     // Run testSaltSprayResistance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSaltSprayResistance();
+        TestOutput result = testSaltSprayResistance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSaltSprayResistance", result, duration});
@@ -162,15 +162,11 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> EnvironmentalTesting::getAvailableTests() {
+std::vector<std::string> EnvironmentalTesting::getAvailableTests()
+{
     return {
-        "testTemperatureRange",
-        "testHumidityResistance",
-        "testVibrationResistance",
-        "testShockResistance",
-        "testEmiemcCompliance",
-        "testEsdProtection",
-        "testSaltSprayResistance",
+        "testTemperatureRange", "testHumidityResistance", "testVibrationResistance", "testShockResistance",
+        "testEmiemcCompliance", "testEsdProtection",      "testSaltSprayResistance",
     };
 }
 
@@ -179,7 +175,8 @@ std::vector<std::string> EnvironmentalTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult EnvironmentalTesting::runSingleTest(const std::string& testName) {
+TestResult EnvironmentalTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

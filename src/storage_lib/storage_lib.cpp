@@ -167,7 +167,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testEmmc51InterfaceFunctionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEmmc51InterfaceFunctionality();
+        TestOutput result = testEmmc51InterfaceFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEmmc51InterfaceFunctionality", result, duration});
@@ -176,7 +176,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testFullCapacityVerification
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testFullCapacityVerification();
+        TestOutput result = testFullCapacityVerification();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testFullCapacityVerification", result, duration});
@@ -185,7 +185,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testSequentialReadPerformance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSequentialReadPerformance();
+        TestOutput result = testSequentialReadPerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSequentialReadPerformance", result, duration});
@@ -194,7 +194,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testSequentialWritePerformance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSequentialWritePerformance();
+        TestOutput result = testSequentialWritePerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSequentialWritePerformance", result, duration});
@@ -203,7 +203,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testRandomReadIops
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testRandomReadIops();
+        TestOutput result = testRandomReadIops();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testRandomReadIops", result, duration});
@@ -212,7 +212,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testRandomWriteIops
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testRandomWriteIops();
+        TestOutput result = testRandomWriteIops();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testRandomWriteIops", result, duration});
@@ -221,7 +221,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testEmmcWearLeveling
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEmmcWearLeveling();
+        TestOutput result = testEmmcWearLeveling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEmmcWearLeveling", result, duration});
@@ -230,7 +230,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testBadBlockManagement
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testBadBlockManagement();
+        TestOutput result = testBadBlockManagement();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testBadBlockManagement", result, duration});
@@ -239,7 +239,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testPowerLossProtection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPowerLossProtection();
+        TestOutput result = testPowerLossProtection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPowerLossProtection", result, duration});
@@ -248,7 +248,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testEmmcTemperatureMonitoring
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEmmcTemperatureMonitoring();
+        TestOutput result = testEmmcTemperatureMonitoring();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEmmcTemperatureMonitoring", result, duration});
@@ -257,7 +257,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testNvmeSsdDetection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testNvmeSsdDetection();
+        TestOutput result = testNvmeSsdDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testNvmeSsdDetection", result, duration});
@@ -266,7 +266,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testNvmeReadwritePerformance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testNvmeReadwritePerformance();
+        TestOutput result = testNvmeReadwritePerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testNvmeReadwritePerformance", result, duration});
@@ -275,7 +275,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testNvmeThermalThrottling
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testNvmeThermalThrottling();
+        TestOutput result = testNvmeThermalThrottling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testNvmeThermalThrottling", result, duration});
@@ -284,7 +284,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testHotplugCapability
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testHotplugCapability();
+        TestOutput result = testHotplugCapability();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testHotplugCapability", result, duration});
@@ -293,7 +293,7 @@ std::vector<TestResult> StorageTesting::runAllTests()
     // Run testStorageEncryptionSupport
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testStorageEncryptionSupport();
+        TestOutput result = testStorageEncryptionSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testStorageEncryptionSupport", result, duration});
@@ -306,7 +306,8 @@ std::vector<TestResult> StorageTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> StorageTesting::getAvailableTests() {
+std::vector<std::string> StorageTesting::getAvailableTests()
+{
     return {
         "testEmmc51InterfaceFunctionality",
         "testFullCapacityVerification",
@@ -331,7 +332,8 @@ std::vector<std::string> StorageTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult StorageTesting::runSingleTest(const std::string& testName) {
+TestResult StorageTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

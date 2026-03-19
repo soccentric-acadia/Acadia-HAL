@@ -16,14 +16,14 @@
  */
 class ReliabilityTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for ReliabilityTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function ReliabilityTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for ReliabilityTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function ReliabilityTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     ReliabilityTesting();
     /**
@@ -39,10 +39,10 @@ class ReliabilityTesting : public TestBase
      * @brief Constructor for ReliabilityTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the burnintesting functionality
+    /**
+     * @brief Tests the burnintesting functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testBurninTesting();
     /**
@@ -91,13 +91,11 @@ class ReliabilityTesting : public TestBase
      */
     TestOutput testSolderJointIntegrity();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -110,11 +108,9 @@ class ReliabilityTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // RELIABILITYTESTING_H

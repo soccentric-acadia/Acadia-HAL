@@ -149,7 +149,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testSocJunctionTemperature
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSocJunctionTemperature();
+        TestOutput result = testSocJunctionTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSocJunctionTemperature", result, duration});
@@ -158,7 +158,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testGpuTemperature
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpuTemperature();
+        TestOutput result = testGpuTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpuTemperature", result, duration});
@@ -167,7 +167,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testCpuTemperature
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCpuTemperature();
+        TestOutput result = testCpuTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCpuTemperature", result, duration});
@@ -176,7 +176,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testMemoryTemperature
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMemoryTemperature();
+        TestOutput result = testMemoryTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMemoryTemperature", result, duration});
@@ -185,7 +185,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testBoardAmbientTemperature
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testBoardAmbientTemperature();
+        TestOutput result = testBoardAmbientTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testBoardAmbientTemperature", result, duration});
@@ -194,7 +194,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testAllThermalZones
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAllThermalZones();
+        TestOutput result = testAllThermalZones();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAllThermalZones", result, duration});
@@ -203,7 +203,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testThermalThrottlingThresholds
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testThermalThrottlingThresholds();
+        TestOutput result = testThermalThrottlingThresholds();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testThermalThrottlingThresholds", result, duration});
@@ -212,7 +212,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testThermalShutdownTemperature
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testThermalShutdownTemperature();
+        TestOutput result = testThermalShutdownTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testThermalShutdownTemperature", result, duration});
@@ -221,7 +221,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testCoolingSolutionEffectiveness
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCoolingSolutionEffectiveness();
+        TestOutput result = testCoolingSolutionEffectiveness();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCoolingSolutionEffectiveness", result, duration});
@@ -230,7 +230,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testTemperatureDistributionAcrossDie
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testTemperatureDistributionAcrossDie();
+        TestOutput result = testTemperatureDistributionAcrossDie();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testTemperatureDistributionAcrossDie", result, duration});
@@ -239,7 +239,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testSustainedThermalPerformance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSustainedThermalPerformance();
+        TestOutput result = testSustainedThermalPerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSustainedThermalPerformance", result, duration});
@@ -248,7 +248,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testThermalRecoveryTime
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testThermalRecoveryTime();
+        TestOutput result = testThermalRecoveryTime();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testThermalRecoveryTime", result, duration});
@@ -257,7 +257,7 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
     // Run testFanControl
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testFanControl();
+        TestOutput result = testFanControl();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testFanControl", result, duration});
@@ -270,7 +270,8 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> ThermalManagementTesting::getAvailableTests() {
+std::vector<std::string> ThermalManagementTesting::getAvailableTests()
+{
     return {
         "testSocJunctionTemperature",
         "testGpuTemperature",
@@ -293,7 +294,8 @@ std::vector<std::string> ThermalManagementTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult ThermalManagementTesting::runSingleTest(const std::string& testName) {
+TestResult ThermalManagementTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

@@ -221,7 +221,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testKl15PowerInput
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testKl15PowerInput();
+        TestOutput result = testKl15PowerInput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testKl15PowerInput", result, duration});
@@ -230,7 +230,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testAdenlrSignals
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAdenlrSignals();
+        TestOutput result = testAdenlrSignals();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAdenlrSignals", result, duration});
@@ -239,7 +239,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testBcmCanInterface
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testBcmCanInterface();
+        TestOutput result = testBcmCanInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testBcmCanInterface", result, duration});
@@ -248,7 +248,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testVcuCanInterface
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testVcuCanInterface();
+        TestOutput result = testVcuCanInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testVcuCanInterface", result, duration});
@@ -257,7 +257,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testAllConnectorPinsContinuity
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAllConnectorPinsContinuity();
+        TestOutput result = testAllConnectorPinsContinuity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAllConnectorPinsContinuity", result, duration});
@@ -266,7 +266,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testConnectorRetentionForce
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testConnectorRetentionForce();
+        TestOutput result = testConnectorRetentionForce();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testConnectorRetentionForce", result, duration});
@@ -275,7 +275,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testConnectorContactResistance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testConnectorContactResistance();
+        TestOutput result = testConnectorContactResistance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testConnectorContactResistance", result, duration});
@@ -284,7 +284,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run test12vAsilQsRPower
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test12vAsilQsRPower();
+        TestOutput result = test12vAsilQsRPower();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test12vAsilQsRPower", result, duration});
@@ -293,7 +293,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testConnectorMechanicalIntegrity
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testConnectorMechanicalIntegrity();
+        TestOutput result = testConnectorMechanicalIntegrity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testConnectorMechanicalIntegrity", result, duration});
@@ -302,7 +302,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testEtcl3j703
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEtcl3j703();
+        TestOutput result = testEtcl3j703();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEtcl3j703", result, duration});
@@ -311,7 +311,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testEtcl2j704
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEtcl2j704();
+        TestOutput result = testEtcl2j704();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEtcl2j704", result, duration});
@@ -320,7 +320,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testEtc3j705
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEtc3j705();
+        TestOutput result = testEtc3j705();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEtc3j705", result, duration});
@@ -329,7 +329,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testAllEthernetPhyConnections
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAllEthernetPhyConnections();
+        TestOutput result = testAllEthernetPhyConnections();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAllEthernetPhyConnections", result, duration});
@@ -338,7 +338,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testCc1j709
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCc1j709();
+        TestOutput result = testCc1j709();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCc1j709", result, duration});
@@ -347,7 +347,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testCc2j710
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCc2j710();
+        TestOutput result = testCc2j710();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCc2j710", result, duration});
@@ -356,7 +356,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testCc3j711
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCc3j711();
+        TestOutput result = testCc3j711();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCc3j711", result, duration});
@@ -365,7 +365,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testCc4j712
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCc4j712();
+        TestOutput result = testCc4j712();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCc4j712", result, duration});
@@ -374,7 +374,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testSv
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSv();
+        TestOutput result = testSv();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSv", result, duration});
@@ -383,7 +383,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testGnssAntCon
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGnssAntCon();
+        TestOutput result = testGnssAntCon();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGnssAntCon", result, duration});
@@ -392,7 +392,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testEthdebugCon
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEthdebugCon();
+        TestOutput result = testEthdebugCon();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEthdebugCon", result, duration});
@@ -401,7 +401,7 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
     // Run testAllConnectorPinAssignments
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAllConnectorPinAssignments();
+        TestOutput result = testAllConnectorPinAssignments();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAllConnectorPinAssignments", result, duration});
@@ -414,7 +414,8 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> ExternalConnectorTesting::getAvailableTests() {
+std::vector<std::string> ExternalConnectorTesting::getAvailableTests()
+{
     return {
         "testKl15PowerInput",
         "testAdenlrSignals",
@@ -444,7 +445,8 @@ std::vector<std::string> ExternalConnectorTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult ExternalConnectorTesting::runSingleTest(const std::string& testName) {
+TestResult ExternalConnectorTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

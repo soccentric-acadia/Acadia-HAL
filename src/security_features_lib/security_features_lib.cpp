@@ -131,7 +131,7 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
     // Run testBootRomExecution
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testBootRomExecution();
+        TestOutput result = testBootRomExecution();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testBootRomExecution", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
     // Run testBootloaderSignatureVerification
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testBootloaderSignatureVerification();
+        TestOutput result = testBootloaderSignatureVerification();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testBootloaderSignatureVerification", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
     // Run testKernelSignatureVerification
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testKernelSignatureVerification();
+        TestOutput result = testKernelSignatureVerification();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testKernelSignatureVerification", result, duration});
@@ -158,7 +158,7 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
     // Run testSecureBootChainOfTrust
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSecureBootChainOfTrust();
+        TestOutput result = testSecureBootChainOfTrust();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSecureBootChainOfTrust", result, duration});
@@ -167,7 +167,7 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
     // Run testHardwareRootOfTrust
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testHardwareRootOfTrust();
+        TestOutput result = testHardwareRootOfTrust();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testHardwareRootOfTrust", result, duration});
@@ -176,7 +176,7 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
     // Run testSecureStorage
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSecureStorage();
+        TestOutput result = testSecureStorage();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSecureStorage", result, duration});
@@ -185,7 +185,7 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
     // Run testCryptographicAccelerators
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCryptographicAccelerators();
+        TestOutput result = testCryptographicAccelerators();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCryptographicAccelerators", result, duration});
@@ -194,7 +194,7 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
     // Run testHardwareRandomNumberGenerator
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testHardwareRandomNumberGenerator();
+        TestOutput result = testHardwareRandomNumberGenerator();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testHardwareRandomNumberGenerator", result, duration});
@@ -203,7 +203,7 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
     // Run testMemoryEncryption
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMemoryEncryption();
+        TestOutput result = testMemoryEncryption();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMemoryEncryption", result, duration});
@@ -212,7 +212,7 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
     // Run testDebugPortSecurity
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDebugPortSecurity();
+        TestOutput result = testDebugPortSecurity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDebugPortSecurity", result, duration});
@@ -221,7 +221,7 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
     // Run testJtagSecurity
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testJtagSecurity();
+        TestOutput result = testJtagSecurity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testJtagSecurity", result, duration});
@@ -234,7 +234,8 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> SecurityFeaturesTesting::getAvailableTests() {
+std::vector<std::string> SecurityFeaturesTesting::getAvailableTests()
+{
     return {
         "testBootRomExecution",
         "testBootloaderSignatureVerification",
@@ -255,7 +256,8 @@ std::vector<std::string> SecurityFeaturesTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult SecurityFeaturesTesting::runSingleTest(const std::string& testName) {
+TestResult SecurityFeaturesTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

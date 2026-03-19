@@ -1,26 +1,26 @@
-#include <chrono>
 #include "lib_base.h"
+#include <atomic>
+#include <chrono>
+#include <csignal>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <string>
-#include <vector>
-#include <csignal>
-#include <atomic>
 #include <thread>
-#include <cstdlib>
+#include <vector>
 
 #include "gpu_lib/gpu_lib.h"
 
 std::atomic<bool> stop_flag(false);
 
-void signal_handler(int signal) {
+void signal_handler(int signal)
+{
     (void)signal;
     stop_flag = true;
 }
 
-
-
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     TestMode mode = TestMode::ONE_SHOT;
     if (argc > 1) {
         std::string arg = argv[1];
@@ -36,17 +36,18 @@ int main(int argc, char* argv[]) {
         static int cycle = 0;
         cycle++;
         std::cout << "\nTest Results (Cycle " << cycle << "):\n";
-        std::cout << std::left << std::setw(40) << "Test Name" << std::setw(10) << "Result" << std::setw(15)
-                  << "Duration (s)" << std::endl;
+        std::cout << std::left << std::setw(40) << "Test Name" << std::setw(10) << "Result" << std::setw(15) << "Duration (s)" << std::endl;
         std::cout << std::string(65, '-') << std::endl;
         int passed = 0;
         int failed = 0;
         std::chrono::duration<double> totalTime = std::chrono::duration<double>::zero();
-        for (const auto &res : results) {
-            std::cout << std::left << std::setw(40) << res.name << std::setw(10) << (res.passed ? "PASS" : "FAIL")
-                      << std::setw(15) << std::fixed << std::setprecision(6) << res.duration.count() << std::endl;
-            if (res.passed) passed++;
-            else failed++;
+        for (const auto& res : results) {
+            std::cout << std::left << std::setw(40) << res.name << std::setw(10) << (res.passed ? "PASS" : "FAIL") << std::setw(15)
+                      << std::fixed << std::setprecision(6) << res.duration.count() << std::endl;
+            if (res.passed)
+                passed++;
+            else
+                failed++;
             totalTime += res.duration;
         }
         std::cout << std::string(65, '-') << std::endl;
@@ -67,10 +68,10 @@ int main(int argc, char* argv[]) {
     // EXAMPLE: Run SELECTED tests in custom order (1, 10, 15, 19)
     std::cout << "\n=== Example: Running Selected Tests ===\n" << std::endl;
     std::vector<std::string> selectedTests = {
-        "testCudaCoresFunctionality",           // Test 1
-        "testL2Cache",                           // Test 10
-        "testFp32ComputePerformance",            // Test 15
-        "testGpuThermalThrottlingBehavior",      // Test 19
+        "testCudaCoresFunctionality",       // Test 1
+        "testL2Cache",                      // Test 10
+        "testFp32ComputePerformance",       // Test 15
+        "testGpuThermalThrottlingBehavior", // Test 19
     };
     auto results = tester.runSelectedTests(selectedTests);
     printResults(results);

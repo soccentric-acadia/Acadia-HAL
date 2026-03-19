@@ -16,14 +16,14 @@
  */
 class AudioInterfaces : public TestBase
 {
-  public:    /**
-     * @brief Constructor for AudioInterfaces
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function AudioInterfaces
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for AudioInterfaces
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function AudioInterfaces
+           * @return TestOutput with pass/fail and data
+           */
 
     AudioInterfaces();
     /**
@@ -109,7 +109,6 @@ class AudioInterfaces : public TestBase
     TestOutput testAudioLatency();
     std::vector<std::string> getAvailableTests() override;
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
@@ -121,11 +120,9 @@ class AudioInterfaces : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // AUDIOINTERFACES_H

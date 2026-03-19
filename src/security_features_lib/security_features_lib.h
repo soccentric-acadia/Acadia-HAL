@@ -16,14 +16,14 @@
  */
 class SecurityFeaturesTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for SecurityFeaturesTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function SecurityFeaturesTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for SecurityFeaturesTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function SecurityFeaturesTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     SecurityFeaturesTesting();
     /**
@@ -39,10 +39,10 @@ class SecurityFeaturesTesting : public TestBase
      * @brief Constructor for SecurityFeaturesTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the bootromexecution functionality
+    /**
+     * @brief Tests the bootromexecution functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testBootRomExecution();
     /**
@@ -136,13 +136,11 @@ class SecurityFeaturesTesting : public TestBase
      */
     TestOutput testJtagSecurity();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -155,11 +153,9 @@ class SecurityFeaturesTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // SECURITYFEATURESTESTING_H

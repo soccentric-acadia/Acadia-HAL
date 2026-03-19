@@ -16,14 +16,14 @@
  */
 class CommunicationInterfaceTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for CommunicationInterfaceTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function CommunicationInterfaceTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for CommunicationInterfaceTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function CommunicationInterfaceTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     CommunicationInterfaceTesting();
     /**
@@ -39,10 +39,10 @@ class CommunicationInterfaceTesting : public TestBase
      * @brief Constructor for CommunicationInterfaceTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the alluartportsfunctionality functionality
+    /**
+     * @brief Tests the alluartportsfunctionality functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testAllUartPortsFunctionality();
     /**
@@ -334,13 +334,11 @@ class CommunicationInterfaceTesting : public TestBase
      */
     TestOutput testCanMessageFiltering();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -353,11 +351,9 @@ class CommunicationInterfaceTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // COMMUNICATIONINTERFACETESTING_H

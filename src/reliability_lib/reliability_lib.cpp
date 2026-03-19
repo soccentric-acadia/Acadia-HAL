@@ -86,7 +86,7 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
     // Run testBurninTesting
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testBurninTesting();
+        TestOutput result = testBurninTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testBurninTesting", result, duration});
@@ -95,7 +95,7 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
     // Run testPowerCycling
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPowerCycling();
+        TestOutput result = testPowerCycling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPowerCycling", result, duration});
@@ -104,7 +104,7 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
     // Run testThermalCycling
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testThermalCycling();
+        TestOutput result = testThermalCycling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testThermalCycling", result, duration});
@@ -113,7 +113,7 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
     // Run testMtbf
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMtbf();
+        TestOutput result = testMtbf();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMtbf", result, duration});
@@ -122,7 +122,7 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
     // Run testComponentAging
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testComponentAging();
+        TestOutput result = testComponentAging();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testComponentAging", result, duration});
@@ -131,7 +131,7 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
     // Run testSolderJointIntegrity
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSolderJointIntegrity();
+        TestOutput result = testSolderJointIntegrity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSolderJointIntegrity", result, duration});
@@ -144,14 +144,10 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> ReliabilityTesting::getAvailableTests() {
+std::vector<std::string> ReliabilityTesting::getAvailableTests()
+{
     return {
-        "testBurninTesting",
-        "testPowerCycling",
-        "testThermalCycling",
-        "testMtbf",
-        "testComponentAging",
-        "testSolderJointIntegrity",
+        "testBurninTesting", "testPowerCycling", "testThermalCycling", "testMtbf", "testComponentAging", "testSolderJointIntegrity",
     };
 }
 
@@ -160,7 +156,8 @@ std::vector<std::string> ReliabilityTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult ReliabilityTesting::runSingleTest(const std::string& testName) {
+TestResult ReliabilityTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

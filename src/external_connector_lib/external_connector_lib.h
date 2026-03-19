@@ -16,14 +16,14 @@
  */
 class ExternalConnectorTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for ExternalConnectorTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function ExternalConnectorTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for ExternalConnectorTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function ExternalConnectorTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     ExternalConnectorTesting();
     /**
@@ -39,10 +39,10 @@ class ExternalConnectorTesting : public TestBase
      * @brief Constructor for ExternalConnectorTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the kl15powerinput functionality
+    /**
+     * @brief Tests the kl15powerinput functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testKl15PowerInput();
     /**
@@ -226,13 +226,11 @@ class ExternalConnectorTesting : public TestBase
      */
     TestOutput testAllConnectorPinAssignments();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -245,11 +243,9 @@ class ExternalConnectorTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // EXTERNALCONNECTORTESTING_H

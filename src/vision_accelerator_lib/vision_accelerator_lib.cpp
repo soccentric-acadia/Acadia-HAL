@@ -185,7 +185,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testDualVectorProcessingUnits
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDualVectorProcessingUnits();
+        TestOutput result = testDualVectorProcessingUnits();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDualVectorProcessingUnits", result, duration});
@@ -194,7 +194,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testVectorCoresInEachVpu
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testVectorCoresInEachVpu();
+        TestOutput result = testVectorCoresInEachVpu();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testVectorCoresInEachVpu", result, duration});
@@ -203,7 +203,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testVliwSlots
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testVliwSlots();
+        TestOutput result = testVliwSlots();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testVliwSlots", result, duration});
@@ -212,7 +212,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testScalarExecutionUnits
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testScalarExecutionUnits();
+        TestOutput result = testScalarExecutionUnits();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testScalarExecutionUnits", result, duration});
@@ -221,7 +221,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testVectorExecutionUnits
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testVectorExecutionUnits();
+        TestOutput result = testVectorExecutionUnits();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testVectorExecutionUnits", result, duration});
@@ -230,7 +230,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testDmaEngine1Functionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDmaEngine1Functionality();
+        TestOutput result = testDmaEngine1Functionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDmaEngine1Functionality", result, duration});
@@ -239,7 +239,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testDmaEngine2Functionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDmaEngine2Functionality();
+        TestOutput result = testDmaEngine2Functionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDmaEngine2Functionality", result, duration});
@@ -248,7 +248,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run test5dimensionalAddressing
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test5dimensionalAddressing();
+        TestOutput result = test5dimensionalAddressing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test5dimensionalAddressing", result, duration});
@@ -257,7 +257,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run test16HardwareChannelsPerEngine
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test16HardwareChannelsPerEngine();
+        TestOutput result = test16HardwareChannelsPerEngine();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test16HardwareChannelsPerEngine", result, duration});
@@ -266,7 +266,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testDmaBandwidthTesting
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDmaBandwidthTesting();
+        TestOutput result = testDmaBandwidthTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDmaBandwidthTesting", result, duration});
@@ -275,7 +275,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testDmaLatencyTesting
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDmaLatencyTesting();
+        TestOutput result = testDmaLatencyTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDmaLatencyTesting", result, duration});
@@ -284,7 +284,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testComputerVisionAlgorithms
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testComputerVisionAlgorithms();
+        TestOutput result = testComputerVisionAlgorithms();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testComputerVisionAlgorithms", result, duration});
@@ -293,7 +293,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testImageProcessingPipelines
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testImageProcessingPipelines();
+        TestOutput result = testImageProcessingPipelines();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testImageProcessingPipelines", result, duration});
@@ -302,7 +302,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testFeatureDetection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testFeatureDetection();
+        TestOutput result = testFeatureDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testFeatureDetection", result, duration});
@@ -311,7 +311,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testOpticalFlow
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testOpticalFlow();
+        TestOutput result = testOpticalFlow();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testOpticalFlow", result, duration});
@@ -320,7 +320,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testStereoDisparity
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testStereoDisparity();
+        TestOutput result = testStereoDisparity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testStereoDisparity", result, duration});
@@ -329,7 +329,7 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
     // Run testPvaPowerConsumption
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPvaPowerConsumption();
+        TestOutput result = testPvaPowerConsumption();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPvaPowerConsumption", result, duration});
@@ -342,7 +342,8 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> VisionAcceleratorTesting::getAvailableTests() {
+std::vector<std::string> VisionAcceleratorTesting::getAvailableTests()
+{
     return {
         "testDualVectorProcessingUnits",
         "testVectorCoresInEachVpu",
@@ -367,7 +368,8 @@ std::vector<std::string> VisionAcceleratorTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult VisionAcceleratorTesting::runSingleTest(const std::string& testName) {
+TestResult VisionAcceleratorTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

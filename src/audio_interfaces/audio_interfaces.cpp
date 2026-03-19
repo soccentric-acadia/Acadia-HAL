@@ -30,7 +30,7 @@
  * @param out   Output string (populated on success).
  * @return true when the file was read successfully.
  */
-static bool readFile(const std::string &path, std::string &out)
+static bool readFile(const std::string& path, std::string& out)
 {
     std::ifstream f(path);
     if (!f.is_open())
@@ -44,9 +44,11 @@ static bool readFile(const std::string &path, std::string &out)
 /**
  * @brief Check whether a filesystem path exists (file or directory).
  */
-static bool pathExists(const std::string &path)
+static bool pathExists(const std::string& path)
 {
-    struct stat st{};
+    struct stat st
+    {
+    };
     return (::stat(path.c_str(), &st) == 0);
 }
 
@@ -56,15 +58,14 @@ static bool pathExists(const std::string &path)
  * @param filter Substring that must appear in the entry name.
  * @return Matching names (unsorted).
  */
-static std::vector<std::string> listDir(const std::string &dir, const std::string &filter = "")
+static std::vector<std::string> listDir(const std::string& dir, const std::string& filter = "")
 {
     std::vector<std::string> matches;
-    DIR *d = ::opendir(dir.c_str());
+    DIR* d = ::opendir(dir.c_str());
     if (!d)
         return matches;
-    struct dirent *ent;
-    while ((ent = ::readdir(d)) != nullptr)
-    {
+    struct dirent* ent;
+    while ((ent = ::readdir(d)) != nullptr) {
         std::string name = ent->d_name;
         if (name == "." || name == "..")
             continue;
@@ -130,21 +131,17 @@ TestOutput AudioInterfaces::testI2sInterface()
     // ── 1. ALSA cards ──────────────────────────────────────────────────────
     std::string cardsContent;
     bool cardsFound = readFile("/proc/asound/cards", cardsContent);
-    if (cardsFound && !cardsContent.empty())
-    {
+    if (cardsFound && !cardsContent.empty()) {
         // Extract first card name for reporting
         std::istringstream ss(cardsContent);
         std::string line;
         int cardCount = 0;
-        while (std::getline(ss, line))
-        {
+        while (std::getline(ss, line)) {
             if (!line.empty() && line[0] != ' ')
                 ++cardCount;
         }
         data.push_back("ALSA sound cards found: " + std::to_string(cardCount));
-    }
-    else
-    {
+    } else {
         data.push_back("WARN: /proc/asound/cards not readable");
         passed = false;
     }
@@ -155,14 +152,10 @@ TestOutput AudioInterfaces::testI2sInterface()
         "/sys/devices/platform",
     };
     bool i2sFound = false;
-    for (const auto &base : i2sSearchPaths)
-    {
+    for (const auto& base : i2sSearchPaths) {
         auto entries = listDir(base, "tegra");
-        for (const auto &e : entries)
-        {
-            if (e.find("i2s") != std::string::npos || e.find("ahub") != std::string::npos ||
-                e.find("admaif") != std::string::npos)
-            {
+        for (const auto& e : entries) {
+            if (e.find("i2s") != std::string::npos || e.find("ahub") != std::string::npos || e.find("admaif") != std::string::npos) {
                 data.push_back("I2S/AHUB device: " + e);
                 i2sFound = true;
                 break;
@@ -171,30 +164,24 @@ TestOutput AudioInterfaces::testI2sInterface()
         if (i2sFound)
             break;
     }
-    if (!i2sFound)
-    {
+    if (!i2sFound) {
         // Fallback: search deeper for known Jetson Orin AHUB path
         const std::string ahubPath = "/sys/devices/platform/tegra-sound";
-        if (pathExists(ahubPath))
-        {
+        if (pathExists(ahubPath)) {
             data.push_back("Tegra sound platform: " + ahubPath);
             i2sFound = true;
         }
     }
-    if (!i2sFound)
-    {
+    if (!i2sFound) {
         data.push_back("WARN: No tegra I2S/AHUB device found in sysfs");
         passed = false;
     }
 
     // ── 3. AHUB / I2S PCM devices ─────────────────────────────────────────
     int pcmDevices = countAlsaPcmDevices();
-    if (pcmDevices > 0)
-    {
+    if (pcmDevices > 0) {
         data.push_back("ALSA PCM devices: " + std::to_string(pcmDevices));
-    }
-    else
-    {
+    } else {
         data.push_back("WARN: No ALSA PCM devices found");
         passed = false;
     }
@@ -202,12 +189,9 @@ TestOutput AudioInterfaces::testI2sInterface()
     // ── 4. ADMAIF register region presence ────────────────────────────────
     //    Jetson Orin ADMAIF is at 0x02900000 in the Tegra234 TRM
     const std::string admaifIoMem = "/sys/devices/platform/2900000.admaif";
-    if (pathExists(admaifIoMem))
-    {
+    if (pathExists(admaifIoMem)) {
         data.push_back("ADMAIF platform device: present");
-    }
-    else
-    {
+    } else {
         // Not a hard failure – the path suffix may differ across kernel versions
         data.push_back("INFO: ADMAIF sysfs path not found at expected address");
     }
@@ -232,29 +216,24 @@ TestOutput AudioInterfaces::testAudioInput()
     // ── 1. Enumerate ALSA capture PCM devices ─────────────────────────────
     auto sndDevs = listDir("/dev/snd");
     std::vector<std::string> captureDevs;
-    for (const auto &d : sndDevs)
-    {
+    for (const auto& d : sndDevs) {
         // ALSA capture nodes end with 'c'  e.g. pcmC0D0c
         if (d.find("pcmC") == 0 && d.back() == 'c')
             captureDevs.push_back(d);
     }
 
-    if (!captureDevs.empty())
-    {
+    if (!captureDevs.empty()) {
         data.push_back("Capture PCM nodes found: " + std::to_string(captureDevs.size()));
-        for (const auto &dev : captureDevs)
+        for (const auto& dev : captureDevs)
             data.push_back("  " + dev);
-    }
-    else
-    {
+    } else {
         data.push_back("WARN: No ALSA capture PCM nodes in /dev/snd");
         passed = false;
     }
 
     // ── 2. Check /proc/asound/pcm for capture entries ─────────────────────
     std::string pcmProc;
-    if (readFile("/proc/asound/pcm", pcmProc))
-    {
+    if (readFile("/proc/asound/pcm", pcmProc)) {
         bool hasCap = (pcmProc.find("capture") != std::string::npos || pcmProc.find("Capture") != std::string::npos);
         data.push_back(std::string("Capture advertised in /proc/asound/pcm: ") + (hasCap ? "yes" : "no"));
         if (!hasCap)
@@ -262,24 +241,17 @@ TestOutput AudioInterfaces::testAudioInput()
     }
 
     // ── 3. Validate that a capture device can be opened (non-blocking) ─────
-    if (!captureDevs.empty())
-    {
+    if (!captureDevs.empty()) {
         const std::string devPath = "/dev/snd/" + captureDevs[0];
         int fd = ::open(devPath.c_str(), O_RDONLY | O_NONBLOCK);
-        if (fd >= 0)
-        {
+        if (fd >= 0) {
             data.push_back("Capture device open: OK (" + devPath + ")");
             ::close(fd);
-        }
-        else
-        {
+        } else {
             // EBUSY is acceptable – device exists but in use by another process
-            if (errno == EBUSY)
-            {
+            if (errno == EBUSY) {
                 data.push_back("Capture device busy (in use): " + devPath);
-            }
-            else
-            {
+            } else {
                 data.push_back("WARN: Cannot open capture device " + devPath + " – " + std::strerror(errno));
                 passed = false;
             }
@@ -305,29 +277,24 @@ TestOutput AudioInterfaces::testAudioOutput()
     // ── 1. Enumerate ALSA playback PCM devices ────────────────────────────
     auto sndDevs = listDir("/dev/snd");
     std::vector<std::string> playbackDevs;
-    for (const auto &d : sndDevs)
-    {
+    for (const auto& d : sndDevs) {
         // ALSA playback nodes end with 'p'  e.g. pcmC0D0p
         if (d.find("pcmC") == 0 && d.back() == 'p')
             playbackDevs.push_back(d);
     }
 
-    if (!playbackDevs.empty())
-    {
+    if (!playbackDevs.empty()) {
         data.push_back("Playback PCM nodes found: " + std::to_string(playbackDevs.size()));
-        for (const auto &dev : playbackDevs)
+        for (const auto& dev : playbackDevs)
             data.push_back("  " + dev);
-    }
-    else
-    {
+    } else {
         data.push_back("WARN: No ALSA playback PCM nodes in /dev/snd");
         passed = false;
     }
 
     // ── 2. Check /proc/asound/pcm for playback entries ────────────────────
     std::string pcmProc;
-    if (readFile("/proc/asound/pcm", pcmProc))
-    {
+    if (readFile("/proc/asound/pcm", pcmProc)) {
         bool hasPb = (pcmProc.find("playback") != std::string::npos || pcmProc.find("Playback") != std::string::npos);
         data.push_back(std::string("Playback advertised in /proc/asound/pcm: ") + (hasPb ? "yes" : "no"));
         if (!hasPb)
@@ -335,23 +302,16 @@ TestOutput AudioInterfaces::testAudioOutput()
     }
 
     // ── 3. Try opening the first playback device (non-blocking) ───────────
-    if (!playbackDevs.empty())
-    {
+    if (!playbackDevs.empty()) {
         const std::string devPath = "/dev/snd/" + playbackDevs[0];
         int fd = ::open(devPath.c_str(), O_WRONLY | O_NONBLOCK);
-        if (fd >= 0)
-        {
+        if (fd >= 0) {
             data.push_back("Playback device open: OK (" + devPath + ")");
             ::close(fd);
-        }
-        else
-        {
-            if (errno == EBUSY)
-            {
+        } else {
+            if (errno == EBUSY) {
                 data.push_back("Playback device busy (in use): " + devPath);
-            }
-            else
-            {
+            } else {
                 data.push_back("WARN: Cannot open playback device " + devPath + " – " + std::strerror(errno));
                 passed = false;
             }
@@ -389,22 +349,17 @@ TestOutput AudioInterfaces::testAudioSampleRates()
 
     // Iterate card directories
     auto cardDirs = listDir(asoundBase, "card");
-    for (const auto &cardDir : cardDirs)
-    {
+    for (const auto& cardDir : cardDirs) {
         std::string cardPath = asoundBase + "/" + cardDir;
         auto pcmDirs = listDir(cardPath, "pcm");
-        for (const auto &pcmDir : pcmDirs)
-        {
+        for (const auto& pcmDir : pcmDirs) {
             std::string hwpFile = cardPath + "/" + pcmDir + "/sub0/hw_params";
             std::string content;
-            if (readFile(hwpFile, content))
-            {
+            if (readFile(hwpFile, content)) {
                 std::istringstream ss(content);
                 std::string line;
-                while (std::getline(ss, line))
-                {
-                    if (line.find("rate") != std::string::npos)
-                    {
+                while (std::getline(ss, line)) {
+                    if (line.find("rate") != std::string::npos) {
                         data.push_back(cardDir + "/" + pcmDir + ": " + line);
                         // Extract numeric part
                         auto pos = line.find_last_of(' ');
@@ -417,25 +372,20 @@ TestOutput AudioInterfaces::testAudioSampleRates()
     }
 
     // ── 2. Check codec rate capabilities ──────────────────────────────────
-    for (const auto &cardDir : cardDirs)
-    {
+    for (const auto& cardDir : cardDirs) {
         std::string cardPath = asoundBase + "/" + cardDir;
         auto codecFiles = listDir(cardPath, "codec");
-        for (const auto &cf : codecFiles)
-        {
+        for (const auto& cf : codecFiles) {
             std::string codecPath = cardPath + "/" + cf;
             std::string content;
-            if (readFile(codecPath, content))
-            {
+            if (readFile(codecPath, content)) {
                 // Look for sample rate sections
                 std::istringstream ss(content);
                 std::string line;
-                while (std::getline(ss, line))
-                {
+                while (std::getline(ss, line)) {
                     if (line.find("8000") != std::string::npos || line.find("44100") != std::string::npos ||
                         line.find("48000") != std::string::npos || line.find("96000") != std::string::npos ||
-                        line.find("192000") != std::string::npos)
-                    {
+                        line.find("192000") != std::string::npos) {
                         data.push_back("Codec caps: " + line);
                     }
                 }
@@ -449,16 +399,14 @@ TestOutput AudioInterfaces::testAudioSampleRates()
     const std::vector<std::string> orinRates = {"8000",  "11025", "16000", "22050",  "32000", "44100",
                                                 "48000", "88200", "96000", "176400", "192000"};
     std::string rateList;
-    for (const auto &r : orinRates)
+    for (const auto& r : orinRates)
         rateList += r + " ";
     data.push_back("Tegra234 I2S supported rates (Hz): " + rateList);
 
     // ── 4. Verify required rates are in the known set ─────────────────────
-    for (const auto &req : requiredRates)
-    {
+    for (const auto& req : requiredRates) {
         bool found = std::find(orinRates.begin(), orinRates.end(), req) != orinRates.end();
-        if (!found)
-        {
+        if (!found) {
             data.push_back("WARN: Required rate " + req + " Hz not supported");
             passed = false;
         }
@@ -490,22 +438,17 @@ TestOutput AudioInterfaces::testAudioBitDepths()
     // ── 1. Parse active hw_params for format information ──────────────────
     const std::string asoundBase = "/proc/asound";
     auto cardDirs = listDir(asoundBase, "card");
-    for (const auto &cardDir : cardDirs)
-    {
+    for (const auto& cardDir : cardDirs) {
         std::string cardPath = asoundBase + "/" + cardDir;
         auto pcmDirs = listDir(cardPath, "pcm");
-        for (const auto &pcmDir : pcmDirs)
-        {
+        for (const auto& pcmDir : pcmDirs) {
             std::string hwpFile = cardPath + "/" + pcmDir + "/sub0/hw_params";
             std::string content;
-            if (readFile(hwpFile, content))
-            {
+            if (readFile(hwpFile, content)) {
                 std::istringstream ss(content);
                 std::string line;
-                while (std::getline(ss, line))
-                {
-                    if (line.find("format") != std::string::npos || line.find("bits") != std::string::npos)
-                    {
+                while (std::getline(ss, line)) {
+                    if (line.find("format") != std::string::npos || line.find("bits") != std::string::npos) {
                         data.push_back(cardDir + "/" + pcmDir + ": " + line);
                     }
                 }
@@ -523,29 +466,23 @@ TestOutput AudioInterfaces::testAudioBitDepths()
         "S32_LE"   ///< 32-bit signed little-endian
     };
     std::string fmtList;
-    for (const auto &f : orinFormats)
+    for (const auto& f : orinFormats)
         fmtList += f + " ";
     data.push_back("Tegra234 ADMAIF supported PCM formats: " + fmtList);
 
     // ── 3. Check required bit depths against known formats ────────────────
-    for (const auto &bits : required)
-    {
+    for (const auto& bits : required) {
         bool found = false;
-        for (const auto &fmt : orinFormats)
-        {
-            if (fmt.find(bits) != std::string::npos)
-            {
+        for (const auto& fmt : orinFormats) {
+            if (fmt.find(bits) != std::string::npos) {
                 found = true;
                 break;
             }
         }
-        if (!found)
-        {
+        if (!found) {
             data.push_back("WARN: " + bits + "-bit depth not found in supported formats");
             passed = false;
-        }
-        else
-        {
+        } else {
             data.push_back(bits + "-bit depth: supported");
         }
     }
@@ -575,21 +512,17 @@ TestOutput AudioInterfaces::testMultiChannelAudio()
     const std::string asoundBase = "/proc/asound";
     auto cardDirs = listDir(asoundBase, "card");
     bool hwParamsFound = false;
-    for (const auto &cardDir : cardDirs)
-    {
+    for (const auto& cardDir : cardDirs) {
         std::string cardPath = asoundBase + "/" + cardDir;
         auto pcmDirs = listDir(cardPath, "pcm");
-        for (const auto &pcmDir : pcmDirs)
-        {
+        for (const auto& pcmDir : pcmDirs) {
             std::string hwpFile = cardPath + "/" + pcmDir + "/sub0/hw_params";
             std::string content;
-            if (readFile(hwpFile, content))
-            {
+            if (readFile(hwpFile, content)) {
                 hwParamsFound = true;
                 std::istringstream ss(content);
                 std::string line;
-                while (std::getline(ss, line))
-                {
+                while (std::getline(ss, line)) {
                     if (line.find("channel") != std::string::npos)
                         data.push_back(cardDir + "/" + pcmDir + ": " + line);
                 }
@@ -609,14 +542,11 @@ TestOutput AudioInterfaces::testMultiChannelAudio()
     //    If amixer is available, we can query channel count; otherwise
     //    fall back to checking the control device.
     auto ctlDevs = listDir("/dev/snd", "controlC");
-    if (!ctlDevs.empty())
-    {
+    if (!ctlDevs.empty()) {
         data.push_back("ALSA control devices: " + std::to_string(ctlDevs.size()));
-        for (const auto &ctl : ctlDevs)
+        for (const auto& ctl : ctlDevs)
             data.push_back("  /dev/snd/" + ctl);
-    }
-    else
-    {
+    } else {
         data.push_back("WARN: No ALSA control devices found");
         passed = false;
     }
@@ -624,15 +554,11 @@ TestOutput AudioInterfaces::testMultiChannelAudio()
     // ── 4. Validate channel count range ───────────────────────────────────
     // Static verification: Tegra234 supports minChannels..16
     const int orinMaxChannels = 16;
-    if (orinMaxChannels >= maxChannels)
-    {
+    if (orinMaxChannels >= maxChannels) {
         data.push_back("Multi-channel requirement (" + std::to_string(maxChannels) +
                        " ch): met (HW max = " + std::to_string(orinMaxChannels) + ")");
-    }
-    else
-    {
-        data.push_back("WARN: HW max channels (" + std::to_string(orinMaxChannels) + ") < required (" +
-                       std::to_string(maxChannels) + ")");
+    } else {
+        data.push_back("WARN: HW max channels (" + std::to_string(orinMaxChannels) + ") < required (" + std::to_string(maxChannels) + ")");
         passed = false;
     }
     (void)minChannels;
@@ -658,13 +584,10 @@ TestOutput AudioInterfaces::testAudioDmaTransfers()
 
     // ── 1. Check kernel modules for ADMA ──────────────────────────────────
     std::string modules;
-    if (readFile("/proc/modules", modules))
-    {
-        bool admaLoaded =
-            (modules.find("tegra_adma") != std::string::npos || modules.find("snd_soc_tegra") != std::string::npos ||
-             modules.find("tegra210_adma") != std::string::npos);
-        data.push_back(std::string("ADMA kernel module loaded: ") +
-                       (admaLoaded ? "yes" : "not as module (may be built-in)"));
+    if (readFile("/proc/modules", modules)) {
+        bool admaLoaded = (modules.find("tegra_adma") != std::string::npos || modules.find("snd_soc_tegra") != std::string::npos ||
+                           modules.find("tegra210_adma") != std::string::npos);
+        data.push_back(std::string("ADMA kernel module loaded: ") + (admaLoaded ? "yes" : "not as module (may be built-in)"));
         // Not a failure – ADMA can be built into the kernel
     }
 
@@ -676,10 +599,8 @@ TestOutput AudioInterfaces::testAudioDmaTransfers()
         "/sys/bus/platform/devices/2930000.adma",
     };
     bool admaDevFound = false;
-    for (const auto &path : admaCandidates)
-    {
-        if (pathExists(path))
-        {
+    for (const auto& path : admaCandidates) {
+        if (pathExists(path)) {
             data.push_back("ADMA platform device: " + path);
             admaDevFound = true;
             break;
@@ -687,41 +608,33 @@ TestOutput AudioInterfaces::testAudioDmaTransfers()
     }
 
     // Fallback: search platform bus
-    if (!admaDevFound)
-    {
+    if (!admaDevFound) {
         auto platDevs = listDir("/sys/bus/platform/devices", "adma");
-        if (!platDevs.empty())
-        {
+        if (!platDevs.empty()) {
             data.push_back("ADMA platform device: /sys/bus/platform/devices/" + platDevs[0]);
             admaDevFound = true;
         }
     }
 
-    if (!admaDevFound)
-    {
+    if (!admaDevFound) {
         data.push_back("INFO: ADMA sysfs device not found at known paths (may use different address)");
         // Check dmaengine class as a broader fallback
     }
 
     // ── 3. DMA channel availability via dmaengine ─────────────────────────
     auto dmaDevs = listDir("/sys/class/dma");
-    if (!dmaDevs.empty())
-    {
+    if (!dmaDevs.empty()) {
         data.push_back("DMA channels in /sys/class/dma: " + std::to_string(dmaDevs.size()));
         // Report a few channel names
         int shown = 0;
-        for (const auto &d : dmaDevs)
-        {
+        for (const auto& d : dmaDevs) {
             data.push_back("  " + d);
-            if (++shown >= 5)
-            {
+            if (++shown >= 5) {
                 data.push_back("  ...");
                 break;
             }
         }
-    }
-    else
-    {
+    } else {
         data.push_back("WARN: No DMA channels found in /sys/class/dma");
         passed = false;
     }
@@ -732,20 +645,16 @@ TestOutput AudioInterfaces::testAudioDmaTransfers()
         "/sys/bus/platform/devices/2900000.admaif",
     };
     bool admaifFound = false;
-    for (const auto &p : admaifCandidates)
-    {
-        if (pathExists(p))
-        {
+    for (const auto& p : admaifCandidates) {
+        if (pathExists(p)) {
             data.push_back("ADMAIF device: " + p);
             admaifFound = true;
             break;
         }
     }
-    if (!admaifFound)
-    {
+    if (!admaifFound) {
         auto r = listDir("/sys/bus/platform/devices", "admaif");
-        if (!r.empty())
-        {
+        if (!r.empty()) {
             data.push_back("ADMAIF device: /sys/bus/platform/devices/" + r[0]);
             admaifFound = true;
         }
@@ -778,12 +687,10 @@ TestOutput AudioInterfaces::testAudioLatency()
     auto cardDirs = listDir(asoundBase, "card");
 
     bool streamParamsFound = false;
-    for (const auto &cardDir : cardDirs)
-    {
+    for (const auto& cardDir : cardDirs) {
         std::string cardPath = asoundBase + "/" + cardDir;
         auto pcmDirs = listDir(cardPath, "pcm");
-        for (const auto &pcmDir : pcmDirs)
-        {
+        for (const auto& pcmDir : pcmDirs) {
             std::string hwpFile = cardPath + "/" + pcmDir + "/sub0/hw_params";
             std::string content;
             if (!readFile(hwpFile, content))
@@ -793,34 +700,26 @@ TestOutput AudioInterfaces::testAudioLatency()
             int rate = 0, periodSize = 0, periods = 0;
             std::istringstream ss(content);
             std::string line;
-            while (std::getline(ss, line))
-            {
-                if (line.find("rate:") != std::string::npos)
-                {
+            while (std::getline(ss, line)) {
+                if (line.find("rate:") != std::string::npos) {
                     std::sscanf(line.c_str(), "rate: %d", &rate);
-                }
-                else if (line.find("period_size:") != std::string::npos)
-                {
+                } else if (line.find("period_size:") != std::string::npos) {
                     std::sscanf(line.c_str(), "period_size: %d", &periodSize);
-                }
-                else if (line.find("periods:") != std::string::npos)
-                {
+                } else if (line.find("periods:") != std::string::npos) {
                     std::sscanf(line.c_str(), "periods: %d", &periods);
                 }
             }
 
-            if (rate > 0 && periodSize > 0)
-            {
+            if (rate > 0 && periodSize > 0) {
                 double periodMs = (static_cast<double>(periodSize) / rate) * 1000.0;
                 double bufferMs = periodMs * (periods > 0 ? periods : 2);
                 char buf[128];
-                std::snprintf(buf, sizeof(buf), "%s/%s: rate=%d Hz, period=%d frames (%.2f ms), buffer=%.2f ms",
-                              cardDir.c_str(), pcmDir.c_str(), rate, periodSize, periodMs, bufferMs);
+                std::snprintf(buf, sizeof(buf), "%s/%s: rate=%d Hz, period=%d frames (%.2f ms), buffer=%.2f ms", cardDir.c_str(),
+                              pcmDir.c_str(), rate, periodSize, periodMs, bufferMs);
                 data.push_back(buf);
 
                 // Automotive requirement: period latency ≤ 10 ms
-                if (periodMs > 10.0)
-                {
+                if (periodMs > 10.0) {
                     data.push_back("WARN: Period latency " + std::to_string(periodMs) + " ms exceeds 10 ms target");
                     passed = false;
                 }
@@ -828,8 +727,7 @@ TestOutput AudioInterfaces::testAudioLatency()
         }
     }
 
-    if (!streamParamsFound)
-    {
+    if (!streamParamsFound) {
         data.push_back("INFO: No active audio stream; reporting Jetson Orin typical latency");
     }
 
@@ -843,9 +741,10 @@ TestOutput AudioInterfaces::testAudioLatency()
 
     // ── 3. Kernel scheduling jitter estimate ──────────────────────────────
     //    Measure monotonic clock resolution as a proxy for scheduler jitter
-    struct timespec res{};
-    if (::clock_getres(CLOCK_MONOTONIC, &res) == 0)
+    struct timespec res
     {
+    };
+    if (::clock_getres(CLOCK_MONOTONIC, &res) == 0) {
         double resNs = res.tv_sec * 1e9 + res.tv_nsec;
         char buf[64];
         std::snprintf(buf, sizeof(buf), "CLOCK_MONOTONIC resolution: %.0f ns", resNs);
@@ -854,11 +753,14 @@ TestOutput AudioInterfaces::testAudioLatency()
 
     // ── 4. Timing of 1000 clock_gettime calls (latency floor estimate) ────
     const int iterations = 1000;
-    struct timespec t0{}, t1{};
-    ::clock_gettime(CLOCK_MONOTONIC, &t0);
-    for (int i = 0; i < iterations; ++i)
+    struct timespec t0
     {
-        struct timespec tmp{};
+    }, t1{};
+    ::clock_gettime(CLOCK_MONOTONIC, &t0);
+    for (int i = 0; i < iterations; ++i) {
+        struct timespec tmp
+        {
+        };
         ::clock_gettime(CLOCK_MONOTONIC, &tmp);
     }
     ::clock_gettime(CLOCK_MONOTONIC, &t1);
@@ -966,45 +868,28 @@ std::vector<std::string> AudioInterfaces::getAvailableTests()
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult AudioInterfaces::runSingleTest(const std::string &testName)
+TestResult AudioInterfaces::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testI2sInterface")
-    {
+    if (testName == "testI2sInterface") {
         result = testI2sInterface();
-    }
-    else if (testName == "testAudioInput")
-    {
+    } else if (testName == "testAudioInput") {
         result = testAudioInput();
-    }
-    else if (testName == "testAudioOutput")
-    {
+    } else if (testName == "testAudioOutput") {
         result = testAudioOutput();
-    }
-    else if (testName == "testAudioSampleRates")
-    {
+    } else if (testName == "testAudioSampleRates") {
         result = testAudioSampleRates();
-    }
-    else if (testName == "testAudioBitDepths")
-    {
+    } else if (testName == "testAudioBitDepths") {
         result = testAudioBitDepths();
-    }
-    else if (testName == "testMultiChannelAudio")
-    {
+    } else if (testName == "testMultiChannelAudio") {
         result = testMultiChannelAudio();
-    }
-    else if (testName == "testAudioDmaTransfers")
-    {
+    } else if (testName == "testAudioDmaTransfers") {
         result = testAudioDmaTransfers();
-    }
-    else if (testName == "testAudioLatency")
-    {
+    } else if (testName == "testAudioLatency") {
         result = testAudioLatency();
-    }
-    else
-    {
+    } else {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

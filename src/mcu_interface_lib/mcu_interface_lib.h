@@ -16,14 +16,14 @@
  */
 class McuInterfaceTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for McuInterfaceTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function McuInterfaceTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for McuInterfaceTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function McuInterfaceTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     McuInterfaceTesting();
     /**
@@ -39,10 +39,10 @@ class McuInterfaceTesting : public TestBase
      * @brief Constructor for McuInterfaceTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the mcucommunicationinterface functionality
+    /**
+     * @brief Tests the mcucommunicationinterface functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testMcuCommunicationInterface();
     /**
@@ -136,13 +136,11 @@ class McuInterfaceTesting : public TestBase
      */
     TestOutput testMcuSynchronization();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -155,11 +153,9 @@ class McuInterfaceTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // MCUINTERFACETESTING_H

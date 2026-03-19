@@ -95,7 +95,7 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
     // Run testDisplayPortOutput
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDisplayPortOutput();
+        TestOutput result = testDisplayPortOutput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDisplayPortOutput", result, duration});
@@ -104,7 +104,7 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
     // Run testHdmiOutput
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testHdmiOutput();
+        TestOutput result = testHdmiOutput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testHdmiOutput", result, duration});
@@ -113,7 +113,7 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
     // Run testMultiDisplaySupport
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMultiDisplaySupport();
+        TestOutput result = testMultiDisplaySupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMultiDisplaySupport", result, duration});
@@ -122,7 +122,7 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
     // Run testVariousResolutions
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testVariousResolutions();
+        TestOutput result = testVariousResolutions();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testVariousResolutions", result, duration});
@@ -131,7 +131,7 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
     // Run testVariousRefreshRates
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testVariousRefreshRates();
+        TestOutput result = testVariousRefreshRates();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testVariousRefreshRates", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
     // Run testHdrSupport
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testHdrSupport();
+        TestOutput result = testHdrSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testHdrSupport", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
     // Run testDisplayHotPlugDetection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDisplayHotPlugDetection();
+        TestOutput result = testDisplayHotPlugDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDisplayHotPlugDetection", result, duration});
@@ -162,15 +162,11 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> DisplayInterfaces::getAvailableTests() {
+std::vector<std::string> DisplayInterfaces::getAvailableTests()
+{
     return {
-        "testDisplayPortOutput",
-        "testHdmiOutput",
-        "testMultiDisplaySupport",
-        "testVariousResolutions",
-        "testVariousRefreshRates",
-        "testHdrSupport",
-        "testDisplayHotPlugDetection",
+        "testDisplayPortOutput",   "testHdmiOutput", "testMultiDisplaySupport",     "testVariousResolutions",
+        "testVariousRefreshRates", "testHdrSupport", "testDisplayHotPlugDetection",
     };
 }
 
@@ -179,7 +175,8 @@ std::vector<std::string> DisplayInterfaces::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult DisplayInterfaces::runSingleTest(const std::string& testName) {
+TestResult DisplayInterfaces::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

@@ -9,18 +9,19 @@
 #define GPIOTESTING_H
 #include "lib_base.h"
 
-#include <string>
-#include <vector>
-#include <map>
 #include <chrono>
-#include <thread>
+#include <map>
 #include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
 /**
  * @enum GpioDirection
  * @brief GPIO pin direction
  */
-enum class GpioDirection {
+enum class GpioDirection
+{
     INPUT,
     OUTPUT
 };
@@ -29,7 +30,8 @@ enum class GpioDirection {
  * @enum GpioPullMode
  * @brief GPIO pull-up/pull-down mode
  */
-enum class GpioPullMode {
+enum class GpioPullMode
+{
     NONE,
     PULL_UP,
     PULL_DOWN
@@ -39,13 +41,14 @@ enum class GpioPullMode {
  * @struct GpioPin
  * @brief Structure representing a GPIO pin
  */
-struct GpioPin {
+struct GpioPin
+{
     int pinNumber;
     GpioDirection direction;
     bool value;
     GpioPullMode pullMode;
     bool interruptEnabled;
-    bool externallyDriven;  // Flag to indicate if pin is externally driven
+    bool externallyDriven; // Flag to indicate if pin is externally driven
 };
 
 /**
@@ -55,14 +58,14 @@ struct GpioPin {
  */
 class GpioTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for GpioTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function GpioTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for GpioTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function GpioTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     GpioTesting();
     /**
@@ -78,10 +81,10 @@ class GpioTesting : public TestBase
      * @brief Constructor for GpioTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the gpioout1 functionality
+    /**
+     * @brief Tests the gpioout1 functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testGpioout1();
     /**
@@ -274,13 +277,11 @@ class GpioTesting : public TestBase
      */
     TestOutput testGpioReservedPins();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -303,17 +304,15 @@ class GpioTesting : public TestBase
      * @brief Function runAllTests
      * @return TestOutput with pass/fail and data
      */
-protected:
-    
+  protected:
     std::vector<TestResult> runAllTests() override;
 
-
-private:
+  private:
     // GPIO simulation
     std::map<int, GpioPin> gpioPins_;
     std::mutex gpioMutex_;
-    const int NUM_TEST_PINS = 8;  // Number of pins to test
-    
+    const int NUM_TEST_PINS = 8; // Number of pins to test
+
     // Helper methods
     bool initializeGpioPins();
     bool setPinDirection(int pin, GpioDirection direction);
@@ -325,7 +324,6 @@ private:
     bool testInterruptGeneration(int pin);
     double measureInterruptLatency(int pin);
     bool testConcurrentAccess(int pin1, int pin2);
-
 };
 
 #endif // GPIOTESTING_H

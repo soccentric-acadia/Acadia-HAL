@@ -16,7 +16,7 @@
  */
 class GpuTesting : public TestBase
 {
-public:
+  public:
     /**
      * @brief Constructor for GpuTesting
      */
@@ -166,10 +166,7 @@ public:
      */
     TestResult runSingleTest(const std::string& testName) override;
 
-
-
-
-protected:
+  protected:
     /**
      * @brief Run all GPU tests
      * @return Vector of test results with timing

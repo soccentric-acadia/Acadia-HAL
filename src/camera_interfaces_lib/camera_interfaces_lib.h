@@ -16,14 +16,14 @@
  */
 class CameraInterfacesTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for CameraInterfacesTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function CameraInterfacesTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for CameraInterfacesTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function CameraInterfacesTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     CameraInterfacesTesting();
     /**
@@ -39,10 +39,10 @@ class CameraInterfacesTesting : public TestBase
      * @brief Constructor for CameraInterfacesTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the allcsi2lanesfunctionality functionality
+    /**
+     * @brief Tests the allcsi2lanesfunctionality functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testAllCsi2LanesFunctionality();
     /**
@@ -244,13 +244,11 @@ class CameraInterfacesTesting : public TestBase
      */
     TestOutput testGammaCorrection();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -263,11 +261,9 @@ class CameraInterfacesTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // CAMERAINTERFACESTESTING_H

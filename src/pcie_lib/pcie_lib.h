@@ -15,7 +15,7 @@
  */
 class PcieTesting : public TestBase
 {
-public:
+  public:
     /**
      * @brief Constructor for PcieTesting
      */
@@ -153,14 +153,14 @@ public:
      */
     TestResult runSingleTest(const std::string& testName) override;
 
-protected:
+  protected:
     /**
      * @brief Run all tests for this module
      * @return Vector of test results
      */
     std::vector<TestResult> runAllTests() override;
 
-private:
+  private:
     /**
      * @brief Helper function to read from sysfs
      * @param path The sysfs path to read

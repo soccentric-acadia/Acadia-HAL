@@ -16,14 +16,14 @@
  */
 class EthernetTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for EthernetTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function EthernetTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for EthernetTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function EthernetTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     EthernetTesting();
     /**
@@ -39,10 +39,10 @@ class EthernetTesting : public TestBase
      * @brief Constructor for EthernetTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the 10gigabitlinkestablishment functionality
+    /**
+     * @brief Tests the 10gigabitlinkestablishment functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput test10GigabitLinkEstablishment();
     /**
@@ -208,13 +208,11 @@ class EthernetTesting : public TestBase
      */
     TestOutput testEthernetCableDiagnostics();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -227,11 +225,9 @@ class EthernetTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // ETHERNETTESTING_H

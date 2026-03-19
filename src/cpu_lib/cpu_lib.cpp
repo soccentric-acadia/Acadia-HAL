@@ -38,7 +38,7 @@ static constexpr double CPU_TEMP_WARNING_C = 95.0;
 // ---------------------------------------------------------------------------
 
 /** Read a single line from a sysfs/procfs file. Returns empty on failure. */
-static std::string readSysfsLine(const std::string &path)
+static std::string readSysfsLine(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open())
@@ -49,17 +49,15 @@ static std::string readSysfsLine(const std::string &path)
 }
 
 /** Read an integer value from a sysfs file. Returns -1 on failure. */
-static long long readSysfsInt(const std::string &path)
+static long long readSysfsInt(const std::string& path)
 {
     std::string s = readSysfsLine(path);
     if (s.empty())
         return -1LL;
-    try
-    {
+    try {
         return std::stoll(s);
     }
-    catch (...)
-    {
+    catch (...) {
         return -1LL;
     }
 }
@@ -119,20 +117,14 @@ TestOutput CpuTesting::testAll12CpuCoresFunctionality()
     int onlineCount = 0;
     std::vector<int> offlineCores;
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i)
-    {
+    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
         std::string corePath = "/sys/devices/system/cpu/cpu" + std::to_string(i) + "/online";
         long long online = readSysfsInt(corePath);
-        if (online == 1)
-        {
+        if (online == 1) {
             ++onlineCount;
-        }
-        else if (online == 0)
-        {
+        } else if (online == 0) {
             offlineCores.push_back(i);
-        }
-        else
-        {
+        } else {
             // cpu0 typically has no 'online' file (always on)
             ++onlineCount;
         }
@@ -142,8 +134,7 @@ TestOutput CpuTesting::testAll12CpuCoresFunctionality()
     data.push_back("Online cores detected: " + std::to_string(onlineCount));
     data.push_back("Expected cores: " + std::to_string(JETSON_ORIN_CPU_CORES));
 
-    if (onlineCount != JETSON_ORIN_CPU_CORES)
-    {
+    if (onlineCount != JETSON_ORIN_CPU_CORES) {
         passed = false;
         data.push_back("FAIL: Not all 12 cores are online.");
         for (int c : offlineCores)
@@ -154,8 +145,7 @@ TestOutput CpuTesting::testAll12CpuCoresFunctionality()
     std::vector<bool> coreWorked(JETSON_ORIN_CPU_CORES, false);
     std::vector<std::thread> threads;
     std::mutex resultMtx;
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i)
-    {
+    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
         threads.emplace_back([&, i]() {
             if (!pinThreadToCore(i))
                 return;
@@ -165,13 +155,11 @@ TestOutput CpuTesting::testAll12CpuCoresFunctionality()
             coreWorked[i] = true;
         });
     }
-    for (auto &t : threads)
+    for (auto& t : threads)
         t.join();
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i)
-    {
-        if (!coreWorked[i])
-        {
+    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
+        if (!coreWorked[i]) {
             passed = false;
             data.push_back("FAIL: Core " + std::to_string(i) + " did not complete workload.");
         }
@@ -192,15 +180,13 @@ TestOutput CpuTesting::testCpuCoreFrequencyScaling()
     bool passed = true;
     int validCores = 0;
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i)
-    {
+    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
         std::string base = "/sys/devices/system/cpu/cpu" + std::to_string(i) + "/cpufreq/";
         long long curKHz = readSysfsInt(base + "scaling_cur_freq");
         long long minKHz = readSysfsInt(base + "scaling_min_freq");
         long long maxKHz = readSysfsInt(base + "scaling_max_freq");
 
-        if (curKHz < 0 || minKHz < 0 || maxKHz < 0)
-        {
+        if (curKHz < 0 || minKHz < 0 || maxKHz < 0) {
             data.push_back("Core " + std::to_string(i) + ": cpufreq not available (shared policy)");
             continue;
         }
@@ -210,13 +196,11 @@ TestOutput CpuTesting::testCpuCoreFrequencyScaling()
         oss << "Core " << i << ": cur=" << curMHz << " MHz  min=" << minMHz << " MHz  max=" << maxMHz << " MHz";
         data.push_back(oss.str());
 
-        if (maxMHz < JETSON_ORIN_MIN_FREQ_MHZ || maxMHz > JETSON_ORIN_MAX_FREQ_MHZ + 50.0)
-        {
+        if (maxMHz < JETSON_ORIN_MIN_FREQ_MHZ || maxMHz > JETSON_ORIN_MAX_FREQ_MHZ + 50.0) {
             passed = false;
             data.push_back("  FAIL: max freq " + std::to_string(maxMHz) + " MHz out of expected range.");
         }
-        if (curMHz < JETSON_ORIN_MIN_FREQ_MHZ || curMHz > maxMHz + 50.0)
-        {
+        if (curMHz < JETSON_ORIN_MIN_FREQ_MHZ || curMHz > maxMHz + 50.0) {
             passed = false;
             data.push_back("  FAIL: cur freq " + std::to_string(curMHz) + " MHz out of valid range.");
         }
@@ -226,8 +210,7 @@ TestOutput CpuTesting::testCpuCoreFrequencyScaling()
     std::string gov = readSysfsLine("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
     data.push_back("Scaling governor (cpu0): " + (gov.empty() ? "(unavailable)" : gov));
 
-    if (validCores == 0)
-    {
+    if (validCores == 0) {
         passed = false;
         data.push_back("FAIL: No cpufreq data available for any core.");
     }
@@ -253,11 +236,9 @@ TestOutput CpuTesting::testIndividualCoreStressTesting()
     std::vector<std::thread> threads;
     std::mutex mtx;
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i)
-    {
+    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
         threads.emplace_back([&, i]() {
-            if (!pinThreadToCore(i))
-            {
+            if (!pinThreadToCore(i)) {
                 std::lock_guard<std::mutex> lk(mtx);
                 results[i] = {i, 0.0, false};
                 return;
@@ -270,12 +251,11 @@ TestOutput CpuTesting::testIndividualCoreStressTesting()
             results[i] = {i, std::chrono::duration<double>(t1 - t0).count(), true};
         });
     }
-    for (auto &t : threads)
+    for (auto& t : threads)
         t.join();
 
     double total = 0.0;
-    for (const auto &r : results)
-    {
+    for (const auto& r : results) {
         std::ostringstream oss;
         oss << "Core " << r.core << ": " << (r.completed ? "PASS" : "FAIL") << " (" << r.timeSec << " s)";
         data.push_back(oss.str());
@@ -302,8 +282,7 @@ TestOutput CpuTesting::testMulticoreSynchronization()
     std::mutex orderMtx;
 
     std::vector<std::thread> threads;
-    for (int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         threads.emplace_back([&, i]() {
             pinThreadToCore(i);
             counter.fetch_add(1, std::memory_order_acq_rel);
@@ -316,19 +295,16 @@ TestOutput CpuTesting::testMulticoreSynchronization()
             phase.fetch_add(1, std::memory_order_acq_rel);
         });
     }
-    for (auto &t : threads)
+    for (auto& t : threads)
         t.join();
 
     data.push_back("Threads at barrier: " + std::to_string(counter.load()));
     data.push_back("Threads completed phase: " + std::to_string(phase.load()));
 
-    if (counter.load() != N || phase.load() != N)
-    {
+    if (counter.load() != N || phase.load() != N) {
         passed = false;
         data.push_back("FAIL: Not all threads synchronised correctly.");
-    }
-    else
-    {
+    } else {
         data.push_back("All " + std::to_string(N) + " threads synchronised successfully.");
     }
 
@@ -354,29 +330,26 @@ TestOutput CpuTesting::testCpuClusterCommunication()
     const std::vector<int> clusterCores = {0, 4, 8};
     const int MAGIC = 0xA78AE;
     std::vector<std::atomic<int>> mailbox(clusterCores.size());
-    for (auto &m : mailbox)
+    for (auto& m : mailbox)
         m.store(0);
 
     std::vector<std::thread> threads;
-    for (int ci = 0; ci < static_cast<int>(clusterCores.size()); ++ci)
-    {
+    for (int ci = 0; ci < static_cast<int>(clusterCores.size()); ++ci) {
         threads.emplace_back([&, ci]() {
             pinThreadToCore(clusterCores[ci]);
             int nextCi = (ci + 1) % static_cast<int>(clusterCores.size());
             mailbox[nextCi].store(MAGIC + ci, std::memory_order_release);
         });
     }
-    for (auto &t : threads)
+    for (auto& t : threads)
         t.join();
 
-    for (int ci = 0; ci < static_cast<int>(clusterCores.size()); ++ci)
-    {
+    for (int ci = 0; ci < static_cast<int>(clusterCores.size()); ++ci) {
         int prevCi = (ci + static_cast<int>(clusterCores.size()) - 1) % static_cast<int>(clusterCores.size());
         int expected = MAGIC + prevCi;
         int actual = mailbox[ci].load(std::memory_order_acquire);
         std::ostringstream oss;
-        oss << "Cluster " << ci << " mailbox: expected=" << expected << " actual=" << actual
-            << (actual == expected ? " OK" : " MISMATCH");
+        oss << "Cluster " << ci << " mailbox: expected=" << expected << " actual=" << actual << (actual == expected ? " OK" : " MISMATCH");
         data.push_back(oss.str());
         if (actual != expected)
             passed = false;
@@ -396,8 +369,7 @@ TestOutput CpuTesting::testCoreAffinityAndThreadMigration()
     std::vector<std::string> data;
     bool passed = true;
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i)
-    {
+    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
         int observedBefore = -1, observedAfter = -1;
         int migrateTarget = (i + 1) % JETSON_ORIN_CPU_CORES;
         std::thread t([&, i, migrateTarget]() {
@@ -435,8 +407,7 @@ TestOutput CpuTesting::testCpuThermalThrottling()
     bool passed = true;
     bool foundAny = false;
 
-    for (int zone = 0; zone < 20; ++zone)
-    {
+    for (int zone = 0; zone < 20; ++zone) {
         std::string base = "/sys/class/thermal/thermal_zone" + std::to_string(zone);
         std::string type = readSysfsLine(base + "/type");
         if (type.empty())
@@ -452,18 +423,15 @@ TestOutput CpuTesting::testCpuThermalThrottling()
         bool isCpu = type.find("CPU") != std::string::npos || type.find("cpu") != std::string::npos ||
                      type.find("A78") != std::string::npos || type.find("cluster") != std::string::npos ||
                      type.find("SOCTHERM") != std::string::npos || type.find("tegra") != std::string::npos;
-        if (isCpu && tempC >= CPU_TEMP_WARNING_C)
-        {
+        if (isCpu && tempC >= CPU_TEMP_WARNING_C) {
             passed = false;
             data.push_back("  FAIL: " + std::to_string(tempC) + " C exceeds warning threshold.");
         }
     }
 
-    if (!foundAny)
-    {
+    if (!foundAny) {
         long long t = readSysfsInt("/sys/class/hwmon/hwmon0/temp1_input");
-        if (t > 0)
-        {
+        if (t > 0) {
             data.push_back("hwmon0 temp: " + std::to_string(t / 1000.0) + " C");
             foundAny = true;
         }
@@ -486,12 +454,10 @@ TestOutput CpuTesting::testCpuPowerStatesAndTransitions()
     bool passed = true;
     int coresWithIdle = 0;
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i)
-    {
+    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
         std::string idleBase = "/sys/devices/system/cpu/cpu" + std::to_string(i) + "/cpuidle/";
         bool hasIdleState = false;
-        for (int s = 0; s < 5; ++s)
-        {
+        for (int s = 0; s < 5; ++s) {
             std::string name = readSysfsLine(idleBase + "state" + std::to_string(s) + "/name");
             if (name.empty())
                 continue;
@@ -505,8 +471,7 @@ TestOutput CpuTesting::testCpuPowerStatesAndTransitions()
             ++coresWithIdle;
     }
 
-    data.push_back("Cores with idle state entries: " + std::to_string(coresWithIdle) + " / " +
-                   std::to_string(JETSON_ORIN_CPU_CORES));
+    data.push_back("Cores with idle state entries: " + std::to_string(coresWithIdle) + " / " + std::to_string(JETSON_ORIN_CPU_CORES));
     std::string pm = readSysfsLine("/sys/bus/cpu/devices/cpu0/power/control");
     data.push_back("CPU0 power control: " + (pm.empty() ? "(unavailable)" : pm));
     std::string onlineVal = readSysfsLine("/sys/devices/system/cpu/cpu1/online");
@@ -553,8 +518,7 @@ TestOutput CpuTesting::testL1Cache()
         data.push_back("L1 cache latency within expected range (<10 ns).");
 
     // Report cache topology from sysfs
-    for (int i = 0; i < 4; ++i)
-    {
+    for (int i = 0; i < 4; ++i) {
         std::string base = "/sys/devices/system/cpu/cpu0/cache/index" + std::to_string(i);
         std::string level = readSysfsLine(base + "/level");
         std::string type = readSysfsLine(base + "/type");
@@ -653,22 +617,18 @@ TestOutput CpuTesting::testSystemCache()
     bool passed = true;
     bool foundL1 = false, foundL2 = false, foundL3 = false;
 
-    for (int core = 0; core < JETSON_ORIN_CPU_CORES; ++core)
-    {
-        for (int idx = 0; idx < 5; ++idx)
-        {
-            std::string base =
-                "/sys/devices/system/cpu/cpu" + std::to_string(core) + "/cache/index" + std::to_string(idx) + "/";
+    for (int core = 0; core < JETSON_ORIN_CPU_CORES; ++core) {
+        for (int idx = 0; idx < 5; ++idx) {
+            std::string base = "/sys/devices/system/cpu/cpu" + std::to_string(core) + "/cache/index" + std::to_string(idx) + "/";
             std::string level = readSysfsLine(base + "level");
             std::string type = readSysfsLine(base + "type");
             std::string sizeStr = readSysfsLine(base + "size");
             std::string coherency = readSysfsLine(base + "coherency_line_size");
             if (level.empty())
                 continue;
-            if (core == 0)
-            {
-                data.push_back("CPU0 index" + std::to_string(idx) + ": L" + level + " " + type + " size=" + sizeStr +
-                               " line=" + coherency + "B");
+            if (core == 0) {
+                data.push_back("CPU0 index" + std::to_string(idx) + ": L" + level + " " + type + " size=" + sizeStr + " line=" + coherency +
+                               "B");
             }
             if (level == "1")
                 foundL1 = true;
@@ -679,8 +639,8 @@ TestOutput CpuTesting::testSystemCache()
         }
     }
 
-    data.push_back("Cache hierarchy: L1=" + std::string(foundL1 ? "OK" : "?") + " L2=" +
-                   std::string(foundL2 ? "OK" : "?") + " L3=" + std::string(foundL3 ? "OK" : "not exposed in sysfs"));
+    data.push_back("Cache hierarchy: L1=" + std::string(foundL1 ? "OK" : "?") + " L2=" + std::string(foundL2 ? "OK" : "?") +
+                   " L3=" + std::string(foundL3 ? "OK" : "not exposed in sysfs"));
     if (!foundL1)
         data.push_back("WARNING: L1 cache not found in sysfs topology.");
     if (!foundL2)
@@ -702,8 +662,7 @@ TestOutput CpuTesting::testCacheCoherencyBetweenClusters()
     std::atomic<int> sharedValue{0};
     std::atomic<bool> writerDone{false};
 
-    for (int round = 0; round < ROUNDS; ++round)
-    {
+    for (int round = 0; round < ROUNDS; ++round) {
         writerDone.store(false, std::memory_order_relaxed);
         sharedValue.store(0, std::memory_order_relaxed);
 
@@ -725,8 +684,7 @@ TestOutput CpuTesting::testCacheCoherencyBetweenClusters()
 
     data.push_back("Cache coherency rounds: " + std::to_string(ROUNDS));
     data.push_back("Writer: cluster 0 (core 0)  Reader: cluster 2 (core 8)");
-    data.push_back(passed ? "All rounds passed - cache coherency verified."
-                          : "FAIL: Cache coherency violation detected.");
+    data.push_back(passed ? "All rounds passed - cache coherency verified." : "FAIL: Cache coherency violation detected.");
     return {passed, data};
 }
 
@@ -756,7 +714,7 @@ TestOutput CpuTesting::testCacheLineInvalidation()
     };
     PaddedVal padded[4]{};
 
-    auto run = [&](std::function<volatile uint64_t &(int)> getter) {
+    auto run = [&](std::function<volatile uint64_t&(int)> getter) {
         std::vector<std::thread> threads;
         auto t0 = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < THREADS; ++i)
@@ -765,13 +723,13 @@ TestOutput CpuTesting::testCacheLineInvalidation()
                 for (uint64_t it = 0; it < ITERS; ++it)
                     getter(i)++;
             });
-        for (auto &t : threads)
+        for (auto& t : threads)
             t.join();
         return std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - t0).count();
     };
 
-    double tUnpadded = run([&](int i)->volatile uint64_t & { return unpadded.val[i]; });
-    double tPadded = run([&](int i)->volatile uint64_t & { return padded[i].val; });
+    double tUnpadded = run([&](int i) -> volatile uint64_t& { return unpadded.val[i]; });
+    double tPadded = run([&](int i) -> volatile uint64_t& { return padded[i].val; });
 
     double ratio = (tPadded > 0) ? (tUnpadded / tPadded) : 1.0;
     data.push_back("False-sharing (unpadded) time : " + std::to_string(tUnpadded) + " s");
@@ -801,8 +759,7 @@ TestOutput CpuTesting::testCacheBandwidthAndLatency()
     std::vector<uint64_t> buf(BUF_SIZE / sizeof(uint64_t), 0xDEADBEEFCAFEBABEULL);
     double bestBW = 0.0;
 
-    for (int p = 0; p < PASSES; ++p)
-    {
+    for (int p = 0; p < PASSES; ++p) {
         volatile uint64_t sum = 0;
         auto t0 = std::chrono::high_resolution_clock::now();
         for (size_t i = 0; i < buf.size(); ++i)
@@ -816,13 +773,10 @@ TestOutput CpuTesting::testCacheBandwidthAndLatency()
     }
 
     data.push_back("Best read bandwidth: " + std::to_string(bestBW) + " GB/s");
-    if (bestBW < 5.0)
-    {
+    if (bestBW < 5.0) {
         passed = false;
         data.push_back("FAIL: Bandwidth " + std::to_string(bestBW) + " GB/s below 5 GB/s threshold.");
-    }
-    else
-    {
+    } else {
         data.push_back("Memory bandwidth is acceptable (Jetson Orin LPDDR5 theoretical: ~136 GB/s).");
     }
     return {passed, data};
@@ -861,13 +815,10 @@ TestOutput CpuTesting::testSinglethreadedPerformance()
     data.push_back("Integer throughput : " + std::to_string(intMOPS) + " MOPS  (" + std::to_string(intSec) + " s)");
     data.push_back("FP throughput      : " + std::to_string(fpMFLOPS) + " MFLOPS (" + std::to_string(fpSec) + " s)");
 
-        if (intMOPS < 100.0)
-    {
+    if (intMOPS < 100.0) {
         passed = false;
         data.push_back("FAIL: Integer throughput " + std::to_string(intMOPS) + " MOPS below 100 MOPS threshold.");
-    }
-    else
-    {
+    } else {
         data.push_back("Single-threaded performance within expected range.");
     }
     return {passed, data};
@@ -888,8 +839,7 @@ TestOutput CpuTesting::testMultithreadedPerformance()
     std::vector<std::thread> threads;
 
     auto t0 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i)
-    {
+    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
         threads.emplace_back([&, i]() {
             pinThreadToCore(i);
             volatile double acc = 0.0;
@@ -899,7 +849,7 @@ TestOutput CpuTesting::testMultithreadedPerformance()
             threadResults[i] = acc;
         });
     }
-    for (auto &t : threads)
+    for (auto& t : threads)
         t.join();
     double wallSec = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - t0).count();
 
@@ -910,13 +860,10 @@ TestOutput CpuTesting::testMultithreadedPerformance()
     data.push_back("Wall time      : " + std::to_string(wallSec) + " s");
     data.push_back("Aggregate MFLOPS: " + std::to_string(aggMFLOPS));
 
-    if (aggMFLOPS < 500.0)
-    {
+    if (aggMFLOPS < 500.0) {
         passed = false;
         data.push_back("FAIL: Aggregate MFLOPS " + std::to_string(aggMFLOPS) + " below 500 MFLOPS threshold.");
-    }
-    else
-    {
+    } else {
         data.push_back("Multi-threaded performance within expected range.");
     }
     return {passed, data};
@@ -941,8 +888,7 @@ TestOutput CpuTesting::testContextSwitchingPerformance()
         pinThreadToCore(0);
         uint8_t byte = 1;
         ready.store(true, std::memory_order_release);
-        for (int i = 0; i < ROUNDS; ++i)
-        {
+        for (int i = 0; i < ROUNDS; ++i) {
             write(pipeAB[1], &byte, 1);
             read(pipeBA[0], &byte, 1);
         }
@@ -954,8 +900,7 @@ TestOutput CpuTesting::testContextSwitchingPerformance()
         uint8_t byte = 0;
         while (!ready.load(std::memory_order_acquire))
             std::this_thread::yield();
-        for (int i = 0; i < ROUNDS; ++i)
-        {
+        for (int i = 0; i < ROUNDS; ++i) {
             read(pipeAB[0], &byte, 1);
             write(pipeBA[1], &byte, 1);
         }
@@ -994,13 +939,11 @@ TestOutput CpuTesting::testInterruptLatency()
     const long SLEEP_NS = 1'000'000; // 1 ms
     std::vector<double> jitterNs;
 
-    for (int i = 0; i < SAMPLES; ++i)
-    {
+    for (int i = 0; i < SAMPLES; ++i) {
         struct timespec req = {0, SLEEP_NS};
         auto t0 = std::chrono::high_resolution_clock::now();
         nanosleep(&req, nullptr);
-        double elapsed =
-            std::chrono::duration<double, std::nano>(std::chrono::high_resolution_clock::now() - t0).count();
+        double elapsed = std::chrono::duration<double, std::nano>(std::chrono::high_resolution_clock::now() - t0).count();
         jitterNs.push_back(std::abs(elapsed - SLEEP_NS));
     }
 
@@ -1015,21 +958,17 @@ TestOutput CpuTesting::testInterruptLatency()
 
     // Sample first few lines of /proc/interrupts
     std::ifstream intFile("/proc/interrupts");
-    if (intFile.is_open())
-    {
+    if (intFile.is_open()) {
         int shown = 0;
         std::string line;
         while (std::getline(intFile, line) && shown++ < 3)
             data.push_back(line.substr(0, std::min((int)line.size(), 80)));
     }
 
-    if (avgJ > 5'000'000.0)
-    {
+    if (avgJ > 5'000'000.0) {
         passed = false;
         data.push_back("FAIL: Avg jitter " + std::to_string(avgJ / 1e6) + " ms exceeds 5 ms threshold.");
-    }
-    else
-    {
+    } else {
         data.push_back("Interrupt/timer latency within acceptable range.");
     }
     return {passed, data};
@@ -1052,8 +991,7 @@ TestOutput CpuTesting::testDmaOperations()
         src[i] = static_cast<uint8_t>(i & 0xFF);
 
     double bestBW = 0.0;
-    for (int p = 0; p < PASSES; ++p)
-    {
+    for (int p = 0; p < PASSES; ++p) {
         std::fill(dst.begin(), dst.end(), 0);
         auto t0 = std::chrono::high_resolution_clock::now();
         std::memcpy(dst.data(), src.data(), BLOCK);
@@ -1072,27 +1010,21 @@ TestOutput CpuTesting::testDmaOperations()
 
     // Report DMA/RAM regions from /proc/iomem
     std::ifstream iomem("/proc/iomem");
-    if (iomem.is_open())
-    {
+    if (iomem.is_open()) {
         std::string line;
         int shown = 0;
-        while (std::getline(iomem, line) && shown < 4)
-        {
-            if (line.find("DMA") != std::string::npos || line.find("System RAM") != std::string::npos)
-            {
+        while (std::getline(iomem, line) && shown < 4) {
+            if (line.find("DMA") != std::string::npos || line.find("System RAM") != std::string::npos) {
                 data.push_back("/proc/iomem: " + line);
                 ++shown;
             }
         }
     }
 
-    if (bestBW < 5.0)
-    {
+    if (bestBW < 5.0) {
         passed = false;
         data.push_back("FAIL: DMA bandwidth " + std::to_string(bestBW) + " GB/s below 5 GB/s threshold.");
-    }
-    else
-    {
+    } else {
         data.push_back("DMA/memcpy operation test completed successfully.");
     }
     return {passed, data};
@@ -1324,93 +1256,52 @@ std::vector<std::string> CpuTesting::getAvailableTests()
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult CpuTesting::runSingleTest(const std::string &testName)
+TestResult CpuTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testAll12CpuCoresFunctionality")
-    {
+    if (testName == "testAll12CpuCoresFunctionality") {
         result = testAll12CpuCoresFunctionality();
-    }
-    else if (testName == "testCpuCoreFrequencyScaling")
-    {
+    } else if (testName == "testCpuCoreFrequencyScaling") {
         result = testCpuCoreFrequencyScaling();
-    }
-    else if (testName == "testIndividualCoreStressTesting")
-    {
+    } else if (testName == "testIndividualCoreStressTesting") {
         result = testIndividualCoreStressTesting();
-    }
-    else if (testName == "testMulticoreSynchronization")
-    {
+    } else if (testName == "testMulticoreSynchronization") {
         result = testMulticoreSynchronization();
-    }
-    else if (testName == "testCpuClusterCommunication")
-    {
+    } else if (testName == "testCpuClusterCommunication") {
         result = testCpuClusterCommunication();
-    }
-    else if (testName == "testCoreAffinityAndThreadMigration")
-    {
+    } else if (testName == "testCoreAffinityAndThreadMigration") {
         result = testCoreAffinityAndThreadMigration();
-    }
-    else if (testName == "testCpuThermalThrottling")
-    {
+    } else if (testName == "testCpuThermalThrottling") {
         result = testCpuThermalThrottling();
-    }
-    else if (testName == "testCpuPowerStatesAndTransitions")
-    {
+    } else if (testName == "testCpuPowerStatesAndTransitions") {
         result = testCpuPowerStatesAndTransitions();
-    }
-    else if (testName == "testL1Cache")
-    {
+    } else if (testName == "testL1Cache") {
         result = testL1Cache();
-    }
-    else if (testName == "testL2Cache")
-    {
+    } else if (testName == "testL2Cache") {
         result = testL2Cache();
-    }
-    else if (testName == "testL3Cache")
-    {
+    } else if (testName == "testL3Cache") {
         result = testL3Cache();
-    }
-    else if (testName == "testSystemCache")
-    {
+    } else if (testName == "testSystemCache") {
         result = testSystemCache();
-    }
-    else if (testName == "testCacheCoherencyBetweenClusters")
-    {
+    } else if (testName == "testCacheCoherencyBetweenClusters") {
         result = testCacheCoherencyBetweenClusters();
-    }
-    else if (testName == "testCacheLineInvalidation")
-    {
+    } else if (testName == "testCacheLineInvalidation") {
         result = testCacheLineInvalidation();
-    }
-    else if (testName == "testCacheBandwidthAndLatency")
-    {
+    } else if (testName == "testCacheBandwidthAndLatency") {
         result = testCacheBandwidthAndLatency();
-    }
-    else if (testName == "testSinglethreadedPerformance")
-    {
+    } else if (testName == "testSinglethreadedPerformance") {
         result = testSinglethreadedPerformance();
-    }
-    else if (testName == "testMultithreadedPerformance")
-    {
+    } else if (testName == "testMultithreadedPerformance") {
         result = testMultithreadedPerformance();
-    }
-    else if (testName == "testContextSwitchingPerformance")
-    {
+    } else if (testName == "testContextSwitchingPerformance") {
         result = testContextSwitchingPerformance();
-    }
-    else if (testName == "testInterruptLatency")
-    {
+    } else if (testName == "testInterruptLatency") {
         result = testInterruptLatency();
-    }
-    else if (testName == "testDmaOperations")
-    {
+    } else if (testName == "testDmaOperations") {
         result = testDmaOperations();
-    }
-    else
-    {
+    } else {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

@@ -16,14 +16,14 @@
  */
 class PowerManagementTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for PowerManagementTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function PowerManagementTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for PowerManagementTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function PowerManagementTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     PowerManagementTesting();
     /**
@@ -39,10 +39,10 @@ class PowerManagementTesting : public TestBase
      * @brief Constructor for PowerManagementTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the maximumperformancemode functionality
+    /**
+     * @brief Tests the maximumperformancemode functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testMaximumPerformanceMode();
     /**
@@ -235,13 +235,11 @@ class PowerManagementTesting : public TestBase
      */
     TestOutput testUpsFunctionality();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -254,11 +252,9 @@ class PowerManagementTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // POWERMANAGEMENTTESTING_H

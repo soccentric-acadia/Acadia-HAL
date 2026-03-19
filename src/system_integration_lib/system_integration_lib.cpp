@@ -104,7 +104,7 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
     // Run testConcurrentOperationOfAllSubsystems
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testConcurrentOperationOfAllSubsystems();
+        TestOutput result = testConcurrentOperationOfAllSubsystems();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testConcurrentOperationOfAllSubsystems", result, duration});
@@ -113,7 +113,7 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
     // Run testResourceContentionHandling
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testResourceContentionHandling();
+        TestOutput result = testResourceContentionHandling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testResourceContentionHandling", result, duration});
@@ -122,7 +122,7 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
     // Run testSystemBottleneckIdentification
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSystemBottleneckIdentification();
+        TestOutput result = testSystemBottleneckIdentification();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSystemBottleneckIdentification", result, duration});
@@ -131,7 +131,7 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
     // Run testEndtoendLatency
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEndtoendLatency();
+        TestOutput result = testEndtoendLatency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEndtoendLatency", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
     // Run testSystemThroughput
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSystemThroughput();
+        TestOutput result = testSystemThroughput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSystemThroughput", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
     // Run testMultimodalAiWorkloads
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMultimodalAiWorkloads();
+        TestOutput result = testMultimodalAiWorkloads();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMultimodalAiWorkloads", result, duration});
@@ -158,7 +158,7 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
     // Run testAutonomousDrivingStack
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAutonomousDrivingStack();
+        TestOutput result = testAutonomousDrivingStack();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAutonomousDrivingStack", result, duration});
@@ -167,7 +167,7 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
     // Run testSensorFusionPipeline
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSensorFusionPipeline();
+        TestOutput result = testSensorFusionPipeline();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSensorFusionPipeline", result, duration});
@@ -180,7 +180,8 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> SystemIntegrationTesting::getAvailableTests() {
+std::vector<std::string> SystemIntegrationTesting::getAvailableTests()
+{
     return {
         "testConcurrentOperationOfAllSubsystems",
         "testResourceContentionHandling",
@@ -198,7 +199,8 @@ std::vector<std::string> SystemIntegrationTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult SystemIntegrationTesting::runSingleTest(const std::string& testName) {
+TestResult SystemIntegrationTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

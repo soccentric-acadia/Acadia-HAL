@@ -16,14 +16,14 @@
  */
 class DeepLearningAcceleratorTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for DeepLearningAcceleratorTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function DeepLearningAcceleratorTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for DeepLearningAcceleratorTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function DeepLearningAcceleratorTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     DeepLearningAcceleratorTesting();
     /**
@@ -39,10 +39,10 @@ class DeepLearningAcceleratorTesting : public TestBase
      * @brief Constructor for DeepLearningAcceleratorTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the dla1functionality functionality
+    /**
+     * @brief Tests the dla1functionality functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testDla1Functionality();
     /**
@@ -226,13 +226,11 @@ class DeepLearningAcceleratorTesting : public TestBase
      */
     TestOutput testDlaThermalBehavior();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -245,11 +243,9 @@ class DeepLearningAcceleratorTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // DEEPLEARNINGACCELERATORTESTING_H

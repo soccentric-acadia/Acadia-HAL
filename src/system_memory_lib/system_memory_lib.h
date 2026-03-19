@@ -16,14 +16,14 @@
  */
 class SystemMemoryTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for SystemMemoryTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function SystemMemoryTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for SystemMemoryTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function SystemMemoryTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     SystemMemoryTesting();
     /**
@@ -39,10 +39,10 @@ class SystemMemoryTesting : public TestBase
      * @brief Constructor for SystemMemoryTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the all64gbmemoryaccessibility functionality
+    /**
+     * @brief Tests the all64gbmemoryaccessibility functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testAll64gbMemoryAccessibility();
     /**
@@ -181,13 +181,11 @@ class SystemMemoryTesting : public TestBase
      */
     TestOutput testConcurrentMemoryAccessPatterns();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -200,11 +198,9 @@ class SystemMemoryTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // SYSTEMMEMORYTESTING_H

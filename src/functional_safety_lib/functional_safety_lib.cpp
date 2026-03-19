@@ -104,7 +104,7 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
     // Run testLockstepCpuOperation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testLockstepCpuOperation();
+        TestOutput result = testLockstepCpuOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testLockstepCpuOperation", result, duration});
@@ -113,7 +113,7 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
     // Run testEccOnMemories
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testEccOnMemories();
+        TestOutput result = testEccOnMemories();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testEccOnMemories", result, duration});
@@ -122,7 +122,7 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
     // Run testRedundantPowerSupplies
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testRedundantPowerSupplies();
+        TestOutput result = testRedundantPowerSupplies();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testRedundantPowerSupplies", result, duration});
@@ -131,7 +131,7 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
     // Run testSafetyMonitoring
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSafetyMonitoring();
+        TestOutput result = testSafetyMonitoring();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSafetyMonitoring", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
     // Run testDiagnosticCoverage
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDiagnosticCoverage();
+        TestOutput result = testDiagnosticCoverage();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDiagnosticCoverage", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
     // Run testFaultInjectionTesting
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testFaultInjectionTesting();
+        TestOutput result = testFaultInjectionTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testFaultInjectionTesting", result, duration});
@@ -158,7 +158,7 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
     // Run testFailsafeBehavior
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testFailsafeBehavior();
+        TestOutput result = testFailsafeBehavior();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testFailsafeBehavior", result, duration});
@@ -167,7 +167,7 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
     // Run testAsilQsLAndRRailIsolation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAsilQsLAndRRailIsolation();
+        TestOutput result = testAsilQsLAndRRailIsolation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAsilQsLAndRRailIsolation", result, duration});
@@ -180,16 +180,11 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> FunctionalSafetyTesting::getAvailableTests() {
+std::vector<std::string> FunctionalSafetyTesting::getAvailableTests()
+{
     return {
-        "testLockstepCpuOperation",
-        "testEccOnMemories",
-        "testRedundantPowerSupplies",
-        "testSafetyMonitoring",
-        "testDiagnosticCoverage",
-        "testFaultInjectionTesting",
-        "testFailsafeBehavior",
-        "testAsilQsLAndRRailIsolation",
+        "testLockstepCpuOperation", "testEccOnMemories",         "testRedundantPowerSupplies", "testSafetyMonitoring",
+        "testDiagnosticCoverage",   "testFaultInjectionTesting", "testFailsafeBehavior",       "testAsilQsLAndRRailIsolation",
     };
 }
 
@@ -198,7 +193,8 @@ std::vector<std::string> FunctionalSafetyTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult FunctionalSafetyTesting::runSingleTest(const std::string& testName) {
+TestResult FunctionalSafetyTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

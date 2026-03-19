@@ -230,7 +230,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testMaximumPerformanceMode
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMaximumPerformanceMode();
+        TestOutput result = testMaximumPerformanceMode();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMaximumPerformanceMode", result, duration});
@@ -239,7 +239,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testPoweroptimizedModes
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPoweroptimizedModes();
+        TestOutput result = testPoweroptimizedModes();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPoweroptimizedModes", result, duration});
@@ -248,7 +248,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testIdlePowerConsumption
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testIdlePowerConsumption();
+        TestOutput result = testIdlePowerConsumption();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testIdlePowerConsumption", result, duration});
@@ -257,7 +257,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testSleepStates
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSleepStates();
+        TestOutput result = testSleepStates();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSleepStates", result, duration});
@@ -266,7 +266,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testPowerStateTransitions
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPowerStateTransitions();
+        TestOutput result = testPowerStateTransitions();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPowerStateTransitions", result, duration});
@@ -275,7 +275,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testWakeupSources
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testWakeupSources();
+        TestOutput result = testWakeupSources();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testWakeupSources", result, duration});
@@ -284,7 +284,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testPowerButtonFunctionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPowerButtonFunctionality();
+        TestOutput result = testPowerButtonFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPowerButtonFunctionality", result, duration});
@@ -293,7 +293,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run test12vAsilQsLRail
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test12vAsilQsLRail();
+        TestOutput result = test12vAsilQsLRail();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test12vAsilQsLRail", result, duration});
@@ -302,7 +302,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run test12vAsilQsRRail
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test12vAsilQsRRail();
+        TestOutput result = test12vAsilQsRRail();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test12vAsilQsRRail", result, duration});
@@ -311,7 +311,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testAllInternalVoltageRails
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAllInternalVoltageRails();
+        TestOutput result = testAllInternalVoltageRails();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAllInternalVoltageRails", result, duration});
@@ -320,7 +320,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testPowerSequencing
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPowerSequencing();
+        TestOutput result = testPowerSequencing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPowerSequencing", result, duration});
@@ -329,7 +329,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testPoweronReset
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPoweronReset();
+        TestOutput result = testPoweronReset();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPoweronReset", result, duration});
@@ -338,7 +338,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testBrownoutDetection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testBrownoutDetection();
+        TestOutput result = testBrownoutDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testBrownoutDetection", result, duration});
@@ -347,7 +347,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testOvervoltageProtection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testOvervoltageProtection();
+        TestOutput result = testOvervoltageProtection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testOvervoltageProtection", result, duration});
@@ -356,7 +356,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testUndervoltageProtection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testUndervoltageProtection();
+        TestOutput result = testUndervoltageProtection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testUndervoltageProtection", result, duration});
@@ -365,7 +365,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testOvercurrentProtection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testOvercurrentProtection();
+        TestOutput result = testOvercurrentProtection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testOvercurrentProtection", result, duration});
@@ -374,7 +374,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testPowerSupplyRejection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPowerSupplyRejection();
+        TestOutput result = testPowerSupplyRejection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPowerSupplyRejection", result, duration});
@@ -383,7 +383,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testRealtimePowerConsumption
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testRealtimePowerConsumption();
+        TestOutput result = testRealtimePowerConsumption();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testRealtimePowerConsumption", result, duration});
@@ -392,7 +392,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testPercomponentPowerMeasurement
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPercomponentPowerMeasurement();
+        TestOutput result = testPercomponentPowerMeasurement();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPercomponentPowerMeasurement", result, duration});
@@ -401,7 +401,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testPowerEfficiencyCalculation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPowerEfficiencyCalculation();
+        TestOutput result = testPowerEfficiencyCalculation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPowerEfficiencyCalculation", result, duration});
@@ -410,7 +410,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testBatteryCharging
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testBatteryCharging();
+        TestOutput result = testBatteryCharging();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testBatteryCharging", result, duration});
@@ -419,7 +419,7 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
     // Run testUpsFunctionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testUpsFunctionality();
+        TestOutput result = testUpsFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testUpsFunctionality", result, duration});
@@ -432,7 +432,8 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> PowerManagementTesting::getAvailableTests() {
+std::vector<std::string> PowerManagementTesting::getAvailableTests()
+{
     return {
         "testMaximumPerformanceMode",
         "testPoweroptimizedModes",
@@ -462,7 +463,8 @@ std::vector<std::string> PowerManagementTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult PowerManagementTesting::runSingleTest(const std::string& testName) {
+TestResult PowerManagementTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

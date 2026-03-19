@@ -6,19 +6,23 @@
  */
 
 #include "lib_base.h"
-#include <iostream>
 #include <chrono>
+#include <iostream>
 
-TestBase::TestBase() : stopped_(false) {}
+TestBase::TestBase() : stopped_(false)
+{
+}
 
-TestBase::~TestBase() {
+TestBase::~TestBase()
+{
     stop();
     if (monitoring_thread_.joinable()) {
         monitoring_thread_.join();
     }
 }
 
-void TestBase::runTests(TestMode mode, std::function<void(const std::vector<TestResult>&)> callback, int interval_ms) {
+void TestBase::runTests(TestMode mode, std::function<void(const std::vector<TestResult>&)> callback, int interval_ms)
+{
     if (mode == TestMode::ONE_SHOT) {
         auto results = runAllTests();
         if (callback) {
@@ -38,14 +42,16 @@ void TestBase::runTests(TestMode mode, std::function<void(const std::vector<Test
     }
 }
 
-void TestBase::stop() {
+void TestBase::stop()
+{
     stopped_ = true;
     if (monitoring_thread_.joinable()) {
         monitoring_thread_.join();
     }
 }
 
-std::vector<TestResult> TestBase::runSelectedTests(const std::vector<std::string>& testNames) {
+std::vector<TestResult> TestBase::runSelectedTests(const std::vector<std::string>& testNames)
+{
     std::vector<TestResult> results;
     for (const auto& testName : testNames) {
         results.push_back(runSingleTest(testName));

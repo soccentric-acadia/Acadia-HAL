@@ -122,13 +122,11 @@ class DebugAndDevelopmentInterfaces : public TestBase
      */
     TestOutput testDebugAuthentication();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -141,11 +139,9 @@ class DebugAndDevelopmentInterfaces : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // DEBUGANDDEVELOPMENTINTERFACES_H

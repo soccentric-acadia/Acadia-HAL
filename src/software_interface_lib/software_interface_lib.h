@@ -16,7 +16,7 @@
  */
 class SoftwareInterfaceTesting : public TestBase
 {
-public:
+  public:
     /**
      * @brief Constructor for SoftwareInterfaceTesting
      */
@@ -93,7 +93,6 @@ public:
      */
     TestOutput testSensorDriverFramework();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
@@ -118,9 +117,7 @@ public:
      */
     TestResult runSingleTest(const std::string& testName) override;
 
-protected:
-
-
+  protected:
 };
 
 #endif // SOFTWAREINTERFACETESTING_H

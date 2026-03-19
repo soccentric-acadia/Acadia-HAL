@@ -16,14 +16,14 @@
  */
 class ImuTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for ImuTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function ImuTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for ImuTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function ImuTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     ImuTesting();
     /**
@@ -39,10 +39,10 @@ class ImuTesting : public TestBase
      * @brief Constructor for ImuTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the 3axisaccelerometer functionality
+    /**
+     * @brief Tests the 3axisaccelerometer functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput test3axisAccelerometer();
     /**
@@ -109,13 +109,11 @@ class ImuTesting : public TestBase
      */
     TestOutput testImuToOrinInterface();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -128,11 +126,9 @@ class ImuTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // IMUTESTING_H

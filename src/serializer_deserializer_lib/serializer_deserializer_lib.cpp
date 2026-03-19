@@ -95,7 +95,7 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
     // Run testSerializationFunctionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSerializationFunctionality();
+        TestOutput result = testSerializationFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSerializationFunctionality", result, duration});
@@ -104,7 +104,7 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
     // Run testDataIntegrity
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDataIntegrity();
+        TestOutput result = testDataIntegrity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDataIntegrity", result, duration});
@@ -113,7 +113,7 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
     // Run testLinkSpeed
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testLinkSpeed();
+        TestOutput result = testLinkSpeed();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testLinkSpeed", result, duration});
@@ -122,7 +122,7 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
     // Run testErrorDetection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testErrorDetection();
+        TestOutput result = testErrorDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testErrorDetection", result, duration});
@@ -131,7 +131,7 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
     // Run testDeserializationFunctionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDeserializationFunctionality();
+        TestOutput result = testDeserializationFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDeserializationFunctionality", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
     // Run testClockRecovery
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testClockRecovery();
+        TestOutput result = testClockRecovery();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testClockRecovery", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
     // Run testMultistreamSupport
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMultistreamSupport();
+        TestOutput result = testMultistreamSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMultistreamSupport", result, duration});
@@ -162,15 +162,11 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> SerializerDeserializerTesting::getAvailableTests() {
+std::vector<std::string> SerializerDeserializerTesting::getAvailableTests()
+{
     return {
-        "testSerializationFunctionality",
-        "testDataIntegrity",
-        "testLinkSpeed",
-        "testErrorDetection",
-        "testDeserializationFunctionality",
-        "testClockRecovery",
-        "testMultistreamSupport",
+        "testSerializationFunctionality",   "testDataIntegrity", "testLinkSpeed",          "testErrorDetection",
+        "testDeserializationFunctionality", "testClockRecovery", "testMultistreamSupport",
     };
 }
 
@@ -179,7 +175,8 @@ std::vector<std::string> SerializerDeserializerTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult SerializerDeserializerTesting::runSingleTest(const std::string& testName) {
+TestResult SerializerDeserializerTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

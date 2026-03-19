@@ -25,7 +25,7 @@
 // ---------------------------------------------------------------------------
 
 /** Read first line from a sysfs / procfs text file, strip trailing newline. */
-static std::string readFile(const std::string &path)
+static std::string readFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open())
@@ -38,22 +38,21 @@ static std::string readFile(const std::string &path)
 }
 
 /** Return true if a path exists (file or directory). */
-static bool pathExists(const std::string &path)
+static bool pathExists(const std::string& path)
 {
     struct stat st;
     return (stat(path.c_str(), &st) == 0);
 }
 
 /** List directory entries (non-recursive). */
-static std::vector<std::string> listDir(const std::string &dir)
+static std::vector<std::string> listDir(const std::string& dir)
 {
     std::vector<std::string> entries;
-    DIR *d = opendir(dir.c_str());
+    DIR* d = opendir(dir.c_str());
     if (!d)
         return entries;
-    struct dirent *de;
-    while ((de = readdir(d)) != nullptr)
-    {
+    struct dirent* de;
+    while ((de = readdir(d)) != nullptr) {
         std::string name(de->d_name);
         if (name == "." || name == "..")
             continue;
@@ -64,14 +63,13 @@ static std::vector<std::string> listDir(const std::string &dir)
 }
 
 /** Check if a kernel module is loaded. */
-static bool isModuleLoaded(const std::string &modName)
+static bool isModuleLoaded(const std::string& modName)
 {
     std::ifstream mods("/proc/modules");
     if (!mods.is_open())
         return false;
     std::string line;
-    while (std::getline(mods, line))
-    {
+    while (std::getline(mods, line)) {
         std::istringstream iss(line);
         std::string name;
         iss >> name;
@@ -82,9 +80,9 @@ static bool isModuleLoaded(const std::string &modName)
 }
 
 /** Run a shell command and capture its stdout (first 4096 bytes). */
-static std::string runCmd(const std::string &cmd)
+static std::string runCmd(const std::string& cmd)
 {
-    FILE *fp = popen(cmd.c_str(), "r");
+    FILE* fp = popen(cmd.c_str(), "r");
     if (!fp)
         return "";
     char buf[4096];
@@ -102,8 +100,7 @@ static std::string runCmd(const std::string &cmd)
 static std::vector<std::string> getVideoDevices()
 {
     std::vector<std::string> devs;
-    for (int i = 0; i < 32; ++i)
-    {
+    for (int i = 0; i < 32; ++i) {
         std::string p = "/dev/video" + std::to_string(i);
         if (pathExists(p))
             devs.push_back(p);
@@ -143,11 +140,9 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
     // Jetson Orin: nvcsi platform device path
     const std::string nvcsiBase = "/sys/bus/platform/devices";
     bool nvcsiFound = false;
-    if (pathExists(nvcsiBase))
-    {
+    if (pathExists(nvcsiBase)) {
         auto entries = listDir(nvcsiBase);
-        for (const auto &e : entries)
-        {
+        for (const auto& e : entries) {
             // NVCSI device entries contain "nvcsi" in their name
             if (e.find("nvcsi") != std::string::npos || e.find("15a00000") != std::string::npos) // Orin NVCSI hwid
             {
@@ -157,32 +152,24 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
             }
         }
     }
-    if (!nvcsiFound)
-    {
+    if (!nvcsiFound) {
         // Fallback: check kernel module
-        if (isModuleLoaded("nvcsi") || isModuleLoaded("tegra-camera"))
-        {
+        if (isModuleLoaded("nvcsi") || isModuleLoaded("tegra-camera")) {
             nvcsiFound = true;
             data.push_back("[PASS] NVCSI kernel module is loaded");
-        }
-        else
-        {
+        } else {
             data.push_back("[WARN] NVCSI platform device/module not detected (non-fatal on dev host)");
         }
     }
 
     // --- 2. Check V4L2 camera devices ---
     auto videoDev = getVideoDevices();
-    if (videoDev.empty())
-    {
+    if (videoDev.empty()) {
         data.push_back("[WARN] No /dev/video* nodes found – no cameras connected");
         // Not a hard failure on a development host; pass with warning
-    }
-    else
-    {
+    } else {
         data.push_back("[PASS] Found " + std::to_string(videoDev.size()) + " V4L2 video node(s)");
-        for (const auto &dev : videoDev)
-        {
+        for (const auto& dev : videoDev) {
             // Query driver name via v4l2-ctl if available, else just list the node
             std::string info = runCmd("v4l2-ctl -d " + dev + " --info 2>/dev/null | grep 'Driver name' | head -1");
             if (info.empty())
@@ -193,20 +180,16 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
 
     // --- 3. Check /sys/class/video4linux for CSI-2 lane info ---
     const std::string v4lClass = "/sys/class/video4linux";
-    if (pathExists(v4lClass))
-    {
+    if (pathExists(v4lClass)) {
         auto nodes = listDir(v4lClass);
         int csiNodes = 0;
-        for (const auto &n : nodes)
-        {
+        for (const auto& n : nodes) {
             std::string name = n.substr(n.find_last_of('/') + 1);
             // Jetson camera nodes typically named video0..videoN
-            if (name.find("video") != std::string::npos)
-            {
+            if (name.find("video") != std::string::npos) {
                 std::string devFile = n + "/name";
                 std::string devName = readFile(devFile);
-                if (!devName.empty())
-                {
+                if (!devName.empty()) {
                     data.push_back("    V4L2 node: " + name + " -> " + devName);
                     csiNodes++;
                 }
@@ -220,14 +203,11 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
 
     // --- 4. Validate lane count from device-tree (if accessible) ---
     const std::string dtCamera = "/proc/device-tree/tegra-camera-platform";
-    if (pathExists(dtCamera))
-    {
+    if (pathExists(dtCamera)) {
         data.push_back("[PASS] Tegra camera platform device-tree node found");
         auto dtEntries = listDir(dtCamera);
         data.push_back("       " + std::to_string(dtEntries.size()) + " sub-entries in camera DT node");
-    }
-    else
-    {
+    } else {
         data.push_back("[INFO] /proc/device-tree/tegra-camera-platform not found");
     }
 
@@ -256,8 +236,7 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
 
     // Check device-tree compatible string for D-PHY
     const std::string dtCompatible = "/proc/device-tree/compatible";
-    if (pathExists(dtCompatible))
-    {
+    if (pathExists(dtCompatible)) {
         std::string compat = readFile(dtCompatible);
         data.push_back("[INFO] Board compatible: " + compat);
     }
@@ -265,23 +244,18 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
     // Look for dphy sysfs entries under NVCSI
     bool dphyFound = false;
     const std::string nvcsiDev = "/sys/bus/platform/devices";
-    if (pathExists(nvcsiDev))
-    {
+    if (pathExists(nvcsiDev)) {
         auto entries = listDir(nvcsiDev);
-        for (const auto &e : entries)
-        {
-            if (e.find("nvcsi") != std::string::npos || e.find("15a00000") != std::string::npos)
-            {
+        for (const auto& e : entries) {
+            if (e.find("nvcsi") != std::string::npos || e.find("15a00000") != std::string::npos) {
                 // Check for phy_mode or dphy attribute
                 std::string phyMode = readFile(e + "/phy_mode");
-                if (!phyMode.empty())
-                {
+                if (!phyMode.empty()) {
                     dphyFound = true;
                     data.push_back("[PASS] phy_mode = " + phyMode);
                 }
                 // Also try debug fs
-                if (pathExists("/sys/kernel/debug/nvcsi"))
-                {
+                if (pathExists("/sys/kernel/debug/nvcsi")) {
                     dphyFound = true;
                     data.push_back("[PASS] NVCSI debug-fs node present");
                 }
@@ -321,10 +295,8 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
         "/proc/device-tree/host1x/nvcsi",
     };
     bool dtFound = false;
-    for (const auto &p : dtPaths)
-    {
-        if (pathExists(p))
-        {
+    for (const auto& p : dtPaths) {
+        if (pathExists(p)) {
             dtFound = true;
             data.push_back("[PASS] NVCSI DT node found: " + p);
             // Check for cphy compatible property
@@ -339,15 +311,12 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
 
     // Check /sys/kernel/debug/bpmp/debug/clk for csi clocks
     const std::string bpmpClk = "/sys/kernel/debug/bpmp/debug/clk";
-    if (pathExists(bpmpClk))
-    {
+    if (pathExists(bpmpClk)) {
         auto clkEntries = listDir(bpmpClk);
         int csiClkCount = 0;
-        for (const auto &c : clkEntries)
-        {
+        for (const auto& c : clkEntries) {
             std::string cname = c.substr(c.find_last_of('/') + 1);
-            if (cname.find("csi") != std::string::npos)
-            {
+            if (cname.find("csi") != std::string::npos) {
                 std::string rate = readFile(c + "/rate");
                 data.push_back("[PASS] Clock: " + cname + " rate=" + rate + " Hz");
                 csiClkCount++;
@@ -357,9 +326,7 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
             data.push_back("[INFO] No CSI clock entries found in BPMP debug-fs");
         else
             data.push_back("[PASS] " + std::to_string(csiClkCount) + " CSI clock(s) found");
-    }
-    else
-    {
+    } else {
         data.push_back("[INFO] BPMP clock debug-fs not accessible");
     }
 
@@ -389,38 +356,31 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
 
     // Query each device with v4l2-ctl if available
     int cameraCount = 0;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string caps = runCmd("v4l2-ctl -d " + dev + " --info 2>/dev/null | grep -E 'Driver|Card|Bus' | head -3");
-        if (!caps.empty())
-        {
+        if (!caps.empty()) {
             cameraCount++;
             // Indent each line
             std::istringstream ss(caps);
             std::string line;
             while (std::getline(ss, line))
                 data.push_back("    " + line);
-        }
-        else
-        {
+        } else {
             data.push_back("    " + dev + " (v4l2-ctl unavailable or no info)");
         }
     }
 
     if (cameraCount > 1)
-        data.push_back("[PASS] " + std::to_string(cameraCount) +
-                       " camera device(s) enumerated for concurrent operation");
+        data.push_back("[PASS] " + std::to_string(cameraCount) + " camera device(s) enumerated for concurrent operation");
     else if (cameraCount == 1)
         data.push_back("[PASS] 1 camera device found (connect more sensors to test multi-cam)");
     else
-        data.push_back(
-            "[INFO] No cameras connected – hardware supports concurrent operation when cameras are attached");
+        data.push_back("[INFO] No cameras connected – hardware supports concurrent operation when cameras are attached");
 
     // Check ISP device (vi / nvisp)
     bool ispFound = false;
     auto platDevs = listDir("/sys/bus/platform/devices");
-    for (const auto &d : platDevs)
-    {
+    for (const auto& d : platDevs) {
         std::string base = d.substr(d.find_last_of('/') + 1);
         if (base.find("nvisp") != std::string::npos || base.find("tegra-vi") != std::string::npos ||
             base.find("15c00000") != std::string::npos) // Orin VI hwid
@@ -456,10 +416,8 @@ TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
         "/proc/device-tree/tegra-camera-platform",
     };
     bool dtVcFound = false;
-    for (const auto &p : dtPaths)
-    {
-        if (pathExists(p))
-        {
+    for (const auto& p : dtPaths) {
+        if (pathExists(p)) {
             data.push_back("[PASS] DT node accessible: " + p);
             dtVcFound = true;
             // Try reading num-channels
@@ -473,8 +431,7 @@ TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
 
     // Check tegra-camera module options or procfs
     std::string modInfo = runCmd("modinfo nvcsi 2>/dev/null | grep -i 'virtual\\|channel' | head -3");
-    if (!modInfo.empty())
-    {
+    if (!modInfo.empty()) {
         data.push_back("[PASS] nvcsi modinfo VC info:");
         std::istringstream ss(modInfo);
         std::string line;
@@ -503,17 +460,13 @@ TestOutput CameraInterfacesTesting::testCameraClockGeneration()
     // Method 1: BPMP debug-fs
     const std::string bpmpClk = "/sys/kernel/debug/bpmp/debug/clk";
     bool clkFound = false;
-    if (pathExists(bpmpClk))
-    {
+    if (pathExists(bpmpClk)) {
         auto entries = listDir(bpmpClk);
         const std::vector<std::string> clkKeywords = {"csi", "vi", "isp", "nvcsi", "cam"};
-        for (const auto &entry : entries)
-        {
+        for (const auto& entry : entries) {
             std::string cname = entry.substr(entry.find_last_of('/') + 1);
-            for (const auto &kw : clkKeywords)
-            {
-                if (cname.find(kw) != std::string::npos)
-                {
+            for (const auto& kw : clkKeywords) {
+                if (cname.find(kw) != std::string::npos) {
                     std::string rate = readFile(entry + "/rate");
                     std::string state = readFile(entry + "/state");
                     std::string refcnt = readFile(entry + "/refcnt");
@@ -527,20 +480,15 @@ TestOutput CameraInterfacesTesting::testCameraClockGeneration()
     }
 
     // Method 2: /sys/kernel/debug/clk (mainline clk tree)
-    if (!clkFound)
-    {
+    if (!clkFound) {
         const std::string clkDbg = "/sys/kernel/debug/clk";
-        if (pathExists(clkDbg))
-        {
+        if (pathExists(clkDbg)) {
             const std::vector<std::string> clkKeywords = {"csi", "vi", "isp", "cam"};
             auto entries = listDir(clkDbg);
-            for (const auto &entry : entries)
-            {
+            for (const auto& entry : entries) {
                 std::string cname = entry.substr(entry.find_last_of('/') + 1);
-                for (const auto &kw : clkKeywords)
-                {
-                    if (cname.find(kw) != std::string::npos)
-                    {
+                for (const auto& kw : clkKeywords) {
+                    if (cname.find(kw) != std::string::npos) {
                         std::string rate = readFile(entry + "/clk_rate");
                         std::string enable = readFile(entry + "/clk_enable_count");
                         data.push_back("[PASS] " + cname + " rate=" + (rate.empty() ? "N/A" : rate) +
@@ -582,20 +530,16 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
     // 1. Check camera regulators via sysfs
     const std::string regClass = "/sys/class/regulator";
     int camRegCount = 0;
-    if (pathExists(regClass))
-    {
+    if (pathExists(regClass)) {
         auto regs = listDir(regClass);
-        for (const auto &r : regs)
-        {
+        for (const auto& r : regs) {
             std::string name = readFile(r + "/name");
             // Camera power rails on Jetson: VDD_CAM, VANA, VDIG, VDDIO_CAM
-            if (name.find("cam") != std::string::npos || name.find("CAM") != std::string::npos ||
-                name.find("vana") != std::string::npos || name.find("vdig") != std::string::npos)
-            {
+            if (name.find("cam") != std::string::npos || name.find("CAM") != std::string::npos || name.find("vana") != std::string::npos ||
+                name.find("vdig") != std::string::npos) {
                 std::string state = readFile(r + "/state");
                 std::string voltage = readFile(r + "/microvolts");
-                data.push_back("[PASS] Regulator: " + name + " state=" + state +
-                               " voltage=" + (voltage.empty() ? "N/A" : voltage + " uV"));
+                data.push_back("[PASS] Regulator: " + name + " state=" + state + " voltage=" + (voltage.empty() ? "N/A" : voltage + " uV"));
                 camRegCount++;
             }
         }
@@ -605,16 +549,13 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
 
     // 2. Check GPIO for camera reset/enable pins
     const std::string gpioClass = "/sys/class/gpio";
-    if (pathExists(gpioClass))
-    {
+    if (pathExists(gpioClass)) {
         auto gpioEntries = listDir(gpioClass);
         int camGpioCount = 0;
-        for (const auto &g : gpioEntries)
-        {
+        for (const auto& g : gpioEntries) {
             std::string label = readFile(g + "/label");
             if (label.find("cam") != std::string::npos || label.find("reset") != std::string::npos ||
-                label.find("pwdn") != std::string::npos || label.find("enable") != std::string::npos)
-            {
+                label.find("pwdn") != std::string::npos || label.find("enable") != std::string::npos) {
                 std::string val = readFile(g + "/value");
                 std::string dir = readFile(g + "/direction");
                 data.push_back("[PASS] GPIO: " + label + " direction=" + dir + " value=" + val);
@@ -622,9 +563,7 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
             }
         }
         data.push_back("[INFO] " + std::to_string(camGpioCount) + " camera-related GPIO(s) found");
-    }
-    else
-    {
+    } else {
         data.push_back("[INFO] GPIO sysfs class not accessible");
     }
 
@@ -654,21 +593,18 @@ TestOutput CameraInterfacesTesting::testRaw8()
     data.push_back("=== RAW8 Pixel Format Support (Jetson AGX Orin) ===");
 
     auto videoDev = getVideoDevices();
-    if (videoDev.empty())
-    {
+    if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes found; RAW8 supported by Orin ISP/NVCSI hardware");
         return {passed, data};
     }
 
     bool raw8Found = false;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         // Enumerate formats with v4l2-ctl
         std::string fmts = runCmd("v4l2-ctl -d " + dev +
                                   " --list-formats 2>/dev/null | "
                                   "grep -iE 'raw8|SRGGB8|SGRBG8|SGBRG8|SBGGR8'");
-        if (!fmts.empty())
-        {
+        if (!fmts.empty()) {
             raw8Found = true;
             data.push_back("[PASS] " + dev + " supports RAW8:");
             std::istringstream ss(fmts);
@@ -679,8 +615,7 @@ TestOutput CameraInterfacesTesting::testRaw8()
     }
 
     if (!raw8Found)
-        data.push_back(
-            "[INFO] RAW8 not reported by current sensor; Orin ISP hardware supports SRGGB8/SGRBG8/SGBRG8/SBGGR8");
+        data.push_back("[INFO] RAW8 not reported by current sensor; Orin ISP hardware supports SRGGB8/SGRBG8/SGBRG8/SBGGR8");
 
     data.push_back("[INFO] Jetson Orin ISP supports RAW8 Bayer formats on all CSI ports");
     return {passed, data};
@@ -700,20 +635,17 @@ TestOutput CameraInterfacesTesting::testRaw10()
     data.push_back("=== RAW10 Pixel Format Support (Jetson AGX Orin) ===");
 
     auto videoDev = getVideoDevices();
-    if (videoDev.empty())
-    {
+    if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes found; RAW10 supported by Orin ISP/NVCSI hardware");
         return {passed, data};
     }
 
     bool raw10Found = false;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string fmts = runCmd("v4l2-ctl -d " + dev +
                                   " --list-formats 2>/dev/null | "
                                   "grep -iE 'raw10|RG10|SRGGB10|SGRBG10|SGBRG10|SBGGR10'");
-        if (!fmts.empty())
-        {
+        if (!fmts.empty()) {
             raw10Found = true;
             data.push_back("[PASS] " + dev + " supports RAW10:");
             std::istringstream ss(fmts);
@@ -743,20 +675,17 @@ TestOutput CameraInterfacesTesting::testRaw12()
     data.push_back("=== RAW12 Pixel Format Support (Jetson AGX Orin) ===");
 
     auto videoDev = getVideoDevices();
-    if (videoDev.empty())
-    {
+    if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes found; RAW12 supported by Orin ISP hardware");
         return {passed, data};
     }
 
     bool raw12Found = false;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string fmts = runCmd("v4l2-ctl -d " + dev +
                                   " --list-formats 2>/dev/null | "
                                   "grep -iE 'raw12|RG12|SRGGB12|SGRBG12|SGBRG12|SBGGR12'");
-        if (!fmts.empty())
-        {
+        if (!fmts.empty()) {
             raw12Found = true;
             data.push_back("[PASS] " + dev + " supports RAW12:");
             std::istringstream ss(fmts);
@@ -786,20 +715,17 @@ TestOutput CameraInterfacesTesting::testRaw14()
     data.push_back("=== RAW14 Pixel Format Support (Jetson AGX Orin) ===");
 
     auto videoDev = getVideoDevices();
-    if (videoDev.empty())
-    {
+    if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes found; RAW14 supported by Orin ISP hardware");
         return {passed, data};
     }
 
     bool raw14Found = false;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string fmts = runCmd("v4l2-ctl -d " + dev +
                                   " --list-formats 2>/dev/null | "
                                   "grep -iE 'raw14|RG14|SRGGB14|SGRBG14|SGBRG14|SBGGR14'");
-        if (!fmts.empty())
-        {
+        if (!fmts.empty()) {
             raw14Found = true;
             data.push_back("[PASS] " + dev + " supports RAW14:");
             std::istringstream ss(fmts);
@@ -830,20 +756,17 @@ TestOutput CameraInterfacesTesting::testYuv422()
     data.push_back("=== YUV 4:2:2 Format Support (Jetson AGX Orin) ===");
 
     auto videoDev = getVideoDevices();
-    if (videoDev.empty())
-    {
+    if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes; Orin ISP supports YUV 4:2:2 output");
         return {passed, data};
     }
 
     bool yuvFound = false;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string fmts = runCmd("v4l2-ctl -d " + dev +
                                   " --list-formats 2>/dev/null | "
                                   "grep -iE 'yuv422|YUYV|UYVY|YVYU|VYUY|NV16|422'");
-        if (!fmts.empty())
-        {
+        if (!fmts.empty()) {
             yuvFound = true;
             data.push_back("[PASS] " + dev + " supports YUV 4:2:2:");
             std::istringstream ss(fmts);
@@ -856,8 +779,7 @@ TestOutput CameraInterfacesTesting::testYuv422()
         std::string ispFmts = runCmd("v4l2-ctl -d " + dev +
                                      " --list-formats-out 2>/dev/null | "
                                      "grep -iE 'yuv422|YUYV|UYVY|NV16'");
-        if (!ispFmts.empty())
-        {
+        if (!ispFmts.empty()) {
             yuvFound = true;
             data.push_back("[PASS] " + dev + " ISP output supports YUV 4:2:2:");
             std::istringstream ss(ispFmts);
@@ -888,20 +810,17 @@ TestOutput CameraInterfacesTesting::testRgbFormats()
     data.push_back("=== RGB Pixel Format Support (Jetson AGX Orin) ===");
 
     auto videoDev = getVideoDevices();
-    if (videoDev.empty())
-    {
+    if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes; Orin ISP supports RGB output formats");
         return {passed, data};
     }
 
     bool rgbFound = false;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string fmts = runCmd("v4l2-ctl -d " + dev +
                                   " --list-formats 2>/dev/null | "
                                   "grep -iE 'RGB|BGR|ARGB|XRGB|ABGR'");
-        if (!fmts.empty())
-        {
+        if (!fmts.empty()) {
             rgbFound = true;
             data.push_back("[PASS] " + dev + " supports RGB format(s):");
             std::istringstream ss(fmts);
@@ -935,16 +854,12 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
     // 1. Check for ISP platform device
     bool ispFound = false;
     const std::vector<std::string> ispIds = {"nvisp", "isp", "tegra-isp", "15c00000"};
-    if (pathExists("/sys/bus/platform/devices"))
-    {
+    if (pathExists("/sys/bus/platform/devices")) {
         auto platDevs = listDir("/sys/bus/platform/devices");
-        for (const auto &d : platDevs)
-        {
+        for (const auto& d : platDevs) {
             std::string base = d.substr(d.find_last_of('/') + 1);
-            for (const auto &id : ispIds)
-            {
-                if (base.find(id) != std::string::npos)
-                {
+            for (const auto& id : ispIds) {
+                if (base.find(id) != std::string::npos) {
                     ispFound = true;
                     data.push_back("[PASS] ISP platform device: " + base);
                     // Read driver name
@@ -962,15 +877,12 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
         data.push_back("[INFO] ISP platform device not directly visible in sysfs");
 
     // 2. Check for V4L2 media device (ISP exposed via media controller)
-    for (int i = 0; i < 8; ++i)
-    {
+    for (int i = 0; i < 8; ++i) {
         std::string mediaPath = "/dev/media" + std::to_string(i);
-        if (pathExists(mediaPath))
-        {
+        if (pathExists(mediaPath)) {
             data.push_back("[PASS] Media controller device found: " + mediaPath);
             std::string info = runCmd("media-ctl -d " + mediaPath + " --print-topology 2>/dev/null | head -20");
-            if (!info.empty())
-            {
+            if (!info.empty()) {
                 std::istringstream ss(info);
                 std::string line;
                 while (std::getline(ss, line))
@@ -988,15 +900,13 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
 
     // 4. Try querying ISP statistics via v4l2 (Jetson-specific ISP stats node)
     std::string ispStats = runCmd("v4l2-ctl --list-devices 2>/dev/null | grep -i 'isp\\|vi\\|nvcsi'");
-    if (!ispStats.empty())
-    {
+    if (!ispStats.empty()) {
         data.push_back("[PASS] ISP/VI V4L2 devices:");
         std::istringstream ss(ispStats);
         std::string line;
         while (std::getline(ss, line))
             data.push_back("    " + line);
-    }
-    else
+    } else
         data.push_back("[INFO] v4l2-ctl not available or no ISP V4L2 device listed");
 
     data.push_back("[PASS] Orin ISP hardware: 2 pipelines, supports up to 36 MPix/s aggregate throughput");
@@ -1017,21 +927,18 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
     data.push_back("=== Auto Exposure (AE) Verification (Jetson AGX Orin) ===");
 
     auto videoDev = getVideoDevices();
-    if (videoDev.empty())
-    {
+    if (videoDev.empty()) {
         data.push_back("[INFO] No camera nodes; AE is implemented in Argus/NvMedia stack on Orin");
         return {passed, data};
     }
 
     bool aeFound = false;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         // V4L2 controls related to exposure
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
                                    " --list-ctrls 2>/dev/null | "
                                    "grep -iE 'exposure|gain|ae_|auto.exp'");
-        if (!ctrls.empty())
-        {
+        if (!ctrls.empty()) {
             aeFound = true;
             data.push_back("[PASS] " + dev + " AE controls:");
             std::istringstream ss(ctrls);
@@ -1048,8 +955,7 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
     std::string argus = runCmd("systemctl is-active nvargus-daemon 2>/dev/null");
     if (argus == "active")
         data.push_back("[PASS] nvargus-daemon (Jetson 3A / AE service) is active");
-    else
-    {
+    else {
         std::string pid = runCmd("pgrep -x nvargus-daemon 2>/dev/null");
         if (!pid.empty())
             data.push_back("[PASS] nvargus-daemon running (PID " + pid + ")");
@@ -1074,20 +980,17 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
     data.push_back("=== Auto White Balance (AWB) Verification (Jetson AGX Orin) ===");
 
     auto videoDev = getVideoDevices();
-    if (videoDev.empty())
-    {
+    if (videoDev.empty()) {
         data.push_back("[INFO] No camera nodes; AWB handled by Argus/ISP on Orin");
         return {passed, data};
     }
 
     bool awbFound = false;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
                                    " --list-ctrls 2>/dev/null | "
                                    "grep -iE 'white.balance|awb|color.temp|wb_'");
-        if (!ctrls.empty())
-        {
+        if (!ctrls.empty()) {
             awbFound = true;
             data.push_back("[PASS] " + dev + " AWB controls:");
             std::istringstream ss(ctrls);
@@ -1128,13 +1031,11 @@ TestOutput CameraInterfacesTesting::testAutoFocus()
 
     auto videoDev = getVideoDevices();
     bool afFound = false;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
                                    " --list-ctrls 2>/dev/null | "
                                    "grep -iE 'focus|vcm|af_|auto.focus'");
-        if (!ctrls.empty())
-        {
+        if (!ctrls.empty()) {
             afFound = true;
             data.push_back("[PASS] " + dev + " AF controls:");
             std::istringstream ss(ctrls);
@@ -1150,11 +1051,9 @@ TestOutput CameraInterfacesTesting::testAutoFocus()
         data.push_back("[INFO] No camera nodes present");
 
     // Check for focuser device node (Jetson: /dev/focuser*)
-    for (int i = 0; i < 4; ++i)
-    {
+    for (int i = 0; i < 4; ++i) {
         std::string foc = "/dev/focuser" + std::to_string(i);
-        if (pathExists(foc))
-        {
+        if (pathExists(foc)) {
             afFound = true;
             data.push_back("[PASS] Focuser device node: " + foc);
         }
@@ -1185,10 +1084,8 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
         "/etc/nvargus",
     };
     bool tuningFound = false;
-    for (const auto &p : lscPaths)
-    {
-        if (pathExists(p))
-        {
+    for (const auto& p : lscPaths) {
+        if (pathExists(p)) {
             tuningFound = true;
             data.push_back("[PASS] ISP tuning path found: " + p);
             // Look for LSC-related files
@@ -1202,13 +1099,11 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
 
     // Check for LSC via V4L2 controls
     auto videoDev = getVideoDevices();
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
                                    " --list-ctrls 2>/dev/null | "
                                    "grep -iE 'shading|lsc|mesh'");
-        if (!ctrls.empty())
-        {
+        if (!ctrls.empty()) {
             data.push_back("[PASS] " + dev + " LSC controls:");
             std::istringstream ss(ctrls);
             std::string line;
@@ -1238,14 +1133,11 @@ TestOutput CameraInterfacesTesting::testDemosaicing()
 
     // Check ISP pipeline is available
     bool ispPresent = false;
-    if (pathExists("/sys/bus/platform/devices"))
-    {
+    if (pathExists("/sys/bus/platform/devices")) {
         auto entries = listDir("/sys/bus/platform/devices");
-        for (const auto &e : entries)
-        {
+        for (const auto& e : entries) {
             std::string base = e.substr(e.find_last_of('/') + 1);
-            if (base.find("isp") != std::string::npos || base.find("nvisp") != std::string::npos)
-            {
+            if (base.find("isp") != std::string::npos || base.find("nvisp") != std::string::npos) {
                 ispPresent = true;
                 data.push_back("[PASS] ISP platform device: " + base);
                 break;
@@ -1257,8 +1149,7 @@ TestOutput CameraInterfacesTesting::testDemosaicing()
 
     // Verify that RAW input -> RGB output path exists through V4L2
     auto videoDev = getVideoDevices();
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         // Check if sensor exposes RAW and ISP outputs RGB
         std::string rawFmt = runCmd("v4l2-ctl -d " + dev +
                                     " --list-formats 2>/dev/null | "
@@ -1291,13 +1182,11 @@ TestOutput CameraInterfacesTesting::testNoiseReduction()
     // Check V4L2 noise reduction controls
     auto videoDev = getVideoDevices();
     bool nrCtrlFound = false;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
                                    " --list-ctrls 2>/dev/null | "
                                    "grep -iE 'noise|denoise|tnr|snr|nr_'");
-        if (!ctrls.empty())
-        {
+        if (!ctrls.empty()) {
             nrCtrlFound = true;
             data.push_back("[PASS] " + dev + " NR controls:");
             std::istringstream ss(ctrls);
@@ -1336,13 +1225,11 @@ TestOutput CameraInterfacesTesting::testEdgeEnhancement()
     // Check V4L2 sharpness control
     auto videoDev = getVideoDevices();
     bool eeFound = false;
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
                                    " --list-ctrls 2>/dev/null | "
                                    "grep -iE 'sharp|edge|enhance'");
-        if (!ctrls.empty())
-        {
+        if (!ctrls.empty()) {
             eeFound = true;
             data.push_back("[PASS] " + dev + " edge enhancement controls:");
             std::istringstream ss(ctrls);
@@ -1384,13 +1271,11 @@ TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
 
     // Check V4L2 color correction controls
     auto videoDev = getVideoDevices();
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
                                    " --list-ctrls 2>/dev/null | "
                                    "grep -iE 'color.correct|ccm|saturation'");
-        if (!ctrls.empty())
-        {
+        if (!ctrls.empty()) {
             data.push_back("[PASS] " + dev + " CCM/saturation controls:");
             std::istringstream ss(ctrls);
             std::string line;
@@ -1429,13 +1314,11 @@ TestOutput CameraInterfacesTesting::testGammaCorrection()
 
     // Check V4L2 gamma control
     auto videoDev = getVideoDevices();
-    for (const auto &dev : videoDev)
-    {
+    for (const auto& dev : videoDev) {
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
                                    " --list-ctrls 2>/dev/null | "
                                    "grep -iE 'gamma|tone|lut|brightness|contrast'");
-        if (!ctrls.empty())
-        {
+        if (!ctrls.empty()) {
             data.push_back("[PASS] " + dev + " gamma/tone controls:");
             std::istringstream ss(ctrls);
             std::string line;
@@ -1705,105 +1588,58 @@ std::vector<std::string> CameraInterfacesTesting::getAvailableTests()
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult CameraInterfacesTesting::runSingleTest(const std::string &testName)
+TestResult CameraInterfacesTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testAllCsi2LanesFunctionality")
-    {
+    if (testName == "testAllCsi2LanesFunctionality") {
         result = testAllCsi2LanesFunctionality();
-    }
-    else if (testName == "testCsi2DphyOperation")
-    {
+    } else if (testName == "testCsi2DphyOperation") {
         result = testCsi2DphyOperation();
-    }
-    else if (testName == "testCsi2CphyOperation")
-    {
+    } else if (testName == "testCsi2CphyOperation") {
         result = testCsi2CphyOperation();
-    }
-    else if (testName == "testMultipleCameraSimultaneousOperation")
-    {
+    } else if (testName == "testMultipleCameraSimultaneousOperation") {
         result = testMultipleCameraSimultaneousOperation();
-    }
-    else if (testName == "testVirtualChannelSupport")
-    {
+    } else if (testName == "testVirtualChannelSupport") {
         result = testVirtualChannelSupport();
-    }
-    else if (testName == "testCameraClockGeneration")
-    {
+    } else if (testName == "testCameraClockGeneration") {
         result = testCameraClockGeneration();
-    }
-    else if (testName == "testCameraPowerSequencing")
-    {
+    } else if (testName == "testCameraPowerSequencing") {
         result = testCameraPowerSequencing();
-    }
-    else if (testName == "testRaw8")
-    {
+    } else if (testName == "testRaw8") {
         result = testRaw8();
-    }
-    else if (testName == "testRaw10")
-    {
+    } else if (testName == "testRaw10") {
         result = testRaw10();
-    }
-    else if (testName == "testRaw12")
-    {
+    } else if (testName == "testRaw12") {
         result = testRaw12();
-    }
-    else if (testName == "testRaw14")
-    {
+    } else if (testName == "testRaw14") {
         result = testRaw14();
-    }
-    else if (testName == "testYuv422")
-    {
+    } else if (testName == "testYuv422") {
         result = testYuv422();
-    }
-    else if (testName == "testRgbFormats")
-    {
+    } else if (testName == "testRgbFormats") {
         result = testRgbFormats();
-    }
-    else if (testName == "testIspPipelineProcessing")
-    {
+    } else if (testName == "testIspPipelineProcessing") {
         result = testIspPipelineProcessing();
-    }
-    else if (testName == "testAutoExposure")
-    {
+    } else if (testName == "testAutoExposure") {
         result = testAutoExposure();
-    }
-    else if (testName == "testAutoWhiteBalance")
-    {
+    } else if (testName == "testAutoWhiteBalance") {
         result = testAutoWhiteBalance();
-    }
-    else if (testName == "testAutoFocus")
-    {
+    } else if (testName == "testAutoFocus") {
         result = testAutoFocus();
-    }
-    else if (testName == "testLensShadingCorrection")
-    {
+    } else if (testName == "testLensShadingCorrection") {
         result = testLensShadingCorrection();
-    }
-    else if (testName == "testDemosaicing")
-    {
+    } else if (testName == "testDemosaicing") {
         result = testDemosaicing();
-    }
-    else if (testName == "testNoiseReduction")
-    {
+    } else if (testName == "testNoiseReduction") {
         result = testNoiseReduction();
-    }
-    else if (testName == "testEdgeEnhancement")
-    {
+    } else if (testName == "testEdgeEnhancement") {
         result = testEdgeEnhancement();
-    }
-    else if (testName == "testColorCorrectionMatrix")
-    {
+    } else if (testName == "testColorCorrectionMatrix") {
         result = testColorCorrectionMatrix();
-    }
-    else if (testName == "testGammaCorrection")
-    {
+    } else if (testName == "testGammaCorrection") {
         result = testGammaCorrection();
-    }
-    else
-    {
+    } else {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

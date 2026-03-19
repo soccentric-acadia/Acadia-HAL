@@ -16,14 +16,14 @@
  */
 class ClockAndTimingTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for ClockAndTimingTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function ClockAndTimingTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for ClockAndTimingTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function ClockAndTimingTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     ClockAndTimingTesting();
     /**
@@ -39,10 +39,10 @@ class ClockAndTimingTesting : public TestBase
      * @brief Constructor for ClockAndTimingTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the systemclockaccuracy functionality
+    /**
+     * @brief Tests the systemclockaccuracy functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testSystemClockAccuracy();
     /**
@@ -145,13 +145,11 @@ class ClockAndTimingTesting : public TestBase
      */
     TestOutput testRtcTimePersistence();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -164,11 +162,9 @@ class ClockAndTimingTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // CLOCKANDTIMINGTESTING_H

@@ -16,14 +16,14 @@
  */
 class GnssTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for GnssTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function GnssTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for GnssTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function GnssTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     GnssTesting();
     /**
@@ -39,10 +39,10 @@ class GnssTesting : public TestBase
      * @brief Constructor for GnssTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the gpssignalreception functionality
+    /**
+     * @brief Tests the gpssignalreception functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testGpsSignalReception();
     /**
@@ -109,13 +109,11 @@ class GnssTesting : public TestBase
      */
     TestOutput testAgpsFunctionality();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -128,11 +126,9 @@ class GnssTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // GNSSTESTING_H

@@ -54,7 +54,7 @@ static constexpr int PERF_DURATION_MS = 1500;
 // ---------------------------------------------------------------------------
 
 /** Read the first line of a text file. Returns "" on failure. */
-static std::string readSysfsLine(const std::string &path)
+static std::string readSysfsLine(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open())
@@ -65,25 +65,25 @@ static std::string readSysfsLine(const std::string &path)
 }
 
 /** Read an integer (long long) from a sysfs file. Returns -1 on failure. */
-static long long readSysfsInt(const std::string &path)
+static long long readSysfsInt(const std::string& path)
 {
     std::string s = readSysfsLine(path);
     if (s.empty())
         return -1LL;
-    try
-    {
+    try {
         return std::stoll(s);
     }
-    catch (...)
-    {
+    catch (...) {
         return -1LL;
     }
 }
 
 /** Check whether a filesystem path exists (file, directory, device node, …) */
-static bool pathExists(const std::string &path)
+static bool pathExists(const std::string& path)
 {
-    struct stat st{};
+    struct stat st
+    {
+    };
     return stat(path.c_str(), &st) == 0;
 }
 
@@ -91,18 +91,16 @@ static bool pathExists(const std::string &path)
  * List immediate children of a directory whose names begin with @p prefix.
  * Returns full paths.
  */
-static std::vector<std::string> listDirWithPrefix(const std::string &dir, const std::string &prefix)
+static std::vector<std::string> listDirWithPrefix(const std::string& dir, const std::string& prefix)
 {
     std::vector<std::string> result;
-    DIR *d = opendir(dir.c_str());
+    DIR* d = opendir(dir.c_str());
     if (!d)
         return result;
-    struct dirent *e;
-    while ((e = readdir(d)) != nullptr)
-    {
+    struct dirent* e;
+    while ((e = readdir(d)) != nullptr) {
         std::string name(e->d_name);
-        if (name.rfind(prefix, 0) == 0)
-        {
+        if (name.rfind(prefix, 0) == 0) {
             result.push_back(dir + "/" + name);
         }
     }
@@ -125,19 +123,16 @@ static long long probeDlaCoreClock()
         "/sys/kernel/debug/clk/dla_core_clk/clk_rate",
         "/sys/kernel/debug/clk/nvdla/clk_rate",
     };
-    for (auto &c : candidates)
-    {
+    for (auto& c : candidates) {
         long long v = readSysfsInt(c);
         if (v > 0)
             return v;
     }
     // Fall back: devfreq entry
     auto devfreqDirs = listDirWithPrefix("/sys/class/devfreq", "");
-    for (auto &d : devfreqDirs)
-    {
+    for (auto& d : devfreqDirs) {
         // e.g. /sys/class/devfreq/15880000.nvdla0
-        if (d.find("nvdla") != std::string::npos || d.find("dla") != std::string::npos)
-        {
+        if (d.find("nvdla") != std::string::npos || d.find("dla") != std::string::npos) {
             long long v = readSysfsInt(d + "/cur_freq");
             if (v > 0)
                 return v;
@@ -151,13 +146,10 @@ static double probeDlaTemperature()
 {
     // Iterate thermal zones looking for "GPU-therm" or "DLA" labels.
     // On Orin the DLA shares the same die temperature domain as the GPU.
-    for (int z = 0; z < 20; ++z)
-    {
+    for (int z = 0; z < 20; ++z) {
         std::string base = "/sys/class/thermal/thermal_zone" + std::to_string(z);
         std::string type = readSysfsLine(base + "/type");
-        if (type.find("GPU") != std::string::npos || type.find("DLA") != std::string::npos ||
-            type.find("SoC") != std::string::npos)
-        {
+        if (type.find("GPU") != std::string::npos || type.find("DLA") != std::string::npos || type.find("SoC") != std::string::npos) {
             long long milliC = readSysfsInt(base + "/temp");
             if (milliC > 0)
                 return static_cast<double>(milliC) / 1000.0;
@@ -178,19 +170,15 @@ static long long probeDlaPowerMilliWatts()
 {
     // Tegra INA3221 exposes rails via hwmon.  Rail labels vary by board.
     auto hwmons = listDirWithPrefix("/sys/class/hwmon", "hwmon");
-    for (auto &hm : hwmons)
-    {
+    for (auto& hm : hwmons) {
         std::string name = readSysfsLine(hm + "/name");
         if (name.find("ina3221") == std::string::npos && name.find("ina219") == std::string::npos)
             continue;
 
         // Look for a channel labelled GPU or VDD_GPU_SOC
-        for (int ch = 1; ch <= 3; ++ch)
-        {
+        for (int ch = 1; ch <= 3; ++ch) {
             std::string lbl = readSysfsLine(hm + "/in" + std::to_string(ch) + "_label");
-            if (lbl.find("GPU") != std::string::npos || lbl.find("DLA") != std::string::npos ||
-                lbl.find("SOC") != std::string::npos)
-            {
+            if (lbl.find("GPU") != std::string::npos || lbl.find("DLA") != std::string::npos || lbl.find("SOC") != std::string::npos) {
                 // power = voltage * current  (or read power_input directly)
                 long long pwr = readSysfsInt(hm + "/power" + std::to_string(ch) + "_input");
                 if (pwr > 0)
@@ -214,8 +202,7 @@ static long long probeDlaPowerMilliWatts()
 static uint64_t syntheticMacWorkload(uint64_t iterations)
 {
     volatile uint64_t acc = 0;
-    for (uint64_t i = 0; i < iterations; ++i)
-    {
+    for (uint64_t i = 0; i < iterations; ++i) {
         acc += static_cast<uint64_t>(std::sqrt(static_cast<double>(i + 1)) * 2.0);
     }
     return acc;
@@ -260,10 +247,8 @@ TestOutput DeepLearningAcceleratorTesting::testDla1Functionality()
     auto platDirs = listDirWithPrefix("/sys/bus/platform/devices", "");
     bool platBound = false;
     std::string platPath;
-    for (auto &d : platDirs)
-    {
-        if (d.find("nvdla0") != std::string::npos || d.find("15880000.nvdla") != std::string::npos)
-        {
+    for (auto& d : platDirs) {
+        if (d.find("nvdla0") != std::string::npos || d.find("15880000.nvdla") != std::string::npos) {
             platBound = true;
             platPath = d;
             break;
@@ -275,22 +260,16 @@ TestOutput DeepLearningAcceleratorTesting::testDla1Functionality()
     bool modLoaded = pathExists("/sys/module/nvdla") || pathExists("/sys/module/tegra_nvdla");
     data.push_back("nvdla kernel module: " + std::string(modLoaded ? "loaded" : "not detected"));
 
-    if (!devPresent && !platBound)
-    {
+    if (!devPresent && !platBound) {
         passed = false;
         data.push_back("FAIL: DLA0 not detected. Ensure nvdla driver is loaded (modprobe nvdla).");
-    }
-    else
-    {
+    } else {
         // Attempt open for basic accessibility
         int fd = open(dev0.c_str(), O_RDWR);
-        if (fd >= 0)
-        {
+        if (fd >= 0) {
             data.push_back("DLA0 device open: OK");
             close(fd);
-        }
-        else
-        {
+        } else {
             // Read-only open may also fail for char devices without ioctl
             data.push_back("DLA0 device open: requires privilege or unsupported ioctl (normal in test env)");
         }
@@ -319,10 +298,8 @@ TestOutput DeepLearningAcceleratorTesting::testDla2Functionality()
     auto platDirs = listDirWithPrefix("/sys/bus/platform/devices", "");
     bool platBound = false;
     std::string platPath;
-    for (auto &d : platDirs)
-    {
-        if (d.find("nvdla1") != std::string::npos || d.find("158c0000.nvdla") != std::string::npos)
-        {
+    for (auto& d : platDirs) {
+        if (d.find("nvdla1") != std::string::npos || d.find("158c0000.nvdla") != std::string::npos) {
             platBound = true;
             platPath = d;
             break;
@@ -330,23 +307,17 @@ TestOutput DeepLearningAcceleratorTesting::testDla2Functionality()
     }
     data.push_back("DLA1 platform device: " + (platBound ? platPath : "not found in sysfs"));
 
-    if (!devPresent && !platBound)
-    {
+    if (!devPresent && !platBound) {
         // AGX Orin has 2 DLA engines; NX/Nano variants may have only 1
         passed = false;
         data.push_back("FAIL: DLA1 not detected. This may indicate a non-AGX Orin variant, "
                        "or the nvdla driver is not loaded.");
-    }
-    else
-    {
+    } else {
         int fd = open(dev1.c_str(), O_RDWR);
-        if (fd >= 0)
-        {
+        if (fd >= 0) {
             data.push_back("DLA1 device open: OK");
             close(fd);
-        }
-        else
-        {
+        } else {
             data.push_back("DLA1 device open: requires privilege (expected without libnvdla)");
         }
         data.push_back("DLA1 engine is present and driver-bound.");
@@ -374,8 +345,7 @@ TestOutput DeepLearningAcceleratorTesting::testDualDlaConcurrentOperation()
     data.push_back("DLA0 present: " + std::string(dla0 ? "yes" : "no"));
     data.push_back("DLA1 present: " + std::string(dla1 ? "yes" : "no"));
 
-    if (!dla0)
-    {
+    if (!dla0) {
         passed = false;
         data.push_back("FAIL: DLA0 missing, cannot perform dual-DLA concurrency test.");
         return {passed, data};
@@ -403,20 +373,14 @@ TestOutput DeepLearningAcceleratorTesting::testDualDlaConcurrentOperation()
     data.push_back("DLA0 thread result: " + std::to_string(t0Result.load()));
     data.push_back("DLA1 thread result: " + std::to_string(t1Result.load()));
 
-    if (!t0Done || !t1Done)
-    {
+    if (!t0Done || !t1Done) {
         passed = false;
         data.push_back("FAIL: One or both concurrent threads did not complete.");
-    }
-    else
-    {
-        if (!dla1)
-        {
+    } else {
+        if (!dla1) {
             data.push_back("WARNING: DLA1 not present — single-DLA device; "
                            "concurrent thread test passed but hardware concurrency unavailable.");
-        }
-        else
-        {
+        } else {
             data.push_back("Both DLA engines operated concurrently without contention.");
         }
     }
@@ -437,17 +401,14 @@ TestOutput DeepLearningAcceleratorTesting::testDlaClockFrequency()
     bool passed = true;
 
     long long coreHz = probeDlaCoreClock();
-    if (coreHz <= 0)
-    {
+    if (coreHz <= 0) {
         data.push_back("DLA core clock: not readable via sysfs (may need root / debugfs)");
         data.push_back("Nominal expected: " + std::to_string(static_cast<long long>(DLA_CORE_CLK_NOMINAL_HZ)) +
                        " Hz "
                        "(~1612 MHz)");
         // Non-fatal: sysfs debug may not be mounted
         data.push_back("WARN: clock unreadable — skipping frequency assertion.");
-    }
-    else
-    {
+    } else {
         double freqMHz = static_cast<double>(coreHz) / 1e6;
         data.push_back("DLA core clock: " + std::to_string(coreHz) + " Hz (" + std::to_string(freqMHz) + " MHz)");
 
@@ -456,13 +417,10 @@ TestOutput DeepLearningAcceleratorTesting::testDlaClockFrequency()
         double upperMHz = nominalMHz * (1.0 + DLA_CLK_TOLERANCE_PCT / 100.0);
         data.push_back("Acceptable range: [" + std::to_string(lowerMHz) + " – " + std::to_string(upperMHz) + "] MHz");
 
-        if (freqMHz < lowerMHz || freqMHz > upperMHz)
-        {
+        if (freqMHz < lowerMHz || freqMHz > upperMHz) {
             passed = false;
             data.push_back("FAIL: DLA core clock " + std::to_string(freqMHz) + " MHz is outside the expected range.");
-        }
-        else
-        {
+        } else {
             data.push_back("PASS: DLA core clock is within expected range.");
         }
     }
@@ -472,14 +430,11 @@ TestOutput DeepLearningAcceleratorTesting::testDlaClockFrequency()
         "/sys/kernel/debug/bpmp/debug/clk/dla_falcon_clk/rate",
         "/sys/kernel/debug/clk/dla_falcon_clk/clk_rate",
     };
-    for (auto &c : falconCandidates)
-    {
+    for (auto& c : falconCandidates) {
         long long fHz = readSysfsInt(c);
-        if (fHz > 0)
-        {
-            data.push_back("DLA falcon clock: " + std::to_string(fHz) + " Hz (" + std::to_string(fHz / 1000000) +
-                           " MHz), nominal " + std::to_string(static_cast<long long>(DLA_FALCON_CLK_NOMINAL_HZ / 1e6)) +
-                           " MHz");
+        if (fHz > 0) {
+            data.push_back("DLA falcon clock: " + std::to_string(fHz) + " Hz (" + std::to_string(fHz / 1000000) + " MHz), nominal " +
+                           std::to_string(static_cast<long long>(DLA_FALCON_CLK_NOMINAL_HZ / 1e6)) + " MHz");
             break;
         }
     }
@@ -500,28 +455,19 @@ TestOutput DeepLearningAcceleratorTesting::testDlaPowerConsumption()
     bool passed = true;
 
     long long mW = probeDlaPowerMilliWatts();
-    if (mW < 0)
-    {
+    if (mW < 0) {
         data.push_back("DLA power rail: not readable (INA3221 not found or insufficient privilege)");
         data.push_back("WARN: power measurement skipped — test inconclusive.");
-    }
-    else
-    {
+    } else {
         data.push_back("DLA/GPU power rail: " + std::to_string(mW) + " mW");
 
         // Idle power should be > 0; peak DLA load on AGX Orin can reach ~25 W/engine
-        if (mW <= 0)
-        {
+        if (mW <= 0) {
             passed = false;
             data.push_back("FAIL: Power reading is zero — sensor may be faulty.");
-        }
-        else if (mW > 30000)
-        { // 30 W per rail is excessive at idle
-            data.push_back("WARN: Power reading " + std::to_string(mW) +
-                           " mW is unusually high (possible heavy background load).");
-        }
-        else
-        {
+        } else if (mW > 30000) { // 30 W per rail is excessive at idle
+            data.push_back("WARN: Power reading " + std::to_string(mW) + " mW is unusually high (possible heavy background load).");
+        } else {
             data.push_back("PASS: Power reading is within a plausible range.");
         }
     }
@@ -559,15 +505,11 @@ TestOutput DeepLearningAcceleratorTesting::testConvolutionOperations()
         for (int c = 0; c < W; ++c)
             input[r][c] = r * W + c + 1; // 1..16
 
-    for (int r = 0; r < H; ++r)
-    {
-        for (int c = 0; c < W; ++c)
-        {
+    for (int r = 0; r < H; ++r) {
+        for (int c = 0; c < W; ++c) {
             int sum = 0;
-            for (int kr = 0; kr < KH; ++kr)
-            {
-                for (int kc = 0; kc < KW; ++kc)
-                {
+            for (int kr = 0; kr < KH; ++kr) {
+                for (int kc = 0; kc < KW; ++kc) {
                     int ir = r + kr - 1, ic = c + kc - 1;
                     if (ir >= 0 && ir < H && ic >= 0 && ic < W)
                         sum += input[ir][ic] * kernel[kr][kc];
@@ -625,8 +567,7 @@ TestOutput DeepLearningAcceleratorTesting::testDeconvolutionOperations()
                 for (int dc = 0; dc < stride; ++dc)
                     output[r * stride + dr][c * stride + dc] = input[r][c];
 
-    bool deconvOk =
-        (output[0][0] == 1.0f) && (output[1][1] == 1.0f) && (output[2][0] == 3.0f) && (output[3][3] == 4.0f);
+    bool deconvOk = (output[0][0] == 1.0f) && (output[1][1] == 1.0f) && (output[2][0] == 3.0f) && (output[3][3] == 4.0f);
     data.push_back("2×2→4×4 stride-2 deconvolution correctness: " + std::string(deconvOk ? "PASS" : "FAIL"));
     if (!deconvOk)
         passed = false;
@@ -661,8 +602,7 @@ TestOutput DeepLearningAcceleratorTesting::testFullyConnectedLayers()
         for (int j = 0; j < M; ++j)
             y[i] += W[i][j] * x[j];
 
-    bool fcOk =
-        (std::fabs(y[0] - 5.0f) < 1e-4f) && (std::fabs(y[1] - 6.0f) < 1e-4f) && (std::fabs(y[2] - 7.0f) < 1e-4f);
+    bool fcOk = (std::fabs(y[0] - 5.0f) < 1e-4f) && (std::fabs(y[1] - 6.0f) < 1e-4f) && (std::fabs(y[2] - 7.0f) < 1e-4f);
 
     data.push_back("FC layer GEMM correctness (3×4 matrix × 4-vector): " + std::string(fcOk ? "PASS" : "FAIL"));
     if (!fcOk)
@@ -695,8 +635,7 @@ TestOutput DeepLearningAcceleratorTesting::testActivationFunctions()
 
     // ReLU: max(0, x)
     bool reluOk = true;
-    for (int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         float expected = std::max(0.0f, inputs[i]);
         float got = inputs[i] > 0.0f ? inputs[i] : 0.0f;
         if (std::fabs(got - expected) > 1e-5f)
@@ -709,8 +648,7 @@ TestOutput DeepLearningAcceleratorTesting::testActivationFunctions()
     // Leaky ReLU: α=0.1
     bool lreluOk = true;
     const float alpha = 0.1f;
-    for (int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         float expected = inputs[i] >= 0.0f ? inputs[i] : alpha * inputs[i];
         float got = inputs[i] >= 0.0f ? inputs[i] : alpha * inputs[i];
         if (std::fabs(got - expected) > 1e-5f)
@@ -722,8 +660,7 @@ TestOutput DeepLearningAcceleratorTesting::testActivationFunctions()
 
     // Sigmoid: 1/(1+exp(-x))
     bool sigOk = true;
-    for (int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         float expected = 1.0f / (1.0f + std::exp(-inputs[i]));
         float got = 1.0f / (1.0f + std::exp(-inputs[i]));
         if (std::fabs(got - expected) > 1e-4f)
@@ -735,8 +672,7 @@ TestOutput DeepLearningAcceleratorTesting::testActivationFunctions()
 
     // TanH
     bool tanhOk = true;
-    for (int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         float expected = std::tanh(inputs[i]);
         float got = std::tanh(inputs[i]);
         if (std::fabs(got - expected) > 1e-5f)
@@ -772,14 +708,11 @@ TestOutput DeepLearningAcceleratorTesting::testPoolingOperations()
     const int outW = (inW - pW) / stride + 1; // 2
     float maxOut[2][2] = {}, avgOut[2][2] = {};
 
-    for (int r = 0; r < outH; ++r)
-    {
-        for (int c = 0; c < outW; ++c)
-        {
+    for (int r = 0; r < outH; ++r) {
+        for (int c = 0; c < outW; ++c) {
             float mx = -1e9f, sm = 0.0f;
             for (int dr = 0; dr < pH; ++dr)
-                for (int dc = 0; dc < pW; ++dc)
-                {
+                for (int dc = 0; dc < pW; ++dc) {
                     float v = input[r * stride + dr][c * stride + dc];
                     mx = std::max(mx, v);
                     sm += v;
@@ -794,9 +727,9 @@ TestOutput DeepLearningAcceleratorTesting::testPoolingOperations()
     bool avgOk = (std::fabs(avgOut[0][0] - 3.5f) < 1e-4f) && (std::fabs(avgOut[0][1] - 5.5f) < 1e-4f) &&
                  (std::fabs(avgOut[1][0] - 11.5f) < 1e-4f) && (std::fabs(avgOut[1][1] - 13.5f) < 1e-4f);
 
-    data.push_back("Max-pool 2×2 s2 correctness: " + std::string(maxOk ? "PASS" : "FAIL") + "  out=[[" +
-                   std::to_string((int)maxOut[0][0]) + "," + std::to_string((int)maxOut[0][1]) + "],[" +
-                   std::to_string((int)maxOut[1][0]) + "," + std::to_string((int)maxOut[1][1]) + "]]");
+    data.push_back("Max-pool 2×2 s2 correctness: " + std::string(maxOk ? "PASS" : "FAIL") + "  out=[[" + std::to_string((int)maxOut[0][0]) +
+                   "," + std::to_string((int)maxOut[0][1]) + "],[" + std::to_string((int)maxOut[1][0]) + "," +
+                   std::to_string((int)maxOut[1][1]) + "]]");
     data.push_back("Avg-pool 2×2 s2 correctness: " + std::string(avgOk ? "PASS" : "FAIL"));
 
     if (!maxOk || !avgOk)
@@ -852,8 +785,7 @@ TestOutput DeepLearningAcceleratorTesting::testBatchNormalization()
         passed = false;
 
     for (int i = 0; i < ch; ++i)
-        data.push_back("  ch[" + std::to_string(i) + "]: x=" + std::to_string(x[i]) +
-                       " → y=" + std::to_string(bnOut[i]));
+        data.push_back("  ch[" + std::to_string(i) + "]: x=" + std::to_string(x[i]) + " → y=" + std::to_string(bnOut[i]));
 
     data.push_back("Orin DLA BN is implemented in the SDP (Single Data Processor) engine, "
                    "fused with the convolution engine to eliminate memory round-trips.");
@@ -881,8 +813,7 @@ TestOutput DeepLearningAcceleratorTesting::testElementwiseOperations()
 
     // ADD
     bool addOk = true;
-    for (int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         float got = A[i] + B[i];
         float exp = A[i] + B[i];
         if (std::fabs(got - exp) > 1e-5f)
@@ -892,8 +823,7 @@ TestOutput DeepLearningAcceleratorTesting::testElementwiseOperations()
 
     // MUL
     bool mulOk = true;
-    for (int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         float got = A[i] * B[i];
         float exp = A[i] * B[i];
         if (std::fabs(got - exp) > 1e-5f)
@@ -903,8 +833,7 @@ TestOutput DeepLearningAcceleratorTesting::testElementwiseOperations()
 
     // MAX (element-wise maximum, e.g., residual connection clamp)
     bool maxOk = true;
-    for (int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         float got = std::max(A[i], B[i]);
         float exp = std::max(A[i], B[i]);
         if (std::fabs(got - exp) > 1e-5f)
@@ -942,12 +871,10 @@ TestOutput DeepLearningAcceleratorTesting::testInt8Precision()
     const int8_t expectedInt8[] = {-120, -30, 0, 30, 120}; // clamp(-128..127)
 
     bool int8Ok = true;
-    for (int i = 0; i < nVals; ++i)
-    {
+    for (int i = 0; i < nVals; ++i) {
         int q = static_cast<int>(std::round(fp32Values[i] / scale));
         q = std::max(-128, std::min(127, q));
-        if (static_cast<int>(expectedInt8[i]) != q)
-        {
+        if (static_cast<int>(expectedInt8[i]) != q) {
             int8Ok = false;
             data.push_back("  Mismatch @ " + std::to_string(fp32Values[i]) + ": got " + std::to_string(q) + " expect " +
                            std::to_string(static_cast<int>(expectedInt8[i])));
@@ -1000,19 +927,16 @@ TestOutput DeepLearningAcceleratorTesting::testFp16Precision()
     };
     const int nC = 5;
     bool fp16Ok = true;
-    for (int i = 0; i < nC; ++i)
-    {
+    for (int i = 0; i < nC; ++i) {
         // Simulate FP16 rounding by quantising to 10-bit mantissa
         float v = cases[i].input;
         // Extract exponent and round mantissa to 10 bits
-        float fp16sim =
-            static_cast<float>(static_cast<float>(static_cast<int16_t>(v / 0.001f)) * 0.001f); // crude approx
-        float err = std::fabs(v - cases[i].input); // exact here since same variable
+        float fp16sim = static_cast<float>(static_cast<float>(static_cast<int16_t>(v / 0.001f)) * 0.001f); // crude approx
+        float err = std::fabs(v - cases[i].input);                                                         // exact here since same variable
         (void)fp16sim;
         (void)err;
         // Primary check: FP16 range and representability
-        if (std::fabs(cases[i].input) > 65504.0f)
-        {
+        if (std::fabs(cases[i].input) > 65504.0f) {
             fp16Ok = false;
             data.push_back("  " + std::to_string(v) + " is out of FP16 range (>65504)");
         }
@@ -1027,8 +951,7 @@ TestOutput DeepLearningAcceleratorTesting::testFp16Precision()
         dot += aFP[i] * bFP[i];
     // Expected: 2+2+2+2 = 8.0
     bool dotOk = std::fabs(dot - 8.0f) < 0.01f;
-    data.push_back("FP16-simulated dot-product (result=" + std::to_string(dot) +
-                   "): " + std::string(dotOk ? "PASS" : "FAIL"));
+    data.push_back("FP16-simulated dot-product (result=" + std::to_string(dot) + "): " + std::string(dotOk ? "PASS" : "FAIL"));
     if (!dotOk || !fp16Ok)
         passed = false;
 
@@ -1059,26 +982,22 @@ TestOutput DeepLearningAcceleratorTesting::testStructuredSparsitySupport()
     const int total = 12;
     bool sparseOk = true;
     int nzCount = 0;
-    for (int g = 0; g < total / 4; ++g)
-    {
+    for (int g = 0; g < total / 4; ++g) {
         int nzInGroup = 0;
         for (int k = 0; k < 4; ++k)
-            if (weights[g * 4 + k] != 0.0f)
-            {
+            if (weights[g * 4 + k] != 0.0f) {
                 ++nzInGroup;
                 ++nzCount;
             }
-        if (nzInGroup > 2)
-        {
+        if (nzInGroup > 2) {
             sparseOk = false;
-            data.push_back("  Group " + std::to_string(g) + " has " + std::to_string(nzInGroup) +
-                           " nonzeros (>2, violates 2:4)");
+            data.push_back("  Group " + std::to_string(g) + " has " + std::to_string(nzInGroup) + " nonzeros (>2, violates 2:4)");
         }
     }
     float sparsityPct = 100.0f * (1.0f - static_cast<float>(nzCount) / total);
     data.push_back("2:4 sparsity pattern valid: " + std::string(sparseOk ? "PASS" : "FAIL"));
-    data.push_back("Nonzero elements: " + std::to_string(nzCount) + "/" + std::to_string(total) + " (" +
-                   std::to_string(sparsityPct) + "% sparse)");
+    data.push_back("Nonzero elements: " + std::to_string(nzCount) + "/" + std::to_string(total) + " (" + std::to_string(sparsityPct) +
+                   "% sparse)");
     if (!sparseOk)
         passed = false;
 
@@ -1111,8 +1030,7 @@ TestOutput DeepLearningAcceleratorTesting::testHardwareSchedulerOperation()
     data.push_back("DLA0 scheduler node: " + std::string(dla0 ? "present" : "absent"));
     data.push_back("DLA1 scheduler node: " + std::string(dla1 ? "present" : "absent"));
 
-    if (!dla0)
-    {
+    if (!dla0) {
         passed = false;
         data.push_back("FAIL: DLA0 not present; hardware scheduler unavailable.");
         return {passed, data};
@@ -1121,10 +1039,8 @@ TestOutput DeepLearningAcceleratorTesting::testHardwareSchedulerOperation()
     // Check devfreq governor (indicates PM + scheduler is active)
     auto devfreqDirs = listDirWithPrefix("/sys/class/devfreq", "");
     std::string governor;
-    for (auto &d : devfreqDirs)
-    {
-        if (d.find("nvdla") != std::string::npos || d.find("dla") != std::string::npos)
-        {
+    for (auto& d : devfreqDirs) {
+        if (d.find("nvdla") != std::string::npos || d.find("dla") != std::string::npos) {
             governor = readSysfsLine(d + "/governor");
             data.push_back("DLA devfreq governor: " + (governor.empty() ? "(unavailable)" : governor));
             break;
@@ -1134,8 +1050,7 @@ TestOutput DeepLearningAcceleratorTesting::testHardwareSchedulerOperation()
     // Task latency: schedule N synthetic tasks and measure ordering consistency
     const int TASKS = 8;
     std::vector<double> taskTimes(TASKS);
-    for (int t = 0; t < TASKS; ++t)
-    {
+    for (int t = 0; t < TASKS; ++t) {
         auto ts = std::chrono::high_resolution_clock::now();
         volatile uint64_t res = syntheticMacWorkload(100000ULL);
         (void)res;
@@ -1153,8 +1068,7 @@ TestOutput DeepLearningAcceleratorTesting::testHardwareSchedulerOperation()
     data.push_back("  Avg latency: " + std::to_string(avgMs) + " ms");
 
     // Jitter check: max/min ratio should be < 5 for a healthy scheduler
-    if (minMs > 0.0 && maxMs / minMs > 10.0)
-    {
+    if (minMs > 0.0 && maxMs / minMs > 10.0) {
         data.push_back("WARN: High scheduling jitter detected (ratio=" + std::to_string(maxMs / minMs) + ")");
     }
 
@@ -1204,13 +1118,10 @@ TestOutput DeepLearningAcceleratorTesting::testDlaTopsVerification()
     data.push_back("DLA engines detected: " + std::to_string(numDla));
     data.push_back("Expected total INT8 TOPS (datasheet): " + std::to_string(expectedTops) + " TOPS");
 
-    if (numDla == 0)
-    {
+    if (numDla == 0) {
         passed = false;
         data.push_back("FAIL: No DLA engines detected.");
-    }
-    else
-    {
+    } else {
         data.push_back("PASS: DLA engine(s) present; TOPS per datasheet = " + std::to_string(expectedTops));
     }
 
@@ -1239,8 +1150,7 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThroughputTesting()
     auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(durMs);
     auto wall0 = std::chrono::high_resolution_clock::now();
 
-    while (std::chrono::steady_clock::now() < deadline)
-    {
+    while (std::chrono::steady_clock::now() < deadline) {
         syntheticMacWorkload(ITERS_PER_BATCH);
         totalBatches++;
         totalMACs += ITERS_PER_BATCH;
@@ -1257,8 +1167,7 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThroughputTesting()
     data.push_back("Note: To measure actual DLA throughput, run trtexec with "
                    "--useDLACore=0 --int8 --iterations=1000 --warmUp=500");
 
-    if (totalBatches == 0)
-    {
+    if (totalBatches == 0) {
         passed = false;
         data.push_back("FAIL: No batches completed in " + std::to_string(durMs) + " ms.");
     }
@@ -1282,8 +1191,7 @@ TestOutput DeepLearningAcceleratorTesting::testDlaLatencyMeasurements()
     data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
 
     std::vector<double> latencies(RUNS);
-    for (int r = 0; r < RUNS; ++r)
-    {
+    for (int r = 0; r < RUNS; ++r) {
         auto s = std::chrono::high_resolution_clock::now();
         syntheticMacWorkload(200000ULL);
         auto e = std::chrono::high_resolution_clock::now();
@@ -1307,10 +1215,8 @@ TestOutput DeepLearningAcceleratorTesting::testDlaLatencyMeasurements()
     data.push_back("  Max:  " + std::to_string(maxMs));
 
     // Jitter: (p99 - p50) should be < 3× p50
-    if (p50 > 0.0 && (p99 - p50) > 3.0 * p50)
-    {
-        data.push_back("WARN: high tail latency jitter (P99=" + std::to_string(p99) +
-                       " ms, P50=" + std::to_string(p50) + " ms).");
+    if (p50 > 0.0 && (p99 - p50) > 3.0 * p50) {
+        data.push_back("WARN: high tail latency jitter (P99=" + std::to_string(p99) + " ms, P50=" + std::to_string(p50) + " ms).");
     }
 
     data.push_back("Typical real DLA latency for ResNet-50 INT8 on AGX Orin: ~1.5 ms.");
@@ -1354,14 +1260,11 @@ TestOutput DeepLearningAcceleratorTesting::testDlaMemoryBandwidth()
     // Jetson Orin AGX: 204.8 GB/s LPDDR5X theoretical peak; DLA fabric read ~68 GB/s
     // We only verify the CPU-side memory is functional and not catastrophically slow
     const double MIN_BW_GBS = 1.0; // very conservative: at least 1 GB/s
-    if (bwGBs < MIN_BW_GBS)
-    {
+    if (bwGBs < MIN_BW_GBS) {
         passed = false;
-        data.push_back("FAIL: bandwidth " + std::to_string(bwGBs) + " GB/s is below minimum threshold of " +
-                       std::to_string(MIN_BW_GBS) + " GB/s.");
-    }
-    else
-    {
+        data.push_back("FAIL: bandwidth " + std::to_string(bwGBs) + " GB/s is below minimum threshold of " + std::to_string(MIN_BW_GBS) +
+                       " GB/s.");
+    } else {
         data.push_back("PASS: memory bandwidth is within acceptable range.");
     }
 
@@ -1392,8 +1295,7 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThermalBehavior()
 
     // Enumerate and print all relevant thermal zones
     std::vector<std::pair<std::string, double>> zones;
-    for (int z = 0; z < 20; ++z)
-    {
+    for (int z = 0; z < 20; ++z) {
         std::string base = "/sys/class/thermal/thermal_zone" + std::to_string(z);
         if (!pathExists(base + "/temp"))
             continue;
@@ -1404,18 +1306,15 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThermalBehavior()
         data.push_back("  thermal_zone" + std::to_string(z) + " [" + type + "]: " + std::to_string(tempC) + " °C");
     }
 
-    if (zones.empty())
-    {
+    if (zones.empty()) {
         data.push_back("WARN: No thermal zones found (debugfs may be needed).");
         // Not a hard failure — driver loading may be required
         return {passed, data};
     }
 
     // Check all zones are below the warning threshold
-    for (auto &[name, tempC] : zones)
-    {
-        if (tempC > DLA_TEMP_WARNING_C)
-        {
+    for (auto& [name, tempC] : zones) {
+        if (tempC > DLA_TEMP_WARNING_C) {
             passed = false;
             data.push_back("FAIL: zone [" + name + "] at " + std::to_string(tempC) + " °C exceeds warning limit of " +
                            std::to_string(DLA_TEMP_WARNING_C) + " °C");
@@ -1424,25 +1323,20 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThermalBehavior()
 
     // Probe DLA-specific temperature
     double dlaTemp = probeDlaTemperature();
-    if (dlaTemp > 0.0)
-    {
+    if (dlaTemp > 0.0) {
         data.push_back("DLA/GPU thermal zone: " + std::to_string(dlaTemp) + " °C");
-        if (dlaTemp > DLA_TEMP_WARNING_C)
-        {
+        if (dlaTemp > DLA_TEMP_WARNING_C) {
             passed = false;
             data.push_back("FAIL: DLA temperature " + std::to_string(dlaTemp) + " °C exceeds limit of " +
                            std::to_string(DLA_TEMP_WARNING_C) + " °C.");
-        }
-        else
-        {
+        } else {
             data.push_back("PASS: DLA temperature is within safe operating limits.");
         }
     }
 
     // Check thermal throttling via clock reduction
     long long currentClk = probeDlaCoreClock();
-    if (currentClk > 0)
-    {
+    if (currentClk > 0) {
         double clkMHz = currentClk / 1e6;
         double nominalMHz = DLA_CORE_CLK_NOMINAL_HZ / 1e6;
         double throttlePct = 100.0 * (1.0 - clkMHz / nominalMHz);
@@ -1450,8 +1344,7 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThermalBehavior()
                        " MHz "
                        "(nominal " +
                        std::to_string(nominalMHz) + " MHz, throttle=" + std::to_string(throttlePct) + "%)");
-        if (throttlePct > 30.0)
-        {
+        if (throttlePct > 30.0) {
             data.push_back("WARN: DLA clock throttled by >" + std::to_string(static_cast<int>(throttlePct)) +
                            "% — possible thermal or power limit.");
         }
@@ -1670,26 +1563,11 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
 std::vector<std::string> DeepLearningAcceleratorTesting::getAvailableTests()
 {
     return {
-        "testDla1Functionality",
-        "testDla2Functionality",
-        "testDualDlaConcurrentOperation",
-        "testDlaClockFrequency",
-        "testDlaPowerConsumption",
-        "testConvolutionOperations",
-        "testDeconvolutionOperations",
-        "testFullyConnectedLayers",
-        "testActivationFunctions",
-        "testPoolingOperations",
-        "testBatchNormalization",
-        "testElementwiseOperations",
-        "testInt8Precision",
-        "testFp16Precision",
-        "testStructuredSparsitySupport",
-        "testHardwareSchedulerOperation",
-        "testDlaTopsVerification",
-        "testDlaThroughputTesting",
-        "testDlaLatencyMeasurements",
-        "testDlaMemoryBandwidth",
+        "testDla1Functionality",   "testDla2Functionality",     "testDualDlaConcurrentOperation", "testDlaClockFrequency",
+        "testDlaPowerConsumption", "testConvolutionOperations", "testDeconvolutionOperations",    "testFullyConnectedLayers",
+        "testActivationFunctions", "testPoolingOperations",     "testBatchNormalization",         "testElementwiseOperations",
+        "testInt8Precision",       "testFp16Precision",         "testStructuredSparsitySupport",  "testHardwareSchedulerOperation",
+        "testDlaTopsVerification", "testDlaThroughputTesting",  "testDlaLatencyMeasurements",     "testDlaMemoryBandwidth",
         "testDlaThermalBehavior",
     };
 }
@@ -1699,97 +1577,54 @@ std::vector<std::string> DeepLearningAcceleratorTesting::getAvailableTests()
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult DeepLearningAcceleratorTesting::runSingleTest(const std::string &testName)
+TestResult DeepLearningAcceleratorTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testDla1Functionality")
-    {
+    if (testName == "testDla1Functionality") {
         result = testDla1Functionality();
-    }
-    else if (testName == "testDla2Functionality")
-    {
+    } else if (testName == "testDla2Functionality") {
         result = testDla2Functionality();
-    }
-    else if (testName == "testDualDlaConcurrentOperation")
-    {
+    } else if (testName == "testDualDlaConcurrentOperation") {
         result = testDualDlaConcurrentOperation();
-    }
-    else if (testName == "testDlaClockFrequency")
-    {
+    } else if (testName == "testDlaClockFrequency") {
         result = testDlaClockFrequency();
-    }
-    else if (testName == "testDlaPowerConsumption")
-    {
+    } else if (testName == "testDlaPowerConsumption") {
         result = testDlaPowerConsumption();
-    }
-    else if (testName == "testConvolutionOperations")
-    {
+    } else if (testName == "testConvolutionOperations") {
         result = testConvolutionOperations();
-    }
-    else if (testName == "testDeconvolutionOperations")
-    {
+    } else if (testName == "testDeconvolutionOperations") {
         result = testDeconvolutionOperations();
-    }
-    else if (testName == "testFullyConnectedLayers")
-    {
+    } else if (testName == "testFullyConnectedLayers") {
         result = testFullyConnectedLayers();
-    }
-    else if (testName == "testActivationFunctions")
-    {
+    } else if (testName == "testActivationFunctions") {
         result = testActivationFunctions();
-    }
-    else if (testName == "testPoolingOperations")
-    {
+    } else if (testName == "testPoolingOperations") {
         result = testPoolingOperations();
-    }
-    else if (testName == "testBatchNormalization")
-    {
+    } else if (testName == "testBatchNormalization") {
         result = testBatchNormalization();
-    }
-    else if (testName == "testElementwiseOperations")
-    {
+    } else if (testName == "testElementwiseOperations") {
         result = testElementwiseOperations();
-    }
-    else if (testName == "testInt8Precision")
-    {
+    } else if (testName == "testInt8Precision") {
         result = testInt8Precision();
-    }
-    else if (testName == "testFp16Precision")
-    {
+    } else if (testName == "testFp16Precision") {
         result = testFp16Precision();
-    }
-    else if (testName == "testStructuredSparsitySupport")
-    {
+    } else if (testName == "testStructuredSparsitySupport") {
         result = testStructuredSparsitySupport();
-    }
-    else if (testName == "testHardwareSchedulerOperation")
-    {
+    } else if (testName == "testHardwareSchedulerOperation") {
         result = testHardwareSchedulerOperation();
-    }
-    else if (testName == "testDlaTopsVerification")
-    {
+    } else if (testName == "testDlaTopsVerification") {
         result = testDlaTopsVerification();
-    }
-    else if (testName == "testDlaThroughputTesting")
-    {
+    } else if (testName == "testDlaThroughputTesting") {
         result = testDlaThroughputTesting();
-    }
-    else if (testName == "testDlaLatencyMeasurements")
-    {
+    } else if (testName == "testDlaLatencyMeasurements") {
         result = testDlaLatencyMeasurements();
-    }
-    else if (testName == "testDlaMemoryBandwidth")
-    {
+    } else if (testName == "testDlaMemoryBandwidth") {
         result = testDlaMemoryBandwidth();
-    }
-    else if (testName == "testDlaThermalBehavior")
-    {
+    } else if (testName == "testDlaThermalBehavior") {
         result = testDlaThermalBehavior();
-    }
-    else
-    {
+    } else {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

@@ -131,7 +131,7 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
     // Run testLinuxKernelBoot
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testLinuxKernelBoot();
+        TestOutput result = testLinuxKernelBoot();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testLinuxKernelBoot", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
     // Run testDeviceDriverLoading
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDeviceDriverLoading();
+        TestOutput result = testDeviceDriverLoading();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDeviceDriverLoading", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
     // Run testSystemServiceStartup
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSystemServiceStartup();
+        TestOutput result = testSystemServiceStartup();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSystemServiceStartup", result, duration});
@@ -158,7 +158,7 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
     // Run testApplicationFramework
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testApplicationFramework();
+        TestOutput result = testApplicationFramework();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testApplicationFramework", result, duration});
@@ -167,7 +167,7 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
     // Run testMultiuserSupport
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMultiuserSupport();
+        TestOutput result = testMultiuserSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMultiuserSupport", result, duration});
@@ -176,7 +176,7 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
     // Run testCudaRuntime
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCudaRuntime();
+        TestOutput result = testCudaRuntime();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCudaRuntime", result, duration});
@@ -185,7 +185,7 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
     // Run testCudnnLibrary
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testCudnnLibrary();
+        TestOutput result = testCudnnLibrary();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testCudnnLibrary", result, duration});
@@ -194,7 +194,7 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
     // Run testTensorrtInference
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testTensorrtInference();
+        TestOutput result = testTensorrtInference();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testTensorrtInference", result, duration});
@@ -203,7 +203,7 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
     // Run testVpi
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testVpi();
+        TestOutput result = testVpi();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testVpi", result, duration});
@@ -212,7 +212,7 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
     // Run testMultimediaApi
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMultimediaApi();
+        TestOutput result = testMultimediaApi();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMultimediaApi", result, duration});
@@ -221,7 +221,7 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
     // Run testSensorDriverFramework
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSensorDriverFramework();
+        TestOutput result = testSensorDriverFramework();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSensorDriverFramework", result, duration});
@@ -234,19 +234,13 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> SoftwareInterfaceTesting::getAvailableTests() {
+std::vector<std::string> SoftwareInterfaceTesting::getAvailableTests()
+{
     return {
-        "testLinuxKernelBoot",
-        "testDeviceDriverLoading",
-        "testSystemServiceStartup",
-        "testApplicationFramework",
-        "testMultiuserSupport",
-        "testCudaRuntime",
-        "testCudnnLibrary",
-        "testTensorrtInference",
-        "testVpi",
-        "testMultimediaApi",
-        "testSensorDriverFramework",
+        "testLinuxKernelBoot",      "testDeviceDriverLoading",   "testSystemServiceStartup",
+        "testApplicationFramework", "testMultiuserSupport",      "testCudaRuntime",
+        "testCudnnLibrary",         "testTensorrtInference",     "testVpi",
+        "testMultimediaApi",        "testSensorDriverFramework",
     };
 }
 
@@ -255,7 +249,8 @@ std::vector<std::string> SoftwareInterfaceTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult SoftwareInterfaceTesting::runSingleTest(const std::string& testName) {
+TestResult SoftwareInterfaceTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

@@ -16,14 +16,14 @@
  */
 class VisionAcceleratorTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for VisionAcceleratorTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function VisionAcceleratorTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for VisionAcceleratorTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function VisionAcceleratorTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     VisionAcceleratorTesting();
     /**
@@ -39,10 +39,10 @@ class VisionAcceleratorTesting : public TestBase
      * @brief Constructor for VisionAcceleratorTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the dualvectorprocessingunits functionality
+    /**
+     * @brief Tests the dualvectorprocessingunits functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testDualVectorProcessingUnits();
     /**
@@ -190,13 +190,11 @@ class VisionAcceleratorTesting : public TestBase
      */
     TestOutput testPvaPowerConsumption();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -209,11 +207,9 @@ class VisionAcceleratorTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // VISIONACCELERATORTESTING_H

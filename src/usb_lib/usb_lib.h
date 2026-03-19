@@ -16,14 +16,14 @@
  */
 class UsbTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for UsbTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function UsbTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for UsbTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function UsbTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     UsbTesting();
     /**
@@ -39,10 +39,10 @@ class UsbTesting : public TestBase
      * @brief Constructor for UsbTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the usbhostmode functionality
+    /**
+     * @brief Tests the usbhostmode functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testUsbHostMode();
     /**
@@ -172,13 +172,11 @@ class UsbTesting : public TestBase
      */
     TestOutput testUsbHidDevices();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -191,11 +189,9 @@ class UsbTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // USBTESTING_H

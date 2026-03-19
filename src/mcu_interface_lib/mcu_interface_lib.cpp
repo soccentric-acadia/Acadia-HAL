@@ -131,7 +131,7 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
     // Run testMcuCommunicationInterface
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMcuCommunicationInterface();
+        TestOutput result = testMcuCommunicationInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMcuCommunicationInterface", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
     // Run testMcuFirmwareOperation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMcuFirmwareOperation();
+        TestOutput result = testMcuFirmwareOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMcuFirmwareOperation", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
     // Run testMcuWatchdog
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMcuWatchdog();
+        TestOutput result = testMcuWatchdog();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMcuWatchdog", result, duration});
@@ -158,7 +158,7 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
     // Run testMcuGpioInterface
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMcuGpioInterface();
+        TestOutput result = testMcuGpioInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMcuGpioInterface", result, duration});
@@ -167,7 +167,7 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
     // Run testMcuSpiInterface
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMcuSpiInterface();
+        TestOutput result = testMcuSpiInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMcuSpiInterface", result, duration});
@@ -176,7 +176,7 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
     // Run testMcuUartInterface
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMcuUartInterface();
+        TestOutput result = testMcuUartInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMcuUartInterface", result, duration});
@@ -185,7 +185,7 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
     // Run testMcuDmsInterface
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMcuDmsInterface();
+        TestOutput result = testMcuDmsInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMcuDmsInterface", result, duration});
@@ -194,7 +194,7 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
     // Run testMcuToOrinDataTransfer
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMcuToOrinDataTransfer();
+        TestOutput result = testMcuToOrinDataTransfer();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMcuToOrinDataTransfer", result, duration});
@@ -203,7 +203,7 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
     // Run testSecondaryMcuRedundancy
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSecondaryMcuRedundancy();
+        TestOutput result = testSecondaryMcuRedundancy();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSecondaryMcuRedundancy", result, duration});
@@ -212,7 +212,7 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
     // Run testMcuFailoverMechanism
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMcuFailoverMechanism();
+        TestOutput result = testMcuFailoverMechanism();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMcuFailoverMechanism", result, duration});
@@ -221,7 +221,7 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
     // Run testMcuSynchronization
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMcuSynchronization();
+        TestOutput result = testMcuSynchronization();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMcuSynchronization", result, duration});
@@ -234,19 +234,12 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> McuInterfaceTesting::getAvailableTests() {
+std::vector<std::string> McuInterfaceTesting::getAvailableTests()
+{
     return {
-        "testMcuCommunicationInterface",
-        "testMcuFirmwareOperation",
-        "testMcuWatchdog",
-        "testMcuGpioInterface",
-        "testMcuSpiInterface",
-        "testMcuUartInterface",
-        "testMcuDmsInterface",
-        "testMcuToOrinDataTransfer",
-        "testSecondaryMcuRedundancy",
-        "testMcuFailoverMechanism",
-        "testMcuSynchronization",
+        "testMcuCommunicationInterface", "testMcuFirmwareOperation", "testMcuWatchdog",        "testMcuGpioInterface",
+        "testMcuSpiInterface",           "testMcuUartInterface",     "testMcuDmsInterface",    "testMcuToOrinDataTransfer",
+        "testSecondaryMcuRedundancy",    "testMcuFailoverMechanism", "testMcuSynchronization",
     };
 }
 
@@ -255,7 +248,8 @@ std::vector<std::string> McuInterfaceTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult McuInterfaceTesting::runSingleTest(const std::string& testName) {
+TestResult McuInterfaceTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

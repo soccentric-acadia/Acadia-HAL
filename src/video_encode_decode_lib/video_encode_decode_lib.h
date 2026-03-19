@@ -16,14 +16,14 @@
  */
 class VideoEncodeDecodeTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for VideoEncodeDecodeTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function VideoEncodeDecodeTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for VideoEncodeDecodeTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function VideoEncodeDecodeTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     VideoEncodeDecodeTesting();
     /**
@@ -39,10 +39,10 @@ class VideoEncodeDecodeTesting : public TestBase
      * @brief Constructor for VideoEncodeDecodeTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the h265encoding functionality
+    /**
+     * @brief Tests the h265encoding functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testH265Encoding();
     /**
@@ -262,13 +262,11 @@ class VideoEncodeDecodeTesting : public TestBase
      */
     TestOutput testNvjpgThroughput();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -281,11 +279,9 @@ class VideoEncodeDecodeTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // VIDEOENCODEDECODETESTING_H

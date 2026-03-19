@@ -16,14 +16,14 @@
  */
 class EnvironmentalTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for EnvironmentalTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function EnvironmentalTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for EnvironmentalTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function EnvironmentalTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     EnvironmentalTesting();
     /**
@@ -39,10 +39,10 @@ class EnvironmentalTesting : public TestBase
      * @brief Constructor for EnvironmentalTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the temperaturerange functionality
+    /**
+     * @brief Tests the temperaturerange functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testTemperatureRange();
     /**
@@ -100,13 +100,11 @@ class EnvironmentalTesting : public TestBase
      */
     TestOutput testSaltSprayResistance();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -119,11 +117,9 @@ class EnvironmentalTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // ENVIRONMENTALTESTING_H

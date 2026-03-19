@@ -19,39 +19,32 @@ void signal_handler(int signal)
     stop_flag = true;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     TestMode mode = TestMode::ONE_SHOT;
-    if (argc > 1)
-    {
+    if (argc > 1) {
         std::string arg = argv[1];
-        if (arg == "monitoring")
-        {
+        if (arg == "monitoring") {
             mode = TestMode::MONITORING;
         }
     }
 
-    auto printResults = [&](const std::vector<TestResult> &results) {
-        if (mode == TestMode::MONITORING)
-        {
+    auto printResults = [&](const std::vector<TestResult>& results) {
+        if (mode == TestMode::MONITORING) {
             system("clear");
         }
         static int cycle = 0;
         cycle++;
         std::cout << "\nTest Results (Cycle " << cycle << "):\n";
-        std::cout << std::left << std::setw(40) << "Test Name" << std::setw(10) << "Result" << std::setw(15)
-                  << "Duration (s)" << std::endl;
+        std::cout << std::left << std::setw(40) << "Test Name" << std::setw(10) << "Result" << std::setw(15) << "Duration (s)" << std::endl;
         std::cout << std::string(65, '-') << std::endl;
         int passed = 0;
         int failed = 0;
         std::chrono::duration<double> totalTime = std::chrono::duration<double>::zero();
-        for (const auto &res : results)
-        {
-            std::cout << std::left << std::setw(40) << res.name << std::setw(10)
-                      << (res.output.passed ? "PASS" : "FAIL") << std::setw(15) << std::fixed << std::setprecision(6)
-                      << res.duration.count() << std::endl;
-            for (const auto &line : res.output.data)
-            {
+        for (const auto& res : results) {
+            std::cout << std::left << std::setw(40) << res.name << std::setw(10) << (res.output.passed ? "PASS" : "FAIL") << std::setw(15)
+                      << std::fixed << std::setprecision(6) << res.duration.count() << std::endl;
+            for (const auto& line : res.output.data) {
                 std::cout << "    " << line << std::endl;
             }
             if (res.output.passed)
@@ -64,16 +57,13 @@ int main(int argc, char *argv[])
         std::cout << "Total Tests Run: " << results.size() << std::endl;
         std::cout << "Passed: " << passed << std::endl;
         std::cout << "Failed: " << failed << std::endl;
-        std::cout << "Total Time: " << std::fixed << std::setprecision(6) << totalTime.count() << " seconds"
-                  << std::endl;
+        std::cout << "Total Time: " << std::fixed << std::setprecision(6) << totalTime.count() << " seconds" << std::endl;
     };
 
     PcieTesting tester;
-    std::cout << "PcieTesting test started in " << (mode == TestMode::ONE_SHOT ? "ONE_SHOT" : "MONITORING") << " mode."
-              << std::endl;
+    std::cout << "PcieTesting test started in " << (mode == TestMode::ONE_SHOT ? "ONE_SHOT" : "MONITORING") << " mode." << std::endl;
 
-    if (mode == TestMode::MONITORING)
-    {
+    if (mode == TestMode::MONITORING) {
         std::signal(SIGINT, signal_handler);
         std::cout << "Press Ctrl+C to stop monitoring." << std::endl;
     }
@@ -130,11 +120,9 @@ int main(int argc, char *argv[])
 
     */
 
-    if (mode == TestMode::MONITORING)
-    {
+    if (mode == TestMode::MONITORING) {
         // Wait for stop signal
-        while (!stop_flag)
-        {
+        while (!stop_flag) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         tester.stop();

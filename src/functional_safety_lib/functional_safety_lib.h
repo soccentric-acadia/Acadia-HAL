@@ -16,14 +16,14 @@
  */
 class FunctionalSafetyTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for FunctionalSafetyTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function FunctionalSafetyTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for FunctionalSafetyTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function FunctionalSafetyTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     FunctionalSafetyTesting();
     /**
@@ -39,10 +39,10 @@ class FunctionalSafetyTesting : public TestBase
      * @brief Constructor for FunctionalSafetyTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the lockstepcpuoperation functionality
+    /**
+     * @brief Tests the lockstepcpuoperation functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testLockstepCpuOperation();
     /**
@@ -109,13 +109,11 @@ class FunctionalSafetyTesting : public TestBase
      */
     TestOutput testAsilQsLAndRRailIsolation();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -128,11 +126,9 @@ class FunctionalSafetyTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // FUNCTIONALSAFETYTESTING_H

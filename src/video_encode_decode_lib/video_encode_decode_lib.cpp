@@ -67,7 +67,7 @@ static constexpr double ORIN_DEC_SUPPORTED_FPS[] = {30.0, 60.0, 120.0};
 // sysfs / procfs / shell helper utilities
 // ---------------------------------------------------------------------------
 
-static std::string vedReadFile(const std::string &path)
+static std::string vedReadFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open())
@@ -77,26 +77,24 @@ static std::string vedReadFile(const std::string &path)
     return line;
 }
 
-static long long vedReadInt(const std::string &path)
+static long long vedReadInt(const std::string& path)
 {
     std::string s = vedReadFile(path);
     if (s.empty())
         return -1LL;
-    try
-    {
+    try {
         return std::stoll(s);
     }
-    catch (...)
-    {
+    catch (...) {
         return -1LL;
     }
 }
 
 /** Run a shell command and capture up to 4 KB of stdout. */
-static std::string vedRunCmd(const char *cmd)
+static std::string vedRunCmd(const char* cmd)
 {
     char buf[4096] = {};
-    FILE *pipe = popen(cmd, "r");
+    FILE* pipe = popen(cmd, "r");
     if (!pipe)
         return "";
     size_t n = fread(buf, 1, sizeof(buf) - 1, pipe);
@@ -108,7 +106,7 @@ static std::string vedRunCmd(const char *cmd)
 }
 
 /** Check whether a device node exists and is accessible. */
-static bool vedDeviceExists(const std::string &path)
+static bool vedDeviceExists(const std::string& path)
 {
     return (access(path.c_str(), F_OK) == 0);
 }
@@ -171,7 +169,7 @@ static bool isOrinPlatform()
  * Attempt to read a BPMP clock rate for a named clock.
  * Returns the rate in Hz, or -1 if unavailable.
  */
-static long long vedGetBpmpClockHz(const std::string &clkName)
+static long long vedGetBpmpClockHz(const std::string& clkName)
 {
     std::string ratePath = "/sys/kernel/debug/bpmp/debug/clk/" + clkName + "/rate";
     return vedReadInt(ratePath);
@@ -181,31 +179,28 @@ static long long vedGetBpmpClockHz(const std::string &clkName)
  * Read current power consumption from INA3221 rails (mW).
  * Returns -1 if unavailable.
  */
-static long long vedReadRailPowerMw(const std::string &railLabel)
+static long long vedReadRailPowerMw(const std::string& railLabel)
 {
     // Common INA3221 sysfs layout on Jetson:
     //   /sys/bus/i2c/drivers/ina3221x/1-0040/iio:device0/in_powerN_input
     // We search for a hwmon entry whose label matches railLabel.
     std::string hwmonBase = "/sys/class/hwmon/";
-    DIR *dir = opendir(hwmonBase.c_str());
+    DIR* dir = opendir(hwmonBase.c_str());
     if (!dir)
         return -1LL;
 
-    dirent *entry;
-    while ((entry = readdir(dir)) != nullptr)
-    {
+    dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
         std::string name(entry->d_name);
         if (name.find("hwmon") == std::string::npos)
             continue;
         std::string devPath = hwmonBase + name + "/";
         // Check each channel label (label1 … label6)
-        for (int ch = 1; ch <= 6; ++ch)
-        {
+        for (int ch = 1; ch <= 6; ++ch) {
             std::string labelPath = devPath + "in" + std::to_string(ch) + "_label";
             std::string label = vedReadFile(labelPath);
             // Fuzzy match
-            if (label.find(railLabel) != std::string::npos)
-            {
+            if (label.find(railLabel) != std::string::npos) {
                 // power input in µW
                 std::string powerPath = devPath + "power" + std::to_string(ch) + "_input";
                 long long uW = vedReadInt(powerPath);
@@ -253,28 +248,23 @@ TestOutput VideoEncodeDecodeTesting::testH265Encoding()
     if (!model.empty())
         data.push_back("Device model: " + model);
 
-    if (!isOrinPlatform())
-    {
+    if (!isOrinPlatform()) {
         data.push_back("WARNING: Could not confirm Orin platform – continuing anyway.");
     }
 
     // Primary hardware check: encoder device node
     bool encPresent = nvencPresent();
     data.push_back("NVENC device node (/dev/nvhost-msenc): " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
-    if (!encPresent)
-    {
+    if (!encPresent) {
         passed = false;
         data.push_back("FAIL: NVENC device node missing – H.265 encoder unavailable.");
     }
 
     // Query GStreamer / V4L2 HEVC encoder caps
     std::string gstHEVC = vedRunCmd("gst-inspect-1.0 nvv4l2h265enc 2>/dev/null | head -3");
-    if (!gstHEVC.empty())
-    {
+    if (!gstHEVC.empty()) {
         data.push_back("GStreamer HEVC encoder plugin: " + gstHEVC.substr(0, 100));
-    }
-    else
-    {
+    } else {
         std::string v4l2Enc = vedRunCmd("v4l2-ctl --list-devices 2>/dev/null | grep -i nvenc | head -2");
         if (!v4l2Enc.empty())
             data.push_back("V4L2 NVENC: " + v4l2Enc.substr(0, 100));
@@ -291,8 +281,7 @@ TestOutput VideoEncodeDecodeTesting::testH265Encoding()
 
     // Verify expected max bitrate constant
     data.push_back("Max H.265 bitrate expected: " + std::to_string(ORIN_MAX_ENC_BITRATE_MBPS) + " Mbps");
-    data.push_back("Max encode resolution: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" +
-                   std::to_string(ORIN_MAX_ENCODE_HEIGHT));
+    data.push_back("Max encode resolution: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" + std::to_string(ORIN_MAX_ENCODE_HEIGHT));
 
     if (passed)
         data.push_back("PASS: H.265 encoding hardware verified on Jetson Orin NVENC.");
@@ -316,8 +305,7 @@ TestOutput VideoEncodeDecodeTesting::testH264Encoding()
 
     bool encPresent = nvencPresent();
     data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
-    if (!encPresent)
-    {
+    if (!encPresent) {
         passed = false;
         data.push_back("FAIL: NVENC device node missing.");
     }
@@ -330,14 +318,12 @@ TestOutput VideoEncodeDecodeTesting::testH264Encoding()
         data.push_back("GStreamer H.264 plugin (nvv4l2h264enc): not found – relying on device node.");
 
     // V4L2 format capabilities
-    std::string v4l2Fmt =
-        vedRunCmd("v4l2-ctl --device=/dev/video0 --list-formats-out 2>/dev/null | grep -i h264 | head -3");
+    std::string v4l2Fmt = vedRunCmd("v4l2-ctl --device=/dev/video0 --list-formats-out 2>/dev/null | grep -i h264 | head -3");
     if (!v4l2Fmt.empty())
         data.push_back("V4L2 H.264 output format: " + v4l2Fmt.substr(0, 100));
 
     data.push_back("H.264 baseline/main/high profiles: supported by NVENC Orin");
-    data.push_back("Max encode resolution: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" +
-                   std::to_string(ORIN_MAX_ENCODE_HEIGHT));
+    data.push_back("Max encode resolution: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" + std::to_string(ORIN_MAX_ENCODE_HEIGHT));
 
     if (passed)
         data.push_back("PASS: H.264 encoding hardware verified on Jetson Orin NVENC.");
@@ -362,20 +348,16 @@ TestOutput VideoEncodeDecodeTesting::testAv1Encoding()
 
     bool encPresent = nvencPresent();
     data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
-    if (!encPresent)
-    {
+    if (!encPresent) {
         passed = false;
         data.push_back("FAIL: NVENC device node missing.");
     }
 
     // GStreamer AV1 encoder plugin
     std::string gstAV1 = vedRunCmd("gst-inspect-1.0 nvv4l2av1enc 2>/dev/null | head -3");
-    if (!gstAV1.empty())
-    {
+    if (!gstAV1.empty()) {
         data.push_back("GStreamer AV1 encoder plugin: " + gstAV1.substr(0, 100));
-    }
-    else
-    {
+    } else {
         // Check via V4L2 codec list
         std::string v4l2AV1 = vedRunCmd("v4l2-ctl --list-devices 2>/dev/null | grep -i av1 | head -2");
         if (!v4l2AV1.empty())
@@ -384,16 +366,14 @@ TestOutput VideoEncodeDecodeTesting::testAv1Encoding()
             data.push_back("AV1 GStreamer plugin not found – checking Orin model for AV1 support.");
 
         // On Orin AGX/NX, AV1 encode is hardware-supported even if plugin name differs
-        bool isOrinAgxNx = (model.find("AGX") != std::string::npos || model.find("NX") != std::string::npos ||
-                            model.find("Orin") != std::string::npos);
-        if (!isOrinAgxNx && encPresent)
-        {
+        bool isOrinAgxNx =
+            (model.find("AGX") != std::string::npos || model.find("NX") != std::string::npos || model.find("Orin") != std::string::npos);
+        if (!isOrinAgxNx && encPresent) {
             data.push_back("WARNING: AV1 encode may not be available on this Orin variant.");
         }
     }
 
-    data.push_back("AV1 max encode resolution: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" +
-                   std::to_string(ORIN_MAX_ENCODE_HEIGHT));
+    data.push_back("AV1 max encode resolution: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" + std::to_string(ORIN_MAX_ENCODE_HEIGHT));
 
     if (passed)
         data.push_back("PASS: AV1 encoding hardware verified on Jetson Orin NVENC.");
@@ -421,8 +401,7 @@ TestOutput VideoEncodeDecodeTesting::testMultipleStreamEncoding()
 
     bool encPresent = nvencPresent();
     data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
-    if (!encPresent)
-    {
+    if (!encPresent) {
         passed = false;
         data.push_back("FAIL: NVENC device node missing – multi-stream encode unavailable.");
         return {passed, data};
@@ -436,8 +415,7 @@ TestOutput VideoEncodeDecodeTesting::testMultipleStreamEncoding()
                    std::string(enc2Present ? "PRESENT" : "not found (may share one node)"));
 
     // Verify via GStreamer that nvv4l2h265enc can operate on multiple instances
-    std::string gstRank =
-        vedRunCmd("gst-inspect-1.0 nvv4l2h265enc 2>/dev/null | grep -i 'max-instances\\|num-enc' | head -3");
+    std::string gstRank = vedRunCmd("gst-inspect-1.0 nvv4l2h265enc 2>/dev/null | grep -i 'max-instances\\|num-enc' | head -3");
     if (!gstRank.empty())
         data.push_back("GStreamer NVENC instances info: " + gstRank.substr(0, 120));
     else
@@ -463,10 +441,9 @@ TestOutput VideoEncodeDecodeTesting::testVariousResolutions()
     {
         int w;
         int h;
-        const char *label;
+        const char* label;
     } resolutions[] = {
-        {640, 480, "SD  480p"},  {1280, 720, "HD  720p"}, {1920, 1080, "FHD 1080p"},
-        {3840, 2160, "4K  UHD"}, {7680, 4320, "8K  UHD"},
+        {640, 480, "SD  480p"}, {1280, 720, "HD  720p"}, {1920, 1080, "FHD 1080p"}, {3840, 2160, "4K  UHD"}, {7680, 4320, "8K  UHD"},
     };
 
     bool encPresent = nvencPresent();
@@ -474,15 +451,13 @@ TestOutput VideoEncodeDecodeTesting::testVariousResolutions()
     data.push_back("NVENC present: " + std::string(encPresent ? "YES" : "NO"));
     data.push_back("NVDEC present: " + std::string(decPresent ? "YES" : "NO"));
 
-    if (!encPresent && !decPresent)
-    {
+    if (!encPresent && !decPresent) {
         passed = false;
         data.push_back("FAIL: Neither NVENC nor NVDEC device nodes found.");
         return {passed, data};
     }
 
-    for (const auto &r : resolutions)
-    {
+    for (const auto& r : resolutions) {
         bool withinEncMax = (r.w <= ORIN_MAX_ENCODE_WIDTH && r.h <= ORIN_MAX_ENCODE_HEIGHT);
         bool withinDecMax = (r.w <= ORIN_MAX_DECODE_WIDTH && r.h <= ORIN_MAX_DECODE_HEIGHT);
         std::string status = (withinEncMax && withinDecMax) ? "SUPPORTED" : "EXCEEDS_LIMIT";
@@ -492,10 +467,8 @@ TestOutput VideoEncodeDecodeTesting::testVariousResolutions()
     }
 
     // Verify max resolution constants match Orin spec
-    data.push_back("Max encode: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" +
-                   std::to_string(ORIN_MAX_ENCODE_HEIGHT));
-    data.push_back("Max decode: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" +
-                   std::to_string(ORIN_MAX_DECODE_HEIGHT));
+    data.push_back("Max encode: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" + std::to_string(ORIN_MAX_ENCODE_HEIGHT));
+    data.push_back("Max decode: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" + std::to_string(ORIN_MAX_DECODE_HEIGHT));
 
     if (passed)
         data.push_back("PASS: All standard resolutions supported by Jetson Orin NVENC/NVDEC.");
@@ -517,16 +490,14 @@ TestOutput VideoEncodeDecodeTesting::testVariousBitrates()
 
     bool encPresent = nvencPresent();
     data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
-    if (!encPresent)
-    {
+    if (!encPresent) {
         passed = false;
         data.push_back("FAIL: NVENC not available – cannot verify bitrate range.");
         return {passed, data};
     }
 
     static const double testBitratesMbps[] = {0.5, 2.0, 8.0, 20.0, 50.0, 100.0, 240.0};
-    for (double brate : testBitratesMbps)
-    {
+    for (double brate : testBitratesMbps) {
         bool inRange = (brate >= ORIN_MIN_ENC_BITRATE_MBPS && brate <= ORIN_MAX_ENC_BITRATE_MBPS);
         data.push_back("  " + std::to_string(brate) + " Mbps: " + (inRange ? "IN_RANGE" : "OUT_OF_RANGE"));
         if (!inRange)
@@ -561,16 +532,14 @@ TestOutput VideoEncodeDecodeTesting::testVariousFrameRates()
     data.push_back("NVENC present: " + std::string(encPresent ? "YES" : "NO"));
     data.push_back("NVDEC present: " + std::string(decPresent ? "YES" : "NO"));
 
-    if (!encPresent && !decPresent)
-    {
+    if (!encPresent && !decPresent) {
         passed = false;
         data.push_back("FAIL: Neither NVENC nor NVDEC found.");
         return {passed, data};
     }
 
     data.push_back("Encoder supported frame rates:");
-    for (double fps : ORIN_ENC_SUPPORTED_FPS)
-    {
+    for (double fps : ORIN_ENC_SUPPORTED_FPS) {
         // At 4K, max encode on Orin AGX is 60 fps on each of 4 streams
         bool ok = (fps <= 120.0);
         data.push_back("  " + std::to_string(fps) + " fps: " + (ok ? "SUPPORTED" : "EXCEEDS_LIMIT"));
@@ -579,8 +548,7 @@ TestOutput VideoEncodeDecodeTesting::testVariousFrameRates()
     }
 
     data.push_back("Decoder supported frame rates (4K):");
-    for (double fps : ORIN_DEC_SUPPORTED_FPS)
-    {
+    for (double fps : ORIN_DEC_SUPPORTED_FPS) {
         bool ok = (fps <= 120.0);
         data.push_back("  " + std::to_string(fps) + " fps: " + (ok ? "SUPPORTED" : "EXCEEDS_LIMIT"));
         if (!ok)
@@ -605,22 +573,21 @@ TestOutput VideoEncodeDecodeTesting::testEncoderQualitySettings()
 
     bool encPresent = nvencPresent();
     data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
-    if (!encPresent)
-    {
+    if (!encPresent) {
         passed = false;
         data.push_back("FAIL: NVENC device not found.");
         return {passed, data};
     }
 
     // Enumerate GStreamer nvv4l2h265enc quality/preset properties
-    static const char *modes[] = {"CQP", "CBR", "VBR", "VBR_HQ"};
+    static const char* modes[] = {"CQP", "CBR", "VBR", "VBR_HQ"};
     data.push_back("Rate-control modes supported by Jetson Orin NVENC:");
-    for (const char *m : modes)
+    for (const char* m : modes)
         data.push_back("  " + std::string(m) + ": SUPPORTED");
 
     // GStreamer preset enumeration
-    std::string gstPresets = vedRunCmd(
-        "gst-inspect-1.0 nvv4l2h265enc 2>/dev/null | grep -i 'preset\\|quality\\|qp\\|rate-control' | head -8");
+    std::string gstPresets =
+        vedRunCmd("gst-inspect-1.0 nvv4l2h265enc 2>/dev/null | grep -i 'preset\\|quality\\|qp\\|rate-control' | head -8");
     if (!gstPresets.empty())
         data.push_back("GStreamer quality properties:\n  " + gstPresets.substr(0, 300));
     else
@@ -649,8 +616,7 @@ TestOutput VideoEncodeDecodeTesting::testEncoderLatency()
 
     bool encPresent = nvencPresent();
     data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
-    if (!encPresent)
-    {
+    if (!encPresent) {
         passed = false;
         data.push_back("FAIL: NVENC device not found.");
         return {passed, data};
@@ -658,7 +624,7 @@ TestOutput VideoEncodeDecodeTesting::testEncoderLatency()
 
     // Measure device-open latency as a proxy for encoder init time
     auto t0 = std::chrono::steady_clock::now();
-    FILE *fp = popen("cat /dev/null > /dev/null 2>&1; v4l2-ctl --list-devices 2>/dev/null | grep -c msenc", "r");
+    FILE* fp = popen("cat /dev/null > /dev/null 2>&1; v4l2-ctl --list-devices 2>/dev/null | grep -c msenc", "r");
     if (fp)
         pclose(fp);
     auto t1 = std::chrono::steady_clock::now();
@@ -702,8 +668,7 @@ TestOutput VideoEncodeDecodeTesting::testEncoderPowerConsumption()
     if (gpuMw > 0)
         data.push_back("VDD_GPU_SOC rail power: " + std::to_string(gpuMw) + " mW");
 
-    if (socMw < 0 && cvMw < 0 && gpuMw < 0)
-    {
+    if (socMw < 0 && cvMw < 0 && gpuMw < 0) {
         // Try tegrastats one-shot
         std::string tegra = vedRunCmd("timeout 2 tegrastats 2>/dev/null | head -1");
         if (!tegra.empty())
@@ -715,13 +680,10 @@ TestOutput VideoEncodeDecodeTesting::testEncoderPowerConsumption()
     // NVENC engine presence still needed
     bool encPresent = nvencPresent();
     data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
-    if (!encPresent)
-    {
+    if (!encPresent) {
         passed = false;
         data.push_back("FAIL: NVENC device not found.");
-    }
-    else
-    {
+    } else {
         data.push_back("Encoder power tested: NVENC uses dedicated fixed-function hardware (low power).");
         data.push_back("Typical NVENC power at 4K@60 H.265: ~2-4W increment on VDD_SOC rail.");
     }
@@ -749,8 +711,7 @@ TestOutput VideoEncodeDecodeTesting::testH265Decoding()
 
     bool decPresent = nvdecPresent();
     data.push_back("NVDEC device node (/dev/nvhost-nvdec): " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
-    if (!decPresent)
-    {
+    if (!decPresent) {
         passed = false;
         data.push_back("FAIL: NVDEC device node missing – H.265 decoder unavailable.");
     }
@@ -770,8 +731,7 @@ TestOutput VideoEncodeDecodeTesting::testH265Decoding()
         data.push_back("NVDEC BPMP clock: unavailable via sysfs");
 
     data.push_back("H.265 profiles: Main, Main10, Main422-10");
-    data.push_back("Max decode resolution: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" +
-                   std::to_string(ORIN_MAX_DECODE_HEIGHT));
+    data.push_back("Max decode resolution: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" + std::to_string(ORIN_MAX_DECODE_HEIGHT));
 
     if (passed)
         data.push_back("PASS: H.265 decoding hardware verified on Jetson Orin NVDEC.");
@@ -791,8 +751,7 @@ TestOutput VideoEncodeDecodeTesting::testH264Decoding()
 
     bool decPresent = nvdecPresent();
     data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
-    if (!decPresent)
-    {
+    if (!decPresent) {
         passed = false;
         data.push_back("FAIL: NVDEC device node missing.");
     }
@@ -804,8 +763,7 @@ TestOutput VideoEncodeDecodeTesting::testH264Decoding()
         data.push_back("H.264 decode verified via NVDEC HW spec (Orin supports all AVC profiles).");
 
     data.push_back("H.264 profiles: Baseline, Main, High, High-4:2:2, High-4:4:4");
-    data.push_back("Max decode resolution: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" +
-                   std::to_string(ORIN_MAX_DECODE_HEIGHT));
+    data.push_back("Max decode resolution: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" + std::to_string(ORIN_MAX_DECODE_HEIGHT));
 
     if (passed)
         data.push_back("PASS: H.264 decoding hardware verified on Jetson Orin NVDEC.");
@@ -825,8 +783,7 @@ TestOutput VideoEncodeDecodeTesting::testAv1Decoding()
 
     bool decPresent = nvdecPresent();
     data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
-    if (!decPresent)
-    {
+    if (!decPresent) {
         passed = false;
         data.push_back("FAIL: NVDEC device node missing.");
     }
@@ -838,8 +795,7 @@ TestOutput VideoEncodeDecodeTesting::testAv1Decoding()
         data.push_back("AV1 decode verified via NVDEC HW spec (Orin NVDEC rev. 5.x supports AV1).");
 
     data.push_back("AV1 profiles: Main (8-bit and 10-bit)");
-    data.push_back("Max decode resolution: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" +
-                   std::to_string(ORIN_MAX_DECODE_HEIGHT));
+    data.push_back("Max decode resolution: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" + std::to_string(ORIN_MAX_DECODE_HEIGHT));
 
     if (passed)
         data.push_back("PASS: AV1 decoding hardware verified on Jetson Orin NVDEC.");
@@ -859,8 +815,7 @@ TestOutput VideoEncodeDecodeTesting::testVp9Decoding()
 
     bool decPresent = nvdecPresent();
     data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
-    if (!decPresent)
-    {
+    if (!decPresent) {
         passed = false;
         data.push_back("FAIL: NVDEC device node missing.");
     }
@@ -898,11 +853,9 @@ TestOutput VideoEncodeDecodeTesting::testMultipleStreamDecoding()
     bool dec2Present = vedDeviceExists("/dev/nvhost-nvdec1");
 
     data.push_back("NVDEC engine 0 (/dev/nvhost-nvdec): " + std::string(dec1Present ? "PRESENT" : "NOT FOUND"));
-    data.push_back("NVDEC engine 1 (/dev/nvhost-nvdec1): " +
-                   std::string(dec2Present ? "PRESENT" : "not found (may share node)"));
+    data.push_back("NVDEC engine 1 (/dev/nvhost-nvdec1): " + std::string(dec2Present ? "PRESENT" : "not found (may share node)"));
 
-    if (!decPresent)
-    {
+    if (!decPresent) {
         passed = false;
         data.push_back("FAIL: NVDEC device node missing.");
         return {passed, data};
@@ -934,8 +887,7 @@ TestOutput VideoEncodeDecodeTesting::test4k8kDecoding()
 
     bool decPresent = nvdecPresent();
     data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
-    if (!decPresent)
-    {
+    if (!decPresent) {
         passed = false;
         data.push_back("FAIL: NVDEC device node missing.");
         return {passed, data};
@@ -945,18 +897,17 @@ TestOutput VideoEncodeDecodeTesting::test4k8kDecoding()
     {
         int w;
         int h;
-        const char *label;
+        const char* label;
         double maxFps;
     } specs[] = {
         {3840, 2160, "4K  UHD", 60.0},
         {7680, 4320, "8K  UHD", 30.0},
     };
 
-    for (const auto &s : specs)
-    {
+    for (const auto& s : specs) {
         bool within = (s.w <= ORIN_MAX_DECODE_WIDTH && s.h <= ORIN_MAX_DECODE_HEIGHT);
-        data.push_back(std::string(s.label) + " (" + std::to_string(s.w) + "x" + std::to_string(s.h) + ") @ " +
-                       std::to_string(s.maxFps) + " fps: " + (within ? "SUPPORTED" : "EXCEEDS_MAX"));
+        data.push_back(std::string(s.label) + " (" + std::to_string(s.w) + "x" + std::to_string(s.h) + ") @ " + std::to_string(s.maxFps) +
+                       " fps: " + (within ? "SUPPORTED" : "EXCEEDS_MAX"));
         if (!within)
             passed = false;
     }
@@ -982,8 +933,7 @@ TestOutput VideoEncodeDecodeTesting::testDecoderLatency()
 
     bool decPresent = nvdecPresent();
     data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
-    if (!decPresent)
-    {
+    if (!decPresent) {
         passed = false;
         data.push_back("FAIL: NVDEC device not found.");
         return {passed, data};
@@ -1021,8 +971,7 @@ TestOutput VideoEncodeDecodeTesting::testCorruptStreamHandling()
 
     bool decPresent = nvdecPresent();
     data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
-    if (!decPresent)
-    {
+    if (!decPresent) {
         passed = false;
         data.push_back("FAIL: NVDEC device node missing.");
         return {passed, data};
@@ -1036,8 +985,7 @@ TestOutput VideoEncodeDecodeTesting::testCorruptStreamHandling()
     auto t1 = std::chrono::steady_clock::now();
     double elapsed = std::chrono::duration<double, std::milli>(t1 - t0).count();
 
-    if (!result.empty())
-    {
+    if (!result.empty()) {
         std::string snippet = result.substr(0, 200);
         data.push_back("Corrupt-stream pipeline result: " + snippet);
 
@@ -1045,17 +993,12 @@ TestOutput VideoEncodeDecodeTesting::testCorruptStreamHandling()
         bool timedOut = (elapsed >= 2900.0);
         bool gstError = (result.find("ERROR") != std::string::npos || result.find("error") != std::string::npos ||
                          result.find("GstFlowReturn") != std::string::npos);
-        if (!timedOut || gstError)
-        {
+        if (!timedOut || gstError) {
             data.push_back("Pipeline terminated cleanly on corrupt stream (expected).");
-        }
-        else
-        {
+        } else {
             data.push_back("WARNING: Corrupt-stream test timed out – decoder did not error quickly.");
         }
-    }
-    else
-    {
+    } else {
         data.push_back("GStreamer pipeline not available – using NVDEC error-recovery documentation.");
         data.push_back("NVDEC on Orin implements error-concealment and stream-reset on corruption.");
     }
@@ -1081,8 +1024,7 @@ TestOutput VideoEncodeDecodeTesting::testJpegCompression()
 
     bool jpgPresent = nvjpgPresent();
     data.push_back("NVJPG device node (/dev/nvhost-nvjpg): " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
-    if (!jpgPresent)
-    {
+    if (!jpgPresent) {
         passed = false;
         data.push_back("FAIL: NVJPG device node missing – hardware JPEG compression unavailable.");
     }
@@ -1091,8 +1033,7 @@ TestOutput VideoEncodeDecodeTesting::testJpegCompression()
     std::string gstJpegEnc = vedRunCmd("gst-inspect-1.0 nvjpegenc 2>/dev/null | head -4");
     if (!gstJpegEnc.empty())
         data.push_back("GStreamer nvjpegenc plugin: " + gstJpegEnc.substr(0, 120));
-    else
-    {
+    else {
         std::string gstJpeg2 = vedRunCmd("gst-inspect-1.0 nvv4l2camerasrc 2>/dev/null | grep -i jpeg | head -2");
         if (!gstJpeg2.empty())
             data.push_back("JPEG via camera pipeline: " + gstJpeg2.substr(0, 100));
@@ -1128,8 +1069,7 @@ TestOutput VideoEncodeDecodeTesting::testJpegDecompression()
 
     bool jpgPresent = nvjpgPresent();
     data.push_back("NVJPG device node: " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
-    if (!jpgPresent)
-    {
+    if (!jpgPresent) {
         passed = false;
         data.push_back("FAIL: NVJPG device node missing.");
     }
@@ -1162,8 +1102,7 @@ TestOutput VideoEncodeDecodeTesting::testImageScalingOperations()
 
     bool vicPres = vicPresent();
     data.push_back("VIC device node (/dev/nvhost-vic): " + std::string(vicPres ? "PRESENT" : "NOT FOUND"));
-    if (!vicPres)
-    {
+    if (!vicPres) {
         passed = false;
         data.push_back("FAIL: VIC device node missing – hardware scaling unavailable.");
     }
@@ -1175,7 +1114,7 @@ TestOutput VideoEncodeDecodeTesting::testImageScalingOperations()
         int sh;
         int dw;
         int dh;
-        const char *op;
+        const char* op;
     } scales[] = {
         {1920, 1080, 640, 480, "FHD→SD  (downscale)"},
         {640, 480, 1920, 1080, "SD→FHD  (upscale)"},
@@ -1184,12 +1123,11 @@ TestOutput VideoEncodeDecodeTesting::testImageScalingOperations()
     };
 
     data.push_back("VIC scaling pairs (all within 8K limit):");
-    for (const auto &s : scales)
-    {
-        bool valid = (s.sw <= ORIN_MAX_DECODE_WIDTH && s.sh <= ORIN_MAX_DECODE_HEIGHT &&
-                      s.dw <= ORIN_MAX_DECODE_WIDTH && s.dh <= ORIN_MAX_DECODE_HEIGHT);
-        data.push_back("  " + std::string(s.op) + " (" + std::to_string(s.sw) + "x" + std::to_string(s.sh) + " → " +
-                       std::to_string(s.dw) + "x" + std::to_string(s.dh) + "): " + (valid ? "OK" : "EXCEEDS_LIMIT"));
+    for (const auto& s : scales) {
+        bool valid = (s.sw <= ORIN_MAX_DECODE_WIDTH && s.sh <= ORIN_MAX_DECODE_HEIGHT && s.dw <= ORIN_MAX_DECODE_WIDTH &&
+                      s.dh <= ORIN_MAX_DECODE_HEIGHT);
+        data.push_back("  " + std::string(s.op) + " (" + std::to_string(s.sw) + "x" + std::to_string(s.sh) + " → " + std::to_string(s.dw) +
+                       "x" + std::to_string(s.dh) + "): " + (valid ? "OK" : "EXCEEDS_LIMIT"));
         if (!valid)
             passed = false;
     }
@@ -1224,13 +1162,12 @@ TestOutput VideoEncodeDecodeTesting::testYuvFormatConversions()
 
     bool vicPres = vicPresent();
     data.push_back("VIC device node: " + std::string(vicPres ? "PRESENT" : "NOT FOUND"));
-    if (!vicPres)
-    {
+    if (!vicPres) {
         passed = false;
         data.push_back("FAIL: VIC device not found.");
     }
 
-    static const char *yuvFormats[] = {
+    static const char* yuvFormats[] = {
         "NV12  (4:2:0 semi-planar)",
         "NV21  (4:2:0 semi-planar, UV swapped)",
         "I420  (4:2:0 planar)",
@@ -1241,12 +1178,11 @@ TestOutput VideoEncodeDecodeTesting::testYuvFormatConversions()
     };
 
     data.push_back("VIC supported YUV formats (Orin):");
-    for (const char *fmt : yuvFormats)
+    for (const char* fmt : yuvFormats)
         data.push_back("  " + std::string(fmt) + ": SUPPORTED");
 
     // nvvideoconvert format list via GStreamer
-    std::string gstFmt =
-        vedRunCmd("gst-inspect-1.0 nvvideoconvert 2>/dev/null | grep -i 'format\\|NV12\\|I420\\|YUY2' | head -6");
+    std::string gstFmt = vedRunCmd("gst-inspect-1.0 nvvideoconvert 2>/dev/null | grep -i 'format\\|NV12\\|I420\\|YUY2' | head -6");
     if (!gstFmt.empty())
         data.push_back("GStreamer nvvideoconvert formats: " + gstFmt.substr(0, 200));
 
@@ -1268,17 +1204,16 @@ TestOutput VideoEncodeDecodeTesting::testColorSpaceConversions()
 
     bool vicPres = vicPresent();
     data.push_back("VIC device node: " + std::string(vicPres ? "PRESENT" : "NOT FOUND"));
-    if (!vicPres)
-    {
+    if (!vicPres) {
         passed = false;
         data.push_back("FAIL: VIC device node missing.");
     }
 
     static const struct
     {
-        const char *name;
-        const char *std;
-        const char *range;
+        const char* name;
+        const char* std;
+        const char* range;
     } cspTable[] = {
         {"BT.601", "SDTV", "Limited (16-235)"},
         {"BT.709", "HDTV", "Limited (16-235)"},
@@ -1287,12 +1222,12 @@ TestOutput VideoEncodeDecodeTesting::testColorSpaceConversions()
     };
 
     data.push_back("VIC colour-space standards supported on Jetson Orin:");
-    for (const auto &c : cspTable)
+    for (const auto& c : cspTable)
         data.push_back("  " + std::string(c.name) + " (" + c.std + ", " + c.range + "): SUPPORTED");
 
     // GStreamer colour-space property
-    std::string gstCsp = vedRunCmd(
-        "gst-inspect-1.0 nvvideoconvert 2>/dev/null | grep -i 'color\\|colour\\|matrix\\|bt709\\|bt601' | head -5");
+    std::string gstCsp =
+        vedRunCmd("gst-inspect-1.0 nvvideoconvert 2>/dev/null | grep -i 'color\\|colour\\|matrix\\|bt709\\|bt601' | head -5");
     if (!gstCsp.empty())
         data.push_back("GStreamer colour-space props: " + gstCsp.substr(0, 200));
     else
@@ -1316,16 +1251,14 @@ TestOutput VideoEncodeDecodeTesting::testJpegQualityLevels()
 
     bool jpgPresent = nvjpgPresent();
     data.push_back("NVJPG device node: " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
-    if (!jpgPresent)
-    {
+    if (!jpgPresent) {
         passed = false;
         data.push_back("FAIL: NVJPG device node missing.");
     }
 
     static const int quallevels[] = {10, 25, 50, 75, 85, 95, 100};
     data.push_back("JPEG quality levels (Q) tested:");
-    for (int q : quallevels)
-    {
+    for (int q : quallevels) {
         // NVJPG supports Q 1-100
         bool ok = (q >= 1 && q <= 100);
         data.push_back("  Q=" + std::to_string(q) + ": " + (ok ? "IN_RANGE" : "OUT_OF_RANGE"));
@@ -1360,8 +1293,7 @@ TestOutput VideoEncodeDecodeTesting::testNvjpgThroughput()
 
     bool jpgPresent = nvjpgPresent();
     data.push_back("NVJPG device node: " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
-    if (!jpgPresent)
-    {
+    if (!jpgPresent) {
         passed = false;
         data.push_back("FAIL: NVJPG device node missing – throughput test skipped.");
         return {passed, data};
@@ -1369,29 +1301,24 @@ TestOutput VideoEncodeDecodeTesting::testNvjpgThroughput()
 
     // BPMP NVJPG clock gives max frequency → estimate peak throughput
     long long nvjpgHz = vedGetBpmpClockHz("nvjpg");
-    if (nvjpgHz > 0)
-    {
+    if (nvjpgHz > 0) {
         double freqMHz = static_cast<double>(nvjpgHz) / 1e6;
         data.push_back("NVJPG BPMP clock: " + std::to_string(freqMHz) + " MHz");
         // Rough throughput: ~1 pixel/cycle per engine × 2 engines × freq
         double estimatedMps = (freqMHz * ORIN_NVJPG_ENGINE_COUNT) / 1000.0;
         data.push_back("NVJPG estimated peak throughput: " + std::to_string(estimatedMps) + " MP/s");
-        if (estimatedMps < ORIN_NVJPG_THROUGHPUT_MIN_MPS)
-        {
+        if (estimatedMps < ORIN_NVJPG_THROUGHPUT_MIN_MPS) {
             passed = false;
             data.push_back("FAIL: Estimated NVJPG throughput below threshold.");
         }
-    }
-    else
-    {
+    } else {
         // Use documented Orin spec as fallback
         data.push_back("NVJPG BPMP clock: unavailable – using documented specification.");
         data.push_back("Orin AGX NVJPG aggregate throughput (documented): ~800 MP/s (2 engines)");
         double docThroughput = 800.0;
         if (docThroughput >= ORIN_NVJPG_THROUGHPUT_MIN_MPS)
             data.push_back("Documented throughput meets minimum threshold.");
-        else
-        {
+        else {
             passed = false;
             data.push_back("FAIL: Documented throughput below threshold.");
         }
@@ -1681,109 +1608,60 @@ std::vector<std::string> VideoEncodeDecodeTesting::getAvailableTests()
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult VideoEncodeDecodeTesting::runSingleTest(const std::string &testName)
+TestResult VideoEncodeDecodeTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testH265Encoding")
-    {
+    if (testName == "testH265Encoding") {
         result = testH265Encoding();
-    }
-    else if (testName == "testH264Encoding")
-    {
+    } else if (testName == "testH264Encoding") {
         result = testH264Encoding();
-    }
-    else if (testName == "testAv1Encoding")
-    {
+    } else if (testName == "testAv1Encoding") {
         result = testAv1Encoding();
-    }
-    else if (testName == "testMultipleStreamEncoding")
-    {
+    } else if (testName == "testMultipleStreamEncoding") {
         result = testMultipleStreamEncoding();
-    }
-    else if (testName == "testVariousResolutions")
-    {
+    } else if (testName == "testVariousResolutions") {
         result = testVariousResolutions();
-    }
-    else if (testName == "testVariousBitrates")
-    {
+    } else if (testName == "testVariousBitrates") {
         result = testVariousBitrates();
-    }
-    else if (testName == "testVariousFrameRates")
-    {
+    } else if (testName == "testVariousFrameRates") {
         result = testVariousFrameRates();
-    }
-    else if (testName == "testEncoderQualitySettings")
-    {
+    } else if (testName == "testEncoderQualitySettings") {
         result = testEncoderQualitySettings();
-    }
-    else if (testName == "testEncoderLatency")
-    {
+    } else if (testName == "testEncoderLatency") {
         result = testEncoderLatency();
-    }
-    else if (testName == "testEncoderPowerConsumption")
-    {
+    } else if (testName == "testEncoderPowerConsumption") {
         result = testEncoderPowerConsumption();
-    }
-    else if (testName == "testH265Decoding")
-    {
+    } else if (testName == "testH265Decoding") {
         result = testH265Decoding();
-    }
-    else if (testName == "testH264Decoding")
-    {
+    } else if (testName == "testH264Decoding") {
         result = testH264Decoding();
-    }
-    else if (testName == "testAv1Decoding")
-    {
+    } else if (testName == "testAv1Decoding") {
         result = testAv1Decoding();
-    }
-    else if (testName == "testVp9Decoding")
-    {
+    } else if (testName == "testVp9Decoding") {
         result = testVp9Decoding();
-    }
-    else if (testName == "testMultipleStreamDecoding")
-    {
+    } else if (testName == "testMultipleStreamDecoding") {
         result = testMultipleStreamDecoding();
-    }
-    else if (testName == "testDecoderLatency")
-    {
+    } else if (testName == "testDecoderLatency") {
         result = testDecoderLatency();
-    }
-    else if (testName == "testCorruptStreamHandling")
-    {
+    } else if (testName == "testCorruptStreamHandling") {
         result = testCorruptStreamHandling();
-    }
-    else if (testName == "testJpegCompression")
-    {
+    } else if (testName == "testJpegCompression") {
         result = testJpegCompression();
-    }
-    else if (testName == "testJpegDecompression")
-    {
+    } else if (testName == "testJpegDecompression") {
         result = testJpegDecompression();
-    }
-    else if (testName == "testImageScalingOperations")
-    {
+    } else if (testName == "testImageScalingOperations") {
         result = testImageScalingOperations();
-    }
-    else if (testName == "testYuvFormatConversions")
-    {
+    } else if (testName == "testYuvFormatConversions") {
         result = testYuvFormatConversions();
-    }
-    else if (testName == "testColorSpaceConversions")
-    {
+    } else if (testName == "testColorSpaceConversions") {
         result = testColorSpaceConversions();
-    }
-    else if (testName == "testJpegQualityLevels")
-    {
+    } else if (testName == "testJpegQualityLevels") {
         result = testJpegQualityLevels();
-    }
-    else if (testName == "testNvjpgThroughput")
-    {
+    } else if (testName == "testNvjpgThroughput") {
         result = testNvjpgThroughput();
-    }
-    else
-    {
+    } else {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

@@ -16,14 +16,14 @@
  */
 class CpuTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for CpuTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function CpuTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for CpuTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function CpuTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     CpuTesting();
     /**
@@ -39,10 +39,10 @@ class CpuTesting : public TestBase
      * @brief Constructor for CpuTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the all12cpucoresfunctionality functionality
+    /**
+     * @brief Tests the all12cpucoresfunctionality functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testAll12CpuCoresFunctionality();
     /**
@@ -217,7 +217,6 @@ class CpuTesting : public TestBase
      */
     TestOutput testDmaOperations();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
@@ -242,9 +241,7 @@ class CpuTesting : public TestBase
      */
     TestResult runSingleTest(const std::string& testName) override;
 
-protected:
-
-
+  protected:
 };
 
 #endif // CPUTESTING_H

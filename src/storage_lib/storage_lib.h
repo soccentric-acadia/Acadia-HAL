@@ -16,14 +16,14 @@
  */
 class StorageTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for StorageTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function StorageTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for StorageTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function StorageTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     StorageTesting();
     /**
@@ -39,10 +39,10 @@ class StorageTesting : public TestBase
      * @brief Constructor for StorageTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the emmc51interfacefunctionality functionality
+    /**
+     * @brief Tests the emmc51interfacefunctionality functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testEmmc51InterfaceFunctionality();
     /**
@@ -172,13 +172,11 @@ class StorageTesting : public TestBase
      */
     TestOutput testStorageEncryptionSupport();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -191,11 +189,9 @@ class StorageTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // STORAGETESTING_H

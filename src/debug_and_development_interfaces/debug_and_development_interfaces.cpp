@@ -26,26 +26,26 @@
 // Jetson Orin – platform constants
 // ---------------------------------------------------------------------------
 // Debug UART on Jetson Orin is mapped to ttyTHS0 (Tegra High Speed UART)
-static constexpr const char *JETSON_DEBUG_UART = "/dev/ttyTHS0";
+static constexpr const char* JETSON_DEBUG_UART = "/dev/ttyTHS0";
 // CoreSight bus sysfs root
-static constexpr const char *CORESIGHT_BUS_PATH = "/sys/bus/coresight/devices";
+static constexpr const char* CORESIGHT_BUS_PATH = "/sys/bus/coresight/devices";
 // perf subsystem paranoid knob
-static constexpr const char *PERF_PARANOID_PATH = "/proc/sys/kernel/perf_event_paranoid";
+static constexpr const char* PERF_PARANOID_PATH = "/proc/sys/kernel/perf_event_paranoid";
 // perf PMU event sources
-static constexpr const char *PERF_DEVICES_PATH = "/sys/bus/event_source/devices";
+static constexpr const char* PERF_DEVICES_PATH = "/sys/bus/event_source/devices";
 // Tegra fuse driver sysfs – provides jtag/debug auth fuse readback
-static constexpr const char *TEGRA_FUSE_PATH = "/sys/devices/platform/tegra-fuse";
+static constexpr const char* TEGRA_FUSE_PATH = "/sys/devices/platform/tegra-fuse";
 // debugfs mountpoint
-static constexpr const char *DEBUGFS_PATH = "/sys/kernel/debug";
+static constexpr const char* DEBUGFS_PATH = "/sys/kernel/debug";
 // JTAG character device (kernel JTAG driver)
-static constexpr const char *JTAG_DEV_PATH = "/dev/jtag0";
+static constexpr const char* JTAG_DEV_PATH = "/dev/jtag0";
 
 // ---------------------------------------------------------------------------
 // Helper utilities (file-local)
 // ---------------------------------------------------------------------------
 
 /** Read a single line from a file; returns empty string on failure. */
-static std::string readLine(const std::string &path)
+static std::string readLine(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open())
@@ -56,16 +56,20 @@ static std::string readLine(const std::string &path)
 }
 
 /** Return true if the path exists in the filesystem. */
-static bool pathExists(const std::string &path)
+static bool pathExists(const std::string& path)
 {
-    struct stat st{};
+    struct stat st
+    {
+    };
     return stat(path.c_str(), &st) == 0;
 }
 
 /** Return true if the path is a directory that can be opened. */
-static bool isDir(const std::string &path)
+static bool isDir(const std::string& path)
 {
-    struct stat st{};
+    struct stat st
+    {
+    };
     if (stat(path.c_str(), &st) != 0)
         return false;
     return S_ISDIR(st.st_mode);
@@ -75,15 +79,14 @@ static bool isDir(const std::string &path)
  * List immediate children of a directory; returns empty vector on failure.
  * Skips "." and "..".
  */
-static std::vector<std::string> listDir(const std::string &path)
+static std::vector<std::string> listDir(const std::string& path)
 {
     std::vector<std::string> entries;
-    DIR *dir = opendir(path.c_str());
+    DIR* dir = opendir(path.c_str());
     if (!dir)
         return entries;
-    struct dirent *ent;
-    while ((ent = readdir(dir)) != nullptr)
-    {
+    struct dirent* ent;
+    while ((ent = readdir(dir)) != nullptr) {
         std::string name = ent->d_name;
         if (name == "." || name == "..")
             continue;
@@ -94,11 +97,10 @@ static std::vector<std::string> listDir(const std::string &path)
 }
 
 /** Count how many children of a directory contain a given substring. */
-static int countMatchingEntries(const std::string &dirPath, const std::string &substr)
+static int countMatchingEntries(const std::string& dirPath, const std::string& substr)
 {
     int count = 0;
-    for (const auto &e : listDir(dirPath))
-    {
+    for (const auto& e : listDir(dirPath)) {
         if (e.find(substr) != std::string::npos)
             ++count;
     }
@@ -139,8 +141,7 @@ TestOutput DebugAndDevelopmentInterfaces::testJtagInterface()
     // 1. JTAG character device
     bool jtagDevPresent = pathExists(JTAG_DEV_PATH);
     data.push_back(std::string("JTAG device (/dev/jtag0): ") + (jtagDevPresent ? "present" : "not found"));
-    if (!jtagDevPresent)
-    {
+    if (!jtagDevPresent) {
         // Non-fatal if the driver simply isn't loaded – check alternative
         data.push_back("  INFO: /dev/jtag0 absent; driver may not be loaded or JTAG fused off.");
     }
@@ -148,50 +149,37 @@ TestOutput DebugAndDevelopmentInterfaces::testJtagInterface()
     // 2. CoreSight bus (needed for ARM JTAG-DP access path)
     bool coresightBus = isDir(CORESIGHT_BUS_PATH);
     data.push_back(std::string("CoreSight bus sysfs: ") + (coresightBus ? "present" : "not found"));
-    if (!coresightBus)
-    {
+    if (!coresightBus) {
         passed = false;
         data.push_back("FAIL: CoreSight bus not found – JTAG-DP debug infrastructure unavailable.");
     }
 
     // 3. debugfs accessibility
     bool debugfsOk = isDir(DEBUGFS_PATH);
-    data.push_back(std::string("debugfs mountpoint (") + DEBUGFS_PATH +
-                   "): " + (debugfsOk ? "accessible" : "not accessible"));
-    if (!debugfsOk)
-    {
+    data.push_back(std::string("debugfs mountpoint (") + DEBUGFS_PATH + "): " + (debugfsOk ? "accessible" : "not accessible"));
+    if (!debugfsOk) {
         passed = false;
         data.push_back("FAIL: debugfs not accessible – required for JTAG runtime interaction.");
     }
 
     // 4. Tegra-fuse driver (provides jtag_disable fuse readback)
     bool fusePresent = isDir(TEGRA_FUSE_PATH);
-    data.push_back(std::string("Tegra-fuse sysfs (") + TEGRA_FUSE_PATH +
-                   "): " + (fusePresent ? "present" : "not found"));
-    if (fusePresent)
-    {
+    data.push_back(std::string("Tegra-fuse sysfs (") + TEGRA_FUSE_PATH + "): " + (fusePresent ? "present" : "not found"));
+    if (fusePresent) {
         // Try to read the jtag_disable fuse if available
         std::string jtagFuse = readLine(std::string(TEGRA_FUSE_PATH) + "/jtag_disable");
-        if (!jtagFuse.empty())
-        {
+        if (!jtagFuse.empty()) {
             data.push_back("  jtag_disable fuse value: " + jtagFuse);
-            if (jtagFuse == "1")
-            {
+            if (jtagFuse == "1") {
                 passed = false;
                 data.push_back("FAIL: JTAG is fuse-disabled on this device.");
-            }
-            else
-            {
+            } else {
                 data.push_back("  JTAG fuse: enabled (not blown).");
             }
-        }
-        else
-        {
+        } else {
             data.push_back("  jtag_disable fuse: (not readable via sysfs)");
         }
-    }
-    else
-    {
+    } else {
         data.push_back("  INFO: tegra-fuse driver absent; fuse state unknown.");
     }
 
@@ -218,10 +206,8 @@ TestOutput DebugAndDevelopmentInterfaces::testSerialWireDebug()
     bool passed = true;
 
     // 1. CoreSight bus must exist
-    if (!isDir(CORESIGHT_BUS_PATH))
-    {
-        data.push_back("FAIL: CoreSight sysfs bus (" + std::string(CORESIGHT_BUS_PATH) +
-                       ") not found – SWD infrastructure missing.");
+    if (!isDir(CORESIGHT_BUS_PATH)) {
+        data.push_back("FAIL: CoreSight sysfs bus (" + std::string(CORESIGHT_BUS_PATH) + ") not found – SWD infrastructure missing.");
         return {false, data};
     }
     data.push_back("CoreSight bus sysfs: present");
@@ -229,8 +215,7 @@ TestOutput DebugAndDevelopmentInterfaces::testSerialWireDebug()
     // 2. Count DAP devices (named "*.dap" or containing "dap")
     int dapCount = countMatchingEntries(CORESIGHT_BUS_PATH, "dap");
     data.push_back("CoreSight DAP devices found: " + std::to_string(dapCount));
-    if (dapCount == 0)
-    {
+    if (dapCount == 0) {
         passed = false;
         data.push_back("FAIL: No CoreSight DAP device found – SWD-DP not enumerated.");
     }
@@ -239,21 +224,17 @@ TestOutput DebugAndDevelopmentInterfaces::testSerialWireDebug()
     int ctiCount = countMatchingEntries(CORESIGHT_BUS_PATH, "cti");
     data.push_back("CoreSight CTI devices found: " + std::to_string(ctiCount));
     // Jetson Orin (Orin SoC) typically exposes 12+ CTI instances
-    if (ctiCount == 0)
-    {
+    if (ctiCount == 0) {
         passed = false;
         data.push_back("FAIL: No CTI devices found – SWD halt/resume control unavailable.");
-    }
-    else if (ctiCount < 4)
-    {
+    } else if (ctiCount < 4) {
         data.push_back("  WARN: fewer CTI devices than expected for Jetson Orin (expected >=4).");
     }
 
     // 4. debugfs accessible
     bool debugfsOk = isDir(DEBUGFS_PATH);
     data.push_back(std::string("debugfs: ") + (debugfsOk ? "accessible" : "not accessible"));
-    if (!debugfsOk)
-    {
+    if (!debugfsOk) {
         passed = false;
         data.push_back("FAIL: debugfs not accessible – SWD kernel interface unavailable.");
     }
@@ -262,7 +243,7 @@ TestOutput DebugAndDevelopmentInterfaces::testSerialWireDebug()
     auto devices = listDir(CORESIGHT_BUS_PATH);
     std::sort(devices.begin(), devices.end());
     data.push_back("All CoreSight devices (" + std::to_string(devices.size()) + "):");
-    for (const auto &d : devices)
+    for (const auto& d : devices)
         data.push_back("  " + d);
 
     data.push_back(std::string("SWD interface test: ") + (passed ? "PASS" : "FAIL"));
@@ -288,28 +269,25 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugUart()
 
     // 1. Find all ttyTHS devices (Tegra High Speed UART)
     std::vector<std::string> thsDevices;
-    for (int i = 0; i < 8; ++i)
-    {
+    for (int i = 0; i < 8; ++i) {
         std::string dev = "/dev/ttyTHS" + std::to_string(i);
         if (pathExists(dev))
             thsDevices.push_back(dev);
     }
     data.push_back("ttyTHS devices found: " + std::to_string(thsDevices.size()));
-    for (const auto &d : thsDevices)
+    for (const auto& d : thsDevices)
         data.push_back("  " + d);
 
-    if (thsDevices.empty())
-    {
+    if (thsDevices.empty()) {
         passed = false;
         data.push_back("FAIL: No /dev/ttyTHS* device found – debug UART driver not loaded.");
         return {false, data};
     }
 
     // 2. Try to open the primary debug UART (ttyTHS0)
-    const std::string &primaryUart = thsDevices[0];
+    const std::string& primaryUart = thsDevices[0];
     int fd = open(primaryUart.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
-    if (fd < 0)
-    {
+    if (fd < 0) {
         data.push_back("FAIL: Cannot open " + primaryUart + " (errno=" + std::to_string(errno) + ")");
         // May be in use by the console – not necessarily fatal
         data.push_back("  INFO: device may be held by kernel console – this is expected on active debug UART.");
@@ -317,29 +295,24 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugUart()
         std::string consoleInfo = readLine("/sys/class/tty/console/active");
         if (!consoleInfo.empty())
             data.push_back("  Active console: " + consoleInfo);
-    }
-    else
-    {
+    } else {
         data.push_back("Opened " + primaryUart + " successfully (fd=" + std::to_string(fd) + ")");
         close(fd);
         data.push_back("Device closed cleanly.");
     }
 
     // 3. Read sysfs device info for each ttyTHS
-    for (const auto &dev : thsDevices)
-    {
+    for (const auto& dev : thsDevices) {
         // e.g., /sys/class/tty/ttyTHS0/device/driver/module/...
         std::string devName = dev.substr(5); // strip "/dev/"
         std::string sysPath = "/sys/class/tty/" + devName;
-        if (isDir(sysPath))
-        {
+        if (isDir(sysPath)) {
             std::string driverLink = sysPath + "/device/driver";
             data.push_back("  sysfs entry: " + sysPath + " -> present");
             // Try to read uevent for device type
             std::string ueventPath = sysPath + "/uevent";
             std::ifstream ue(ueventPath);
-            if (ue.is_open())
-            {
+            if (ue.is_open()) {
                 std::string line;
                 while (std::getline(ue, line))
                     data.push_back("    " + line);
@@ -349,8 +322,7 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugUart()
 
     // 4. Check if the active console is ttyTHS (indicates debug UART is live)
     std::string activeConsole = readLine("/sys/class/tty/console/active");
-    if (!activeConsole.empty())
-    {
+    if (!activeConsole.empty()) {
         data.push_back("Kernel active console: " + activeConsole);
         if (activeConsole.find("ttyTHS") != std::string::npos)
             data.push_back("  INFO: Debug UART is the primary kernel console (expected on Jetson Orin).");
@@ -384,8 +356,7 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
     bool passed = true;
 
     // 1. CoreSight bus must exist
-    if (!isDir(CORESIGHT_BUS_PATH))
-    {
+    if (!isDir(CORESIGHT_BUS_PATH)) {
         data.push_back("FAIL: CoreSight sysfs bus not present – no trace infrastructure.");
         return {false, data};
     }
@@ -398,8 +369,7 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
 
     // Count by type
     int etmCount = 0, etfCount = 0, tpiuCount = 0, stmCount = 0, etrCount = 0;
-    for (const auto &d : devices)
-    {
+    for (const auto& d : devices) {
         std::string dl = d;
         // Convert to lowercase for comparison
         std::transform(dl.begin(), dl.end(), dl.begin(), ::tolower);
@@ -418,25 +388,20 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
 
     // 2. ETM check (one per CPU; Jetson Orin = 12 cores → expect up to 12 ETMs)
     data.push_back("ETM devices found: " + std::to_string(etmCount));
-    if (etmCount == 0)
-    {
+    if (etmCount == 0) {
         passed = false;
         data.push_back("FAIL: No ETM devices found – CPU instruction trace unavailable.");
-    }
-    else if (etmCount < 4)
-    {
+    } else if (etmCount < 4) {
         data.push_back("  WARN: Fewer ETM devices than expected (Jetson Orin has 12 CPU cores).");
     }
 
     // 3. ETF/ETB check (trace buffer / funnel sink)
     data.push_back("ETF/ETB devices found: " + std::to_string(etfCount));
-    if (etfCount == 0)
-    {
+    if (etfCount == 0) {
         // ETR may serve as the sink instead
         data.push_back("  INFO: No ETF found; checking for ETR (system memory trace sink)...");
         data.push_back("  ETR devices found: " + std::to_string(etrCount));
-        if (etrCount == 0)
-        {
+        if (etrCount == 0) {
             passed = false;
             data.push_back("FAIL: No trace sink (ETF/ETB/ETR) found – trace cannot be captured.");
         }
@@ -444,16 +409,14 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
 
     // 4. TPIU check (external trace port connector)
     data.push_back("TPIU devices found: " + std::to_string(tpiuCount));
-    if (tpiuCount == 0)
-    {
+    if (tpiuCount == 0) {
         data.push_back("  INFO: No TPIU found; external trace port not enumerated.");
         // Not always fatal – depends on board design
     }
 
     // 5. STM check (system / software trace)
     data.push_back("STM devices found: " + std::to_string(stmCount));
-    if (stmCount == 0)
-    {
+    if (stmCount == 0) {
         data.push_back("  INFO: No STM found; software trace via STM unavailable.");
     }
 
@@ -461,8 +424,7 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
     std::string csDebugfs = std::string(DEBUGFS_PATH) + "/coresight";
     bool csDebugfsOk = isDir(csDebugfs);
     data.push_back(std::string("debugfs/coresight: ") + (csDebugfsOk ? "present" : "not found"));
-    if (!csDebugfsOk)
-    {
+    if (!csDebugfsOk) {
         data.push_back("  INFO: debugfs/coresight absent – runtime trace control via debugfs unavailable.");
     }
 
@@ -496,30 +458,22 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
 
     // 1. perf_event_paranoid
     std::string paranoidStr = readLine(PERF_PARANOID_PATH);
-    if (paranoidStr.empty())
-    {
+    if (paranoidStr.empty()) {
         passed = false;
-        data.push_back("FAIL: Cannot read " + std::string(PERF_PARANOID_PATH) +
-                       " – perf_event subsystem not available.");
+        data.push_back("FAIL: Cannot read " + std::string(PERF_PARANOID_PATH) + " – perf_event subsystem not available.");
         return {false, data};
     }
     int paranoid = std::stoi(paranoidStr);
     data.push_back("perf_event_paranoid: " + paranoidStr);
-    if (paranoid > 2)
-    {
-        data.push_back("  WARN: paranoid=" + paranoidStr +
-                       " – unprivileged access to hardware PMU counters is restricted.");
-    }
-    else
-    {
-        data.push_back("  PMU access level: " + std::string(paranoid <= 0   ? "unrestricted"
-                                                            : paranoid == 1 ? "user-level (normal)"
-                                                                            : "kernel only"));
+    if (paranoid > 2) {
+        data.push_back("  WARN: paranoid=" + paranoidStr + " – unprivileged access to hardware PMU counters is restricted.");
+    } else {
+        data.push_back("  PMU access level: " +
+                       std::string(paranoid <= 0 ? "unrestricted" : paranoid == 1 ? "user-level (normal)" : "kernel only"));
     }
 
     // 2. Enumerate event source devices
-    if (!isDir(PERF_DEVICES_PATH))
-    {
+    if (!isDir(PERF_DEVICES_PATH)) {
         passed = false;
         data.push_back("FAIL: " + std::string(PERF_DEVICES_PATH) + " not found.");
         return {false, data};
@@ -533,35 +487,28 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
     int armPmuCount = 0;
     int gpuPmuCount = 0;
     int softwarePmu = 0;
-    for (const auto &pmu : pmuDevices)
-    {
+    for (const auto& pmu : pmuDevices) {
         data.push_back("  " + pmu);
         std::string pmuLower = pmu;
         std::transform(pmuLower.begin(), pmuLower.end(), pmuLower.begin(), ::tolower);
 
         if (pmuLower.find("armv8") != std::string::npos || pmuLower.find("arm_") != std::string::npos ||
-            pmuLower.find("cortex") != std::string::npos)
-        {
+            pmuLower.find("cortex") != std::string::npos) {
             ++armPmuCount;
             // Read number of counters from sysfs if available
             std::string cpumaskPath = std::string(PERF_DEVICES_PATH) + "/" + pmu + "/cpumask";
             std::string cpumask = readLine(cpumaskPath);
             if (!cpumask.empty())
                 data.push_back("    cpumask: " + cpumask);
-        }
-        else if (pmuLower.find("gpu") != std::string::npos || pmuLower.find("tegra") != std::string::npos)
-        {
+        } else if (pmuLower.find("gpu") != std::string::npos || pmuLower.find("tegra") != std::string::npos) {
             ++gpuPmuCount;
-        }
-        else if (pmuLower == "software" || pmuLower == "tracepoint" || pmuLower == "breakpoint")
-        {
+        } else if (pmuLower == "software" || pmuLower == "tracepoint" || pmuLower == "breakpoint") {
             ++softwarePmu;
         }
     }
 
     data.push_back("ARM PMU sources: " + std::to_string(armPmuCount));
-    if (armPmuCount == 0)
-    {
+    if (armPmuCount == 0) {
         passed = false;
         data.push_back("FAIL: No ARM PMU found – hardware performance counters not available.");
     }
@@ -612,19 +559,16 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
     // 1. Tegra-fuse driver availability
     bool fusePresent = isDir(TEGRA_FUSE_PATH);
     data.push_back(std::string("Tegra-fuse sysfs: ") + (fusePresent ? "present" : "not found"));
-    if (!fusePresent)
-    {
+    if (!fusePresent) {
         // Try alternative path used on older L4T/Orin BSPs
         std::string altFusePath = "/sys/devices/platform/13800000.efuse";
         bool altPresent = isDir(altFusePath);
-        if (!altPresent)
-        {
+        if (!altPresent) {
             altFusePath = "/sys/devices/3820000.efuse";
             altPresent = isDir(altFusePath);
         }
         data.push_back(std::string("Alternate fuse sysfs: ") + (altPresent ? altFusePath : "not found"));
-        if (!altPresent)
-        {
+        if (!altPresent) {
             passed = false;
             data.push_back("FAIL: Tegra fuse driver not found – debug authentication state unreadable.");
         }
@@ -644,20 +588,15 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
         {"security_mode", std::string(TEGRA_FUSE_PATH) + "/security_mode", false},
     };
 
-    for (const auto &fe : fuseEntries)
-    {
+    for (const auto& fe : fuseEntries) {
         std::string val = readLine(fe.path);
-        if (val.empty())
-        {
+        if (val.empty()) {
             data.push_back("  fuse[" + fe.name + "]: (not readable)");
-            if (fe.fatalIfMissing)
-            {
+            if (fe.fatalIfMissing) {
                 passed = false;
                 data.push_back("FAIL: Required fuse '" + fe.name + "' not readable.");
             }
-        }
-        else
-        {
+        } else {
             data.push_back("  fuse[" + fe.name + "]: " + val);
         }
     }
@@ -665,24 +604,17 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
     // 3. Chip-ID / SoC revision
     // /sys/devices/platform/tegra-fuse/chip_id or /proc/device-tree/compatible
     std::string chipId = readLine(std::string(TEGRA_FUSE_PATH) + "/chip_id");
-    if (!chipId.empty())
-    {
+    if (!chipId.empty()) {
         data.push_back("Tegra chip_id: " + chipId + " (expected: 0x23 / 35 = Orin)");
-    }
-    else
-    {
+    } else {
         // Fallback: read from device-tree compatible
         std::string dtcompat = readLine("/proc/device-tree/compatible");
-        if (!dtcompat.empty())
-        {
+        if (!dtcompat.empty()) {
             data.push_back("DT compatible: " + dtcompat);
-            if (dtcompat.find("orin") == std::string::npos && dtcompat.find("t234") == std::string::npos)
-            {
+            if (dtcompat.find("orin") == std::string::npos && dtcompat.find("t234") == std::string::npos) {
                 data.push_back("  WARN: DT compatible does not mention Orin/T234.");
             }
-        }
-        else
-        {
+        } else {
             data.push_back("  INFO: chip_id and DT compatible not readable.");
         }
     }
@@ -690,13 +622,10 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
     // 4. debugfs accessible and writable
     bool debugfsOk = isDir(DEBUGFS_PATH);
     data.push_back(std::string("debugfs (") + DEBUGFS_PATH + "): " + (debugfsOk ? "accessible" : "not accessible"));
-    if (!debugfsOk)
-    {
+    if (!debugfsOk) {
         passed = false;
         data.push_back("FAIL: debugfs not mounted – debug authentication kernel interface unavailable.");
-    }
-    else
-    {
+    } else {
         // Check if tegra-fuse debug entries are present under debugfs
         std::string fusedebug = std::string(DEBUGFS_PATH) + "/tegra_fuse";
         data.push_back(std::string("  debugfs/tegra_fuse: ") + (pathExists(fusedebug) ? "present" : "not found"));
@@ -711,8 +640,7 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
 
     // 6. Check /proc/cmdline for relevant debug authentication tokens
     std::string cmdline = readLine("/proc/cmdline");
-    if (!cmdline.empty())
-    {
+    if (!cmdline.empty()) {
         bool hasDebugAuth = cmdline.find("debug") != std::string::npos;
         data.push_back("Kernel cmdline debug tokens: " + std::string(hasDebugAuth ? "present" : "none"));
     }
@@ -793,8 +721,7 @@ std::vector<TestResult> DebugAndDevelopmentInterfaces::runAllTests()
 std::vector<std::string> DebugAndDevelopmentInterfaces::getAvailableTests()
 {
     return {
-        "testJtagInterface", "testSerialWireDebug",     "testDebugUart",
-        "testTracePort",     "testPerformanceCounters", "testDebugAuthentication",
+        "testJtagInterface", "testSerialWireDebug", "testDebugUart", "testTracePort", "testPerformanceCounters", "testDebugAuthentication",
     };
 }
 
@@ -803,37 +730,24 @@ std::vector<std::string> DebugAndDevelopmentInterfaces::getAvailableTests()
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult DebugAndDevelopmentInterfaces::runSingleTest(const std::string &testName)
+TestResult DebugAndDevelopmentInterfaces::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testJtagInterface")
-    {
+    if (testName == "testJtagInterface") {
         result = testJtagInterface();
-    }
-    else if (testName == "testSerialWireDebug")
-    {
+    } else if (testName == "testSerialWireDebug") {
         result = testSerialWireDebug();
-    }
-    else if (testName == "testDebugUart")
-    {
+    } else if (testName == "testDebugUart") {
         result = testDebugUart();
-    }
-    else if (testName == "testTracePort")
-    {
+    } else if (testName == "testTracePort") {
         result = testTracePort();
-    }
-    else if (testName == "testPerformanceCounters")
-    {
+    } else if (testName == "testPerformanceCounters") {
         result = testPerformanceCounters();
-    }
-    else if (testName == "testDebugAuthentication")
-    {
+    } else if (testName == "testDebugAuthentication") {
         result = testDebugAuthentication();
-    }
-    else
-    {
+    } else {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

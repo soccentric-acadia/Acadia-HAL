@@ -104,7 +104,7 @@ std::vector<TestResult> GnssTesting::runAllTests()
     // Run testGpsSignalReception
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpsSignalReception();
+        TestOutput result = testGpsSignalReception();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpsSignalReception", result, duration});
@@ -113,7 +113,7 @@ std::vector<TestResult> GnssTesting::runAllTests()
     // Run testGlonassSupport
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGlonassSupport();
+        TestOutput result = testGlonassSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGlonassSupport", result, duration});
@@ -122,7 +122,7 @@ std::vector<TestResult> GnssTesting::runAllTests()
     // Run testGalileoSupport
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGalileoSupport();
+        TestOutput result = testGalileoSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGalileoSupport", result, duration});
@@ -131,7 +131,7 @@ std::vector<TestResult> GnssTesting::runAllTests()
     // Run testBeidouSupport
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testBeidouSupport();
+        TestOutput result = testBeidouSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testBeidouSupport", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> GnssTesting::runAllTests()
     // Run testPositionAccuracy
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPositionAccuracy();
+        TestOutput result = testPositionAccuracy();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPositionAccuracy", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> GnssTesting::runAllTests()
     // Run testTimetofirstfix
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testTimetofirstfix();
+        TestOutput result = testTimetofirstfix();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testTimetofirstfix", result, duration});
@@ -158,7 +158,7 @@ std::vector<TestResult> GnssTesting::runAllTests()
     // Run testGnssAntennaConnection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGnssAntennaConnection();
+        TestOutput result = testGnssAntennaConnection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGnssAntennaConnection", result, duration});
@@ -167,7 +167,7 @@ std::vector<TestResult> GnssTesting::runAllTests()
     // Run testAgpsFunctionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAgpsFunctionality();
+        TestOutput result = testAgpsFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAgpsFunctionality", result, duration});
@@ -180,16 +180,11 @@ std::vector<TestResult> GnssTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> GnssTesting::getAvailableTests() {
+std::vector<std::string> GnssTesting::getAvailableTests()
+{
     return {
-        "testGpsSignalReception",
-        "testGlonassSupport",
-        "testGalileoSupport",
-        "testBeidouSupport",
-        "testPositionAccuracy",
-        "testTimetofirstfix",
-        "testGnssAntennaConnection",
-        "testAgpsFunctionality",
+        "testGpsSignalReception", "testGlonassSupport", "testGalileoSupport",        "testBeidouSupport",
+        "testPositionAccuracy",   "testTimetofirstfix", "testGnssAntennaConnection", "testAgpsFunctionality",
     };
 }
 
@@ -198,7 +193,8 @@ std::vector<std::string> GnssTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult GnssTesting::runSingleTest(const std::string& testName) {
+TestResult GnssTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

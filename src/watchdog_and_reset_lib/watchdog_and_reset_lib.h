@@ -16,14 +16,14 @@
  */
 class WatchdogAndResetTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for WatchdogAndResetTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function WatchdogAndResetTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for WatchdogAndResetTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function WatchdogAndResetTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     WatchdogAndResetTesting();
     /**
@@ -39,10 +39,10 @@ class WatchdogAndResetTesting : public TestBase
      * @brief Constructor for WatchdogAndResetTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the watchdogtimerfunctionality functionality
+    /**
+     * @brief Tests the watchdogtimerfunctionality functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testWatchdogTimerFunctionality();
     /**
@@ -127,13 +127,11 @@ class WatchdogAndResetTesting : public TestBase
      */
     TestOutput testResetReasonLogging();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -146,11 +144,9 @@ class WatchdogAndResetTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // WATCHDOGANDRESETTESTING_H

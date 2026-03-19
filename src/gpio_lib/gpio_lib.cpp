@@ -31,12 +31,12 @@ bool GpioTesting::initializeGpioPins()
 {
     std::lock_guard<std::mutex> lock(gpioMutex_);
     gpioPins_.clear();
-    
+
     for (int i = 0; i < NUM_TEST_PINS; ++i) {
         GpioPin pin = {i, GpioDirection::INPUT, false, GpioPullMode::NONE, false, false};
         gpioPins_[i] = pin;
     }
-    
+
     return true;
 }
 
@@ -85,7 +85,7 @@ bool GpioTesting::getPinValue(int pin, bool& value)
     if (gpioPins_.find(pin) == gpioPins_.end()) {
         return false;
     }
-    
+
     // If pin is externally driven, return the actual pin value
     // Otherwise, if input with pull, return pull value
     if (gpioPins_[pin].externallyDriven) {
@@ -101,7 +101,7 @@ bool GpioTesting::getPinValue(int pin, bool& value)
     } else {
         value = gpioPins_[pin].value;
     }
-    
+
     return true;
 }
 
@@ -132,18 +132,18 @@ double GpioTesting::measureSwitchingSpeed(int pin)
     if (!setPinDirection(pin, GpioDirection::OUTPUT)) {
         return 0.0;
     }
-    
+
     const int NUM_CYCLES = 1000;
     auto start = std::chrono::high_resolution_clock::now();
-    
+
     for (int i = 0; i < NUM_CYCLES; ++i) {
         setPinValue(pin, true);
         setPinValue(pin, false);
     }
-    
+
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    
+
     return NUM_CYCLES / duration.count();
 }
 
@@ -159,11 +159,11 @@ bool GpioTesting::testPwmGeneration(int pin, double frequency, double dutyCycle)
     if (!setPinDirection(pin, GpioDirection::OUTPUT) || frequency <= 0 || dutyCycle < 0 || dutyCycle > 1) {
         return false;
     }
-    
+
     double period = 1.0 / frequency;
     double highTime = period * dutyCycle;
     double lowTime = period * (1.0 - dutyCycle);
-    
+
     // Generate PWM for 1 second
     auto start = std::chrono::high_resolution_clock::now();
     while (std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count() < 1.0) {
@@ -172,7 +172,7 @@ bool GpioTesting::testPwmGeneration(int pin, double frequency, double dutyCycle)
         setPinValue(pin, false);
         std::this_thread::sleep_for(std::chrono::duration<double>(lowTime));
     }
-    
+
     return true;
 }
 
@@ -186,20 +186,20 @@ bool GpioTesting::testInterruptGeneration(int pin)
     if (!setPinDirection(pin, GpioDirection::INPUT)) {
         return false;
     }
-    
+
     // Simulate interrupt by changing pin value
     gpioPins_[pin].interruptEnabled = true;
-    
+
     // In a real implementation, this would set up interrupt handlers
     // For simulation, we'll just toggle the pin
     bool currentValue;
     if (!getPinValue(pin, currentValue)) {
         return false;
     }
-    
+
     // Simulate interrupt trigger
     gpioPins_[pin].value = !currentValue;
-    
+
     return true;
 }
 
@@ -213,17 +213,17 @@ double GpioTesting::measureInterruptLatency(int pin)
     if (!setPinDirection(pin, GpioDirection::INPUT)) {
         return -1.0;
     }
-    
+
     gpioPins_[pin].interruptEnabled = true;
-    
+
     auto start = std::chrono::high_resolution_clock::now();
-    
+
     // Simulate interrupt trigger
     gpioPins_[pin].value = !gpioPins_[pin].value;
-    
+
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::micro> latency = end - start;
-    
+
     return latency.count();
 }
 
@@ -238,7 +238,7 @@ bool GpioTesting::testConcurrentAccess(int pin1, int pin2)
     if (!setPinDirection(pin1, GpioDirection::OUTPUT) || !setPinDirection(pin2, GpioDirection::OUTPUT)) {
         return false;
     }
-    
+
     // Test concurrent access using threads
     auto thread1 = std::thread([this, pin1]() {
         for (int i = 0; i < 100; ++i) {
@@ -248,7 +248,7 @@ bool GpioTesting::testConcurrentAccess(int pin1, int pin2)
             std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
     });
-    
+
     auto thread2 = std::thread([this, pin2]() {
         for (int i = 0; i < 100; ++i) {
             setPinValue(pin2, true);
@@ -257,10 +257,10 @@ bool GpioTesting::testConcurrentAccess(int pin1, int pin2)
             std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
     });
-    
+
     thread1.join();
     thread2.join();
-    
+
     return true;
 }
 
@@ -272,7 +272,7 @@ TestOutput GpioTesting::testGpioout1()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test basic output functionality on pin 0
     if (!setPinDirection(0, GpioDirection::OUTPUT)) {
         success = false;
@@ -291,7 +291,7 @@ TestOutput GpioTesting::testGpioout1()
                 data.push_back("Pin 0 high verification failed");
             }
         }
-        
+
         // Test setting low
         if (!setPinValue(0, false)) {
             success = false;
@@ -306,7 +306,7 @@ TestOutput GpioTesting::testGpioout1()
             }
         }
     }
-    
+
     return {success, data};
 }
 
@@ -318,7 +318,7 @@ TestOutput GpioTesting::testGpioout2()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test basic output functionality on pin 1
     if (!setPinDirection(1, GpioDirection::OUTPUT)) {
         success = false;
@@ -332,7 +332,7 @@ TestOutput GpioTesting::testGpioout2()
                 data.push_back("Failed to toggle pin 1 to " + std::string(expected ? "high" : "low"));
                 break;
             }
-            
+
             bool value;
             if (!getPinValue(1, value) || value != expected) {
                 success = false;
@@ -340,12 +340,12 @@ TestOutput GpioTesting::testGpioout2()
                 break;
             }
         }
-        
+
         if (success) {
             data.push_back("Pin 1 toggled successfully 10 times");
         }
     }
-    
+
     return {success, data};
 }
 
@@ -357,17 +357,17 @@ TestOutput GpioTesting::testGpioout3()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test output on multiple pins simultaneously
     std::vector<int> testPins = {2, 3};
-    
+
     for (int pin : testPins) {
         if (!setPinDirection(pin, GpioDirection::OUTPUT)) {
             success = false;
             data.push_back("Failed to set pin " + std::to_string(pin) + " as output");
         }
     }
-    
+
     if (success) {
         // Set all pins high
         for (int pin : testPins) {
@@ -376,7 +376,7 @@ TestOutput GpioTesting::testGpioout3()
                 data.push_back("Failed to set pin " + std::to_string(pin) + " high");
             }
         }
-        
+
         // Verify all pins are high
         for (int pin : testPins) {
             bool value;
@@ -385,12 +385,12 @@ TestOutput GpioTesting::testGpioout3()
                 data.push_back("Pin " + std::to_string(pin) + " verification failed");
             }
         }
-        
+
         if (success) {
             data.push_back("Multiple pins set high successfully");
         }
     }
-    
+
     return {success, data};
 }
 
@@ -402,7 +402,7 @@ TestOutput GpioTesting::testGpioout4()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test output with different patterns
     int pin = 4;
     if (!setPinDirection(pin, GpioDirection::OUTPUT)) {
@@ -411,14 +411,14 @@ TestOutput GpioTesting::testGpioout4()
     } else {
         // Test binary pattern: 10101010
         std::vector<bool> pattern = {true, false, true, false, true, false, true, false};
-        
+
         for (size_t i = 0; i < pattern.size(); ++i) {
             if (!setPinValue(pin, pattern[i])) {
                 success = false;
                 data.push_back("Failed to set pattern bit " + std::to_string(i));
                 break;
             }
-            
+
             bool value;
             if (!getPinValue(pin, value) || value != pattern[i]) {
                 success = false;
@@ -426,12 +426,12 @@ TestOutput GpioTesting::testGpioout4()
                 break;
             }
         }
-        
+
         if (success) {
             data.push_back("Binary pattern 10101010 written successfully");
         }
     }
-    
+
     return {success, data};
 }
 
@@ -443,7 +443,7 @@ TestOutput GpioTesting::testGpioOutputVoltageLevels()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test output voltage levels (simulated)
     int pin = 0;
     if (!setPinDirection(pin, GpioDirection::OUTPUT)) {
@@ -459,7 +459,7 @@ TestOutput GpioTesting::testGpioOutputVoltageLevels()
             // For simulation, assume 3.3V for high
             data.push_back("High level output: 3.3V (simulated)");
         }
-        
+
         // Test low level
         if (!setPinValue(pin, false)) {
             success = false;
@@ -468,12 +468,12 @@ TestOutput GpioTesting::testGpioOutputVoltageLevels()
             // For simulation, assume 0V for low
             data.push_back("Low level output: 0.0V (simulated)");
         }
-        
+
         // Test that levels are within acceptable range
         // In real test: check if high >= 2.4V and low <= 0.4V for 3.3V system
         data.push_back("Voltage levels within acceptable range (simulated)");
     }
-    
+
     return {success, data};
 }
 
@@ -485,7 +485,7 @@ TestOutput GpioTesting::testGpioOutputCurrentDriveCapability()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test current drive capability (simulated)
     int pin = 1;
     if (!setPinDirection(pin, GpioDirection::OUTPUT)) {
@@ -501,7 +501,7 @@ TestOutput GpioTesting::testGpioOutputCurrentDriveCapability()
             // For simulation, assume 20mA drive capability
             data.push_back("Sourcing current: 20mA (simulated)");
         }
-        
+
         // Test sinking current
         if (!setPinValue(pin, false)) {
             success = false;
@@ -509,11 +509,11 @@ TestOutput GpioTesting::testGpioOutputCurrentDriveCapability()
         } else {
             data.push_back("Sinking current: 20mA (simulated)");
         }
-        
+
         // Test that current is within specifications
         data.push_back("Current drive capability within specifications (simulated)");
     }
-    
+
     return {success, data};
 }
 
@@ -525,17 +525,17 @@ TestOutput GpioTesting::testGpioOutputSwitchingSpeed()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test output switching speed
     int pin = 2;
     double speed = measureSwitchingSpeed(pin);
-    
+
     if (speed <= 0) {
         success = false;
         data.push_back("Failed to measure switching speed");
     } else {
         data.push_back("Switching speed: " + std::to_string(speed) + " Hz");
-        
+
         // Check if speed meets minimum requirements (lower threshold for simulation)
         const double MIN_SPEED = 1000.0; // 1kHz for simulation
         if (speed >= MIN_SPEED) {
@@ -545,7 +545,7 @@ TestOutput GpioTesting::testGpioOutputSwitchingSpeed()
             data.push_back("Switching speed below minimum requirement of " + std::to_string(MIN_SPEED) + " Hz");
         }
     }
-    
+
     return {success, data};
 }
 
@@ -557,19 +557,18 @@ TestOutput GpioTesting::testGpioPwmOutput()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test PWM output
     int pin = 3;
     double frequency = 1000.0; // 1kHz
     double dutyCycle = 0.5;    // 50%
-    
+
     if (!testPwmGeneration(pin, frequency, dutyCycle)) {
         success = false;
         data.push_back("PWM generation failed");
     } else {
-        data.push_back("PWM generated at " + std::to_string(frequency) + " Hz with " + 
-                      std::to_string(dutyCycle * 100) + "% duty cycle");
-        
+        data.push_back("PWM generated at " + std::to_string(frequency) + " Hz with " + std::to_string(dutyCycle * 100) + "% duty cycle");
+
         // Test different duty cycles
         std::vector<double> dutyCycles = {0.1, 0.25, 0.75, 0.9};
         for (double dc : dutyCycles) {
@@ -581,7 +580,7 @@ TestOutput GpioTesting::testGpioPwmOutput()
             }
         }
     }
-    
+
     return {success, data};
 }
 
@@ -593,7 +592,7 @@ TestOutput GpioTesting::testGpioPulluppulldownResistors()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test pull-up/pull-down resistors
     int pin = 4;
     if (!setPinDirection(pin, GpioDirection::INPUT)) {
@@ -613,7 +612,7 @@ TestOutput GpioTesting::testGpioPulluppulldownResistors()
                 data.push_back("Pull-up resistor test failed");
             }
         }
-        
+
         // Test pull-down
         if (!setPinPullMode(pin, GpioPullMode::PULL_DOWN)) {
             success = false;
@@ -627,7 +626,7 @@ TestOutput GpioTesting::testGpioPulluppulldownResistors()
                 data.push_back("Pull-down resistor test failed");
             }
         }
-        
+
         // Test no pull
         if (!setPinPullMode(pin, GpioPullMode::NONE)) {
             success = false;
@@ -636,7 +635,7 @@ TestOutput GpioTesting::testGpioPulluppulldownResistors()
             data.push_back("Pull resistor modes tested successfully");
         }
     }
-    
+
     return {success, data};
 }
 
@@ -648,7 +647,7 @@ TestOutput GpioTesting::testGpioin1()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test basic input functionality
     int pin = 5;
     if (!setPinDirection(pin, GpioDirection::INPUT)) {
@@ -664,7 +663,7 @@ TestOutput GpioTesting::testGpioin1()
             success = false;
             data.push_back("High input detection failed");
         }
-        
+
         gpioPins_[pin].value = false;
         if (getPinValue(pin, value) && !value) {
             data.push_back("Low input detected correctly");
@@ -673,7 +672,7 @@ TestOutput GpioTesting::testGpioin1()
             data.push_back("Low input detection failed");
         }
     }
-    
+
     return {success, data};
 }
 
@@ -685,7 +684,7 @@ TestOutput GpioTesting::testGpioin2()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test input with pull-up
     int pin = 6;
     if (!setPinDirection(pin, GpioDirection::INPUT) || !setPinPullMode(pin, GpioPullMode::PULL_UP)) {
@@ -700,7 +699,7 @@ TestOutput GpioTesting::testGpioin2()
             success = false;
             data.push_back("Input with pull-up test failed");
         }
-        
+
         // Simulate external drive low (override pull-up)
         {
             std::lock_guard<std::mutex> lock(gpioMutex_);
@@ -714,7 +713,7 @@ TestOutput GpioTesting::testGpioin2()
             data.push_back("External drive test failed");
         }
     }
-    
+
     return {success, data};
 }
 
@@ -726,7 +725,7 @@ TestOutput GpioTesting::testGpioin3()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test input with pull-down
     int pin = 7;
     if (!setPinDirection(pin, GpioDirection::INPUT) || !setPinPullMode(pin, GpioPullMode::PULL_DOWN)) {
@@ -741,7 +740,7 @@ TestOutput GpioTesting::testGpioin3()
             success = false;
             data.push_back("Input with pull-down test failed");
         }
-        
+
         // Simulate external drive high (override pull-down)
         {
             std::lock_guard<std::mutex> lock(gpioMutex_);
@@ -755,7 +754,7 @@ TestOutput GpioTesting::testGpioin3()
             data.push_back("External drive test failed");
         }
     }
-    
+
     return {success, data};
 }
 
@@ -767,23 +766,23 @@ TestOutput GpioTesting::testGpioin4()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test multiple input pins simultaneously
     std::vector<int> inputPins = {0, 1, 2, 3};
-    
+
     for (int pin : inputPins) {
         if (!setPinDirection(pin, GpioDirection::INPUT)) {
             success = false;
             data.push_back("Failed to set pin " + std::to_string(pin) + " as input");
         }
     }
-    
+
     if (success) {
         // Set different values on each pin
         for (size_t i = 0; i < inputPins.size(); ++i) {
             gpioPins_[inputPins[i]].value = (i % 2 == 0);
         }
-        
+
         // Read and verify all pins
         for (size_t i = 0; i < inputPins.size(); ++i) {
             bool expected = (i % 2 == 0);
@@ -793,12 +792,12 @@ TestOutput GpioTesting::testGpioin4()
                 data.push_back("Pin " + std::to_string(inputPins[i]) + " input verification failed");
             }
         }
-        
+
         if (success) {
             data.push_back("Multiple input pins read correctly");
         }
     }
-    
+
     return {success, data};
 }
 
@@ -810,7 +809,7 @@ TestOutput GpioTesting::testGpioInputVoltageThreshold()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test input voltage threshold (simulated)
     int pin = 0;
     if (!setPinDirection(pin, GpioDirection::INPUT)) {
@@ -827,7 +826,7 @@ TestOutput GpioTesting::testGpioInputVoltageThreshold()
             success = false;
             data.push_back("Low voltage threshold test failed");
         }
-        
+
         // Test high threshold (above 2.0V should read high)
         gpioPins_[pin].value = true; // Simulate high voltage
         if (getPinValue(pin, value) && value) {
@@ -836,10 +835,10 @@ TestOutput GpioTesting::testGpioInputVoltageThreshold()
             success = false;
             data.push_back("High voltage threshold test failed");
         }
-        
+
         data.push_back("Input voltage thresholds within specifications (simulated)");
     }
-    
+
     return {success, data};
 }
 
@@ -851,7 +850,7 @@ TestOutput GpioTesting::testGpioInputDebouncing()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test input debouncing (simulated)
     int pin = 1;
     if (!setPinDirection(pin, GpioDirection::INPUT)) {
@@ -860,23 +859,23 @@ TestOutput GpioTesting::testGpioInputDebouncing()
     } else {
         // Simulate noisy input transitions
         std::vector<bool> noisySignal = {false, true, false, true, false, false, false, true, true, true};
-        
+
         for (size_t i = 0; i < noisySignal.size(); ++i) {
             gpioPins_[pin].value = noisySignal[i];
             std::this_thread::sleep_for(std::chrono::milliseconds(1)); // Simulate debounce time
-            
+
             bool value;
             if (!getPinValue(pin, value)) {
                 success = false;
                 data.push_back("Failed to read debounced input at step " + std::to_string(i));
             }
         }
-        
+
         // In a real implementation, hardware debouncing would filter noise
         // For simulation, we just verify the pin can be read during transitions
         data.push_back("Input debouncing mechanism tested (simulated)");
     }
-    
+
     return {success, data};
 }
 
@@ -888,7 +887,7 @@ TestOutput GpioTesting::testGpioInterruptGeneration()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test interrupt generation
     int pin = 2;
     if (!testInterruptGeneration(pin)) {
@@ -896,22 +895,22 @@ TestOutput GpioTesting::testGpioInterruptGeneration()
         data.push_back("Interrupt generation test failed");
     } else {
         data.push_back("Interrupt generated successfully");
-        
+
         // Test interrupt on rising edge
         gpioPins_[pin].value = false;
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         gpioPins_[pin].value = true; // Rising edge
-        
+
         data.push_back("Rising edge interrupt simulated");
-        
+
         // Test interrupt on falling edge
         gpioPins_[pin].value = true;
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         gpioPins_[pin].value = false; // Falling edge
-        
+
         data.push_back("Falling edge interrupt simulated");
     }
-    
+
     return {success, data};
 }
 
@@ -923,7 +922,7 @@ TestOutput GpioTesting::testGpioTimerCounterFunctionality()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test timer/counter functionality (simulated)
     int pin = 3;
     if (!setPinDirection(pin, GpioDirection::INPUT)) {
@@ -933,7 +932,7 @@ TestOutput GpioTesting::testGpioTimerCounterFunctionality()
         // Simulate pulse counting
         int pulseCount = 0;
         const int expectedPulses = 10;
-        
+
         for (int i = 0; i < expectedPulses; ++i) {
             gpioPins_[pin].value = true;
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -941,16 +940,15 @@ TestOutput GpioTesting::testGpioTimerCounterFunctionality()
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             pulseCount++;
         }
-        
+
         if (pulseCount == expectedPulses) {
             data.push_back("Timer/counter functionality: " + std::to_string(pulseCount) + " pulses counted");
         } else {
             success = false;
-            data.push_back("Pulse counting failed: expected " + std::to_string(expectedPulses) + 
-                          ", got " + std::to_string(pulseCount));
+            data.push_back("Pulse counting failed: expected " + std::to_string(expectedPulses) + ", got " + std::to_string(pulseCount));
         }
     }
-    
+
     return {success, data};
 }
 
@@ -962,7 +960,7 @@ TestOutput GpioTesting::testGpioSchmittTrigger()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test Schmitt trigger functionality (simulated)
     int pin = 4;
     if (!setPinDirection(pin, GpioDirection::INPUT)) {
@@ -971,22 +969,22 @@ TestOutput GpioTesting::testGpioSchmittTrigger()
     } else {
         // Simulate hysteresis behavior
         // Schmitt trigger has different thresholds for rising and falling edges
-        
+
         // Test rising edge threshold (simulate voltage ramp up)
         gpioPins_[pin].value = false; // Start low
         bool value;
         getPinValue(pin, value);
-        
+
         // Simulate crossing lower threshold but not upper
         // In real hardware, this would not trigger until upper threshold
         gpioPins_[pin].value = true; // Cross threshold
         getPinValue(pin, value);
-        
+
         data.push_back("Schmitt trigger hysteresis simulated");
         data.push_back("Rising edge threshold: ~1.5V (simulated)");
         data.push_back("Falling edge threshold: ~1.2V (simulated)");
     }
-    
+
     return {success, data};
 }
 
@@ -998,10 +996,10 @@ TestOutput GpioTesting::testGpioDirectionChange()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test direction change capability
     int pin = 5;
-    
+
     // Test input to output change
     if (!setPinDirection(pin, GpioDirection::INPUT)) {
         success = false;
@@ -1009,13 +1007,13 @@ TestOutput GpioTesting::testGpioDirectionChange()
     } else {
         data.push_back("Pin set as input successfully");
     }
-    
+
     if (!setPinDirection(pin, GpioDirection::OUTPUT)) {
         success = false;
         data.push_back("Failed to change pin to output");
     } else {
         data.push_back("Pin changed to output successfully");
-        
+
         // Test output functionality
         if (!setPinValue(pin, true)) {
             success = false;
@@ -1024,7 +1022,7 @@ TestOutput GpioTesting::testGpioDirectionChange()
             data.push_back("Output functionality works after direction change");
         }
     }
-    
+
     // Test output to input change
     if (!setPinDirection(pin, GpioDirection::INPUT)) {
         success = false;
@@ -1032,7 +1030,7 @@ TestOutput GpioTesting::testGpioDirectionChange()
     } else {
         data.push_back("Pin changed back to input successfully");
     }
-    
+
     return {success, data};
 }
 
@@ -1044,11 +1042,11 @@ TestOutput GpioTesting::testGpioConcurrentAccess()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test concurrent access to GPIO pins
     int pin1 = 6;
     int pin2 = 7;
-    
+
     if (!testConcurrentAccess(pin1, pin2)) {
         success = false;
         data.push_back("Concurrent access test failed");
@@ -1056,7 +1054,7 @@ TestOutput GpioTesting::testGpioConcurrentAccess()
         data.push_back("Concurrent access to GPIO pins successful");
         data.push_back("No race conditions or deadlocks detected");
     }
-    
+
     return {success, data};
 }
 
@@ -1068,17 +1066,17 @@ TestOutput GpioTesting::testGpioInterruptLatency()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test interrupt latency
     int pin = 0;
     double latency = measureInterruptLatency(pin);
-    
+
     if (latency < 0) {
         success = false;
         data.push_back("Failed to measure interrupt latency");
     } else {
         data.push_back("Interrupt latency: " + std::to_string(latency) + " microseconds");
-        
+
         // Check if latency is within acceptable range (higher threshold for simulation)
         const double MAX_LATENCY = 1000.0; // 1ms for simulation
         if (latency <= MAX_LATENCY) {
@@ -1088,7 +1086,7 @@ TestOutput GpioTesting::testGpioInterruptLatency()
             data.push_back("Interrupt latency exceeds maximum of " + std::to_string(MAX_LATENCY) + " microseconds");
         }
     }
-    
+
     return {success, data};
 }
 
@@ -1100,10 +1098,10 @@ TestOutput GpioTesting::testGpioReservedPins()
 {
     bool success = true;
     std::vector<std::string> data;
-    
+
     // Test reserved pins (pins that should not be used for general GPIO)
     std::vector<int> reservedPins = {8, 9}; // Assume pins 8,9 are reserved
-    
+
     for (int pin : reservedPins) {
         // Try to access reserved pin
         if (gpioPins_.find(pin) != gpioPins_.end()) {
@@ -1113,7 +1111,7 @@ TestOutput GpioTesting::testGpioReservedPins()
             data.push_back("Reserved pin " + std::to_string(pin) + " correctly protected");
         }
     }
-    
+
     // Test that normal pins are still accessible
     int normalPin = 0;
     if (gpioPins_.find(normalPin) == gpioPins_.end()) {
@@ -1122,7 +1120,7 @@ TestOutput GpioTesting::testGpioReservedPins()
     } else {
         data.push_back("Normal pins remain accessible");
     }
-    
+
     return {success, data};
 }
 
@@ -1137,7 +1135,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioout1
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioout1();
+        TestOutput result = testGpioout1();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioout1", result, duration});
@@ -1146,7 +1144,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioout2
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioout2();
+        TestOutput result = testGpioout2();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioout2", result, duration});
@@ -1155,7 +1153,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioout3
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioout3();
+        TestOutput result = testGpioout3();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioout3", result, duration});
@@ -1164,7 +1162,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioout4
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioout4();
+        TestOutput result = testGpioout4();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioout4", result, duration});
@@ -1173,7 +1171,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioOutputVoltageLevels
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioOutputVoltageLevels();
+        TestOutput result = testGpioOutputVoltageLevels();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioOutputVoltageLevels", result, duration});
@@ -1182,7 +1180,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioOutputCurrentDriveCapability
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioOutputCurrentDriveCapability();
+        TestOutput result = testGpioOutputCurrentDriveCapability();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioOutputCurrentDriveCapability", result, duration});
@@ -1191,7 +1189,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioOutputSwitchingSpeed
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioOutputSwitchingSpeed();
+        TestOutput result = testGpioOutputSwitchingSpeed();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioOutputSwitchingSpeed", result, duration});
@@ -1200,7 +1198,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioPwmOutput
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioPwmOutput();
+        TestOutput result = testGpioPwmOutput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioPwmOutput", result, duration});
@@ -1209,7 +1207,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioPulluppulldownResistors
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioPulluppulldownResistors();
+        TestOutput result = testGpioPulluppulldownResistors();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioPulluppulldownResistors", result, duration});
@@ -1218,7 +1216,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioin1
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioin1();
+        TestOutput result = testGpioin1();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioin1", result, duration});
@@ -1227,7 +1225,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioin2
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioin2();
+        TestOutput result = testGpioin2();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioin2", result, duration});
@@ -1236,7 +1234,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioin3
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioin3();
+        TestOutput result = testGpioin3();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioin3", result, duration});
@@ -1245,7 +1243,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioin4
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioin4();
+        TestOutput result = testGpioin4();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioin4", result, duration});
@@ -1254,7 +1252,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioInputVoltageThreshold
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioInputVoltageThreshold();
+        TestOutput result = testGpioInputVoltageThreshold();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioInputVoltageThreshold", result, duration});
@@ -1263,7 +1261,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioInputDebouncing
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioInputDebouncing();
+        TestOutput result = testGpioInputDebouncing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioInputDebouncing", result, duration});
@@ -1272,7 +1270,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioInterruptGeneration
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioInterruptGeneration();
+        TestOutput result = testGpioInterruptGeneration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioInterruptGeneration", result, duration});
@@ -1281,7 +1279,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioTimerCounterFunctionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioTimerCounterFunctionality();
+        TestOutput result = testGpioTimerCounterFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioTimerCounterFunctionality", result, duration});
@@ -1290,7 +1288,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioSchmittTrigger
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioSchmittTrigger();
+        TestOutput result = testGpioSchmittTrigger();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioSchmittTrigger", result, duration});
@@ -1299,7 +1297,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioDirectionChange
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioDirectionChange();
+        TestOutput result = testGpioDirectionChange();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioDirectionChange", result, duration});
@@ -1308,7 +1306,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioConcurrentAccess
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioConcurrentAccess();
+        TestOutput result = testGpioConcurrentAccess();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioConcurrentAccess", result, duration});
@@ -1317,7 +1315,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioInterruptLatency
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioInterruptLatency();
+        TestOutput result = testGpioInterruptLatency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioInterruptLatency", result, duration});
@@ -1326,7 +1324,7 @@ std::vector<TestResult> GpioTesting::runAllTests()
     // Run testGpioReservedPins
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testGpioReservedPins();
+        TestOutput result = testGpioReservedPins();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testGpioReservedPins", result, duration});
@@ -1339,7 +1337,8 @@ std::vector<TestResult> GpioTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> GpioTesting::getAvailableTests() {
+std::vector<std::string> GpioTesting::getAvailableTests()
+{
     return {
         "testGpioout1",
         "testGpioout2",
@@ -1371,7 +1370,8 @@ std::vector<std::string> GpioTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult GpioTesting::runSingleTest(const std::string& testName) {
+TestResult GpioTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

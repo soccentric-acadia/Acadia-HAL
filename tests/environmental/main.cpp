@@ -1,26 +1,26 @@
-#include <chrono>
 #include "lib_base.h"
+#include <atomic>
+#include <chrono>
+#include <csignal>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <string>
-#include <vector>
-#include <csignal>
-#include <atomic>
 #include <thread>
-#include <cstdlib>
+#include <vector>
 
 #include "environmental_lib/environmental_lib.h"
 
 std::atomic<bool> stop_flag(false);
 
-void signal_handler(int signal) {
+void signal_handler(int signal)
+{
     (void)signal;
     stop_flag = true;
 }
 
-
-
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     TestMode mode = TestMode::ONE_SHOT;
     if (argc > 1) {
         std::string arg = argv[1];
@@ -36,20 +36,21 @@ int main(int argc, char* argv[]) {
         static int cycle = 0;
         cycle++;
         std::cout << "\nTest Results (Cycle " << cycle << "):\n";
-        std::cout << std::left << std::setw(40) << "Test Name" << std::setw(10) << "Result" << std::setw(15)
-                  << "Duration (s)" << std::endl;
+        std::cout << std::left << std::setw(40) << "Test Name" << std::setw(10) << "Result" << std::setw(15) << "Duration (s)" << std::endl;
         std::cout << std::string(65, '-') << std::endl;
         int passed = 0;
         int failed = 0;
         std::chrono::duration<double> totalTime = std::chrono::duration<double>::zero();
-        for (const auto &res : results) {
-            std::cout << std::left << std::setw(40) << res.name << std::setw(10) << (res.output.passed ? "PASS" : "FAIL")
-                      << std::setw(15) << std::fixed << std::setprecision(6) << res.duration.count() << std::endl;
-            for (const auto &line : res.output.data) {
+        for (const auto& res : results) {
+            std::cout << std::left << std::setw(40) << res.name << std::setw(10) << (res.output.passed ? "PASS" : "FAIL") << std::setw(15)
+                      << std::fixed << std::setprecision(6) << res.duration.count() << std::endl;
+            for (const auto& line : res.output.data) {
                 std::cout << "    " << line << std::endl;
             }
-            if (res.output.passed) passed++;
-            else failed++;
+            if (res.output.passed)
+                passed++;
+            else
+                failed++;
             totalTime += res.duration;
         }
         std::cout << std::string(65, '-') << std::endl;
@@ -60,7 +61,8 @@ int main(int argc, char* argv[]) {
     };
 
     EnvironmentalTesting tester;
-    std::cout << "EnvironmentalTesting test started in " << (mode == TestMode::ONE_SHOT ? "ONE_SHOT" : "MONITORING") << " mode." << std::endl;
+    std::cout << "EnvironmentalTesting test started in " << (mode == TestMode::ONE_SHOT ? "ONE_SHOT" : "MONITORING") << " mode."
+              << std::endl;
 
     if (mode == TestMode::MONITORING) {
         std::signal(SIGINT, signal_handler);
@@ -69,16 +71,11 @@ int main(int argc, char* argv[]) {
 
     // Option 1: Run ALL tests (default behavior)
 
-
     tester.runTests(mode, printResults);
-
-
 
     // Option 2: Run SELECTED tests in any order
 
-
     // Uncomment the lines below and comment out the line above to run specific tests
-
 
     /*
 
@@ -103,13 +100,9 @@ int main(int argc, char* argv[]) {
 
     */
 
-
-
     // Option 3: Run individual tests one by one
 
-
     // Uncomment to use this approach
-
 
     /*
 

@@ -16,14 +16,14 @@
  */
 class SerializerDeserializerTesting : public TestBase
 {
-  public:    /**
-     * @brief Constructor for SerializerDeserializerTesting
-     * @return TestOutput with pass/fail and data
-     */
-     /**
-      * @brief Function SerializerDeserializerTesting
-     * @return TestOutput with pass/fail and data
-      */
+  public: /**
+           * @brief Constructor for SerializerDeserializerTesting
+           * @return TestOutput with pass/fail and data
+           */
+          /**
+           * @brief Function SerializerDeserializerTesting
+           * @return TestOutput with pass/fail and data
+           */
 
     SerializerDeserializerTesting();
     /**
@@ -39,10 +39,10 @@ class SerializerDeserializerTesting : public TestBase
      * @brief Constructor for SerializerDeserializerTesting
      * @return TestOutput with pass/fail and data
      */
-     /**
-      * @brief Tests the serializationfunctionality functionality
+    /**
+     * @brief Tests the serializationfunctionality functionality
      * @return TestOutput with pass/fail and data
-      */
+     */
 
     TestOutput testSerializationFunctionality();
     /**
@@ -100,13 +100,11 @@ class SerializerDeserializerTesting : public TestBase
      */
     TestOutput testMultistreamSupport();
 
-
     /**
      * @brief Get list of all available test names
      * @return Vector of test names
      */
     std::vector<std::string> getAvailableTests() override;
-
 
     /**
      * @brief Get list of all available test names
@@ -119,11 +117,9 @@ class SerializerDeserializerTesting : public TestBase
      * @return Test result with timing
      */
     TestResult runSingleTest(const std::string& testName) override;
-protected:
-    
+
+  protected:
     std::vector<TestResult> runAllTests() override;
-
-
 };
 
 #endif // SERIALIZERDESERIALIZERTESTING_H

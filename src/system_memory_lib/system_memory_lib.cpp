@@ -176,7 +176,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testAll64gbMemoryAccessibility
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testAll64gbMemoryAccessibility();
+        TestOutput result = testAll64gbMemoryAccessibility();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testAll64gbMemoryAccessibility", result, duration});
@@ -185,7 +185,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testMemoryBankTesting
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMemoryBankTesting();
+        TestOutput result = testMemoryBankTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMemoryBankTesting", result, duration});
@@ -194,7 +194,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run test256bitMemoryInterface
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test256bitMemoryInterface();
+        TestOutput result = test256bitMemoryInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test256bitMemoryInterface", result, duration});
@@ -203,7 +203,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testMemoryClockFrequency
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMemoryClockFrequency();
+        TestOutput result = testMemoryClockFrequency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMemoryClockFrequency", result, duration});
@@ -212,7 +212,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testMemoryBandwidth
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMemoryBandwidth();
+        TestOutput result = testMemoryBandwidth();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMemoryBandwidth", result, duration});
@@ -221,7 +221,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testMemoryLatencyMeasurements
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMemoryLatencyMeasurements();
+        TestOutput result = testMemoryLatencyMeasurements();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMemoryLatencyMeasurements", result, duration});
@@ -230,7 +230,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testMemoryErrorCorrection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMemoryErrorCorrection();
+        TestOutput result = testMemoryErrorCorrection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMemoryErrorCorrection", result, duration});
@@ -239,7 +239,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testMemoryThermalBehavior
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMemoryThermalBehavior();
+        TestOutput result = testMemoryThermalBehavior();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMemoryThermalBehavior", result, duration});
@@ -248,7 +248,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testSequentialReadwritePerformance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSequentialReadwritePerformance();
+        TestOutput result = testSequentialReadwritePerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSequentialReadwritePerformance", result, duration});
@@ -257,7 +257,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testRandomReadwritePerformance
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testRandomReadwritePerformance();
+        TestOutput result = testRandomReadwritePerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testRandomReadwritePerformance", result, duration});
@@ -266,7 +266,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testMemoryAllocationdeallocation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMemoryAllocationdeallocation();
+        TestOutput result = testMemoryAllocationdeallocation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMemoryAllocationdeallocation", result, duration});
@@ -275,7 +275,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testMemoryFragmentationHandling
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMemoryFragmentationHandling();
+        TestOutput result = testMemoryFragmentationHandling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMemoryFragmentationHandling", result, duration});
@@ -284,7 +284,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testOutofmemoryConditions
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testOutofmemoryConditions();
+        TestOutput result = testOutofmemoryConditions();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testOutofmemoryConditions", result, duration});
@@ -293,7 +293,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testMemoryLeaksDetection
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testMemoryLeaksDetection();
+        TestOutput result = testMemoryLeaksDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testMemoryLeaksDetection", result, duration});
@@ -302,7 +302,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testDmaTofromMemory
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testDmaTofromMemory();
+        TestOutput result = testDmaTofromMemory();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testDmaTofromMemory", result, duration});
@@ -311,7 +311,7 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
     // Run testConcurrentMemoryAccessPatterns
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testConcurrentMemoryAccessPatterns();
+        TestOutput result = testConcurrentMemoryAccessPatterns();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testConcurrentMemoryAccessPatterns", result, duration});
@@ -324,22 +324,16 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> SystemMemoryTesting::getAvailableTests() {
+std::vector<std::string> SystemMemoryTesting::getAvailableTests()
+{
     return {
-        "testAll64gbMemoryAccessibility",
-        "testMemoryBankTesting",
-        "testMemoryClockFrequency",
-        "testMemoryBandwidth",
-        "testMemoryLatencyMeasurements",
-        "testMemoryErrorCorrection",
-        "testMemoryThermalBehavior",
-        "testSequentialReadwritePerformance",
-        "testRandomReadwritePerformance",
-        "testMemoryAllocationdeallocation",
-        "testMemoryFragmentationHandling",
-        "testOutofmemoryConditions",
-        "testMemoryLeaksDetection",
-        "testDmaTofromMemory",
+        "testAll64gbMemoryAccessibility",     "testMemoryBankTesting",
+        "testMemoryClockFrequency",           "testMemoryBandwidth",
+        "testMemoryLatencyMeasurements",      "testMemoryErrorCorrection",
+        "testMemoryThermalBehavior",          "testSequentialReadwritePerformance",
+        "testRandomReadwritePerformance",     "testMemoryAllocationdeallocation",
+        "testMemoryFragmentationHandling",    "testOutofmemoryConditions",
+        "testMemoryLeaksDetection",           "testDmaTofromMemory",
         "testConcurrentMemoryAccessPatterns",
     };
 }
@@ -349,7 +343,8 @@ std::vector<std::string> SystemMemoryTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult SystemMemoryTesting::runSingleTest(const std::string& testName) {
+TestResult SystemMemoryTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

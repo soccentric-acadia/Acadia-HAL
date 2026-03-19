@@ -104,7 +104,7 @@ std::vector<TestResult> ImuTesting::runAllTests()
     // Run test3axisAccelerometer
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test3axisAccelerometer();
+        TestOutput result = test3axisAccelerometer();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test3axisAccelerometer", result, duration});
@@ -113,7 +113,7 @@ std::vector<TestResult> ImuTesting::runAllTests()
     // Run test3axisGyroscope
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test3axisGyroscope();
+        TestOutput result = test3axisGyroscope();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test3axisGyroscope", result, duration});
@@ -122,7 +122,7 @@ std::vector<TestResult> ImuTesting::runAllTests()
     // Run test3axisMagnetometer
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = test3axisMagnetometer();
+        TestOutput result = test3axisMagnetometer();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"test3axisMagnetometer", result, duration});
@@ -131,7 +131,7 @@ std::vector<TestResult> ImuTesting::runAllTests()
     // Run testImuDataRate
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testImuDataRate();
+        TestOutput result = testImuDataRate();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testImuDataRate", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> ImuTesting::runAllTests()
     // Run testImuAccuracy
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testImuAccuracy();
+        TestOutput result = testImuAccuracy();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testImuAccuracy", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> ImuTesting::runAllTests()
     // Run testImuCalibration
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testImuCalibration();
+        TestOutput result = testImuCalibration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testImuCalibration", result, duration});
@@ -158,7 +158,7 @@ std::vector<TestResult> ImuTesting::runAllTests()
     // Run testImuTemperatureCompensation
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testImuTemperatureCompensation();
+        TestOutput result = testImuTemperatureCompensation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testImuTemperatureCompensation", result, duration});
@@ -167,7 +167,7 @@ std::vector<TestResult> ImuTesting::runAllTests()
     // Run testImuToOrinInterface
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testImuToOrinInterface();
+        TestOutput result = testImuToOrinInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testImuToOrinInterface", result, duration});
@@ -180,13 +180,10 @@ std::vector<TestResult> ImuTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> ImuTesting::getAvailableTests() {
+std::vector<std::string> ImuTesting::getAvailableTests()
+{
     return {
-        "testImuDataRate",
-        "testImuAccuracy",
-        "testImuCalibration",
-        "testImuTemperatureCompensation",
-        "testImuToOrinInterface",
+        "testImuDataRate", "testImuAccuracy", "testImuCalibration", "testImuTemperatureCompensation", "testImuToOrinInterface",
     };
 }
 
@@ -195,7 +192,8 @@ std::vector<std::string> ImuTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult ImuTesting::runSingleTest(const std::string& testName) {
+TestResult ImuTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 

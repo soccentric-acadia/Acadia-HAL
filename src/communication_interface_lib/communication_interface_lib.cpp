@@ -44,7 +44,7 @@ namespace
 {
 
 /** Read a single-line sysfs / procfs file. Returns empty string on failure. */
-std::string readFile(const std::string &path)
+std::string readFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open())
@@ -55,18 +55,16 @@ std::string readFile(const std::string &path)
 }
 
 /** Return all entries in a directory whose name starts with @p prefix. */
-std::vector<std::string> listDevNodes(const std::string &dir, const std::string &prefix)
+std::vector<std::string> listDevNodes(const std::string& dir, const std::string& prefix)
 {
     std::vector<std::string> result;
-    DIR *dp = opendir(dir.c_str());
+    DIR* dp = opendir(dir.c_str());
     if (!dp)
         return result;
-    struct dirent *de;
-    while ((de = readdir(dp)) != nullptr)
-    {
+    struct dirent* de;
+    while ((de = readdir(dp)) != nullptr) {
         std::string name = de->d_name;
-        if (name.rfind(prefix, 0) == 0)
-        {
+        if (name.rfind(prefix, 0) == 0) {
             result.push_back(dir + "/" + name);
         }
     }
@@ -82,17 +80,15 @@ std::vector<std::string> listCanInterfaces()
 }
 
 /** Read /proc/interrupts and return lines that contain @p keyword. */
-std::vector<std::string> grepInterrupts(const std::string &keyword)
+std::vector<std::string> grepInterrupts(const std::string& keyword)
 {
     std::vector<std::string> matches;
     std::ifstream f("/proc/interrupts");
     if (!f.is_open())
         return matches;
     std::string line;
-    while (std::getline(f, line))
-    {
-        if (line.find(keyword) != std::string::npos)
-        {
+    while (std::getline(f, line)) {
+        if (line.find(keyword) != std::string::npos) {
             // Trim leading whitespace
             auto pos = line.find_first_not_of(" \t");
             if (pos != std::string::npos)
@@ -144,8 +140,7 @@ TestOutput CommunicationInterfaceTesting::testAllUartPortsFunctionality()
     std::vector<std::string> ttysPorts = listDevNodes("/dev", "ttyS");
     thsPorts.insert(thsPorts.end(), ttysPorts.begin(), ttysPorts.end());
 
-    if (thsPorts.empty())
-    {
+    if (thsPorts.empty()) {
         data.push_back("[WARN] No UART devices found under /dev/ttyTHS* or /dev/ttyS*");
         data.push_back("[INFO] Ensure Jetson Orin UART nodes are enabled in device tree");
         // Pass with warning – hardware may simply not have external UARTs wired up
@@ -154,34 +149,28 @@ TestOutput CommunicationInterfaceTesting::testAllUartPortsFunctionality()
 
     bool allOk = true;
     int openCount = 0;
-    for (const auto &port : thsPorts)
-    {
+    for (const auto& port : thsPorts) {
         int fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
-        if (fd < 0)
-        {
+        if (fd < 0) {
             data.push_back("[WARN] " + port + ": cannot open (" + strerror(errno) + ")");
             // EACCES / ENOENT is expected if port is in use or not enabled; don't fail the suite
-        }
-        else
-        {
-            struct termios tio{};
+        } else {
+            struct termios tio
+            {
+            };
             bool ttyOk = (tcgetattr(fd, &tio) == 0);
             close(fd);
-            if (ttyOk)
-            {
+            if (ttyOk) {
                 data.push_back("[PASS] " + port + ": opened and termios attributes read successfully");
                 openCount++;
-            }
-            else
-            {
+            } else {
                 data.push_back("[FAIL] " + port + ": opened but tcgetattr failed: " + strerror(errno));
                 allOk = false;
             }
         }
     }
 
-    data.push_back("Summary: " + std::to_string(openCount) + "/" + std::to_string(thsPorts.size()) +
-                   " UART ports accessible");
+    data.push_back("Summary: " + std::to_string(openCount) + "/" + std::to_string(thsPorts.size()) + " UART ports accessible");
     return {allOk, data};
 }
 
@@ -205,26 +194,22 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
     };
 
     std::vector<std::string> ports = listDevNodes("/dev", "ttyTHS");
-    if (ports.empty())
-    {
+    if (ports.empty()) {
         ports = listDevNodes("/dev", "ttyS");
     }
 
-    if (ports.empty())
-    {
+    if (ports.empty()) {
         data.push_back("[INFO] No UART ports found; validating baud-rate symbol availability only");
         bool allSymbolsOk = true;
-        for (const auto &br : baudRates)
-        {
-            struct termios tio{};
+        for (const auto& br : baudRates) {
+            struct termios tio
+            {
+            };
             int rc = cfsetispeed(&tio, br.second);
             rc |= cfsetospeed(&tio, br.second);
-            if (rc == 0)
-            {
+            if (rc == 0) {
                 data.push_back("[PASS] " + br.first + " baud: termios symbol present");
-            }
-            else
-            {
+            } else {
                 data.push_back("[FAIL] " + br.first + " baud: cfsetspeed returned " + std::to_string(rc));
                 allSymbolsOk = false;
             }
@@ -233,17 +218,16 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
     }
 
     bool allOk = true;
-    const std::string &port = ports[0]; // Use first available port
+    const std::string& port = ports[0]; // Use first available port
     int fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
-    if (fd < 0)
-    {
+    if (fd < 0) {
         data.push_back("[WARN] " + port + ": cannot open – testing symbol availability only");
-        for (const auto &br : baudRates)
-        {
-            struct termios tio{};
+        for (const auto& br : baudRates) {
+            struct termios tio
+            {
+            };
             int rc = cfsetispeed(&tio, br.second) | cfsetospeed(&tio, br.second);
-            data.push_back(rc == 0 ? "[PASS] " + br.first + " baud supported in termios"
-                                   : "[FAIL] " + br.first + " baud NOT supported");
+            data.push_back(rc == 0 ? "[PASS] " + br.first + " baud supported in termios" : "[FAIL] " + br.first + " baud NOT supported");
             if (rc != 0)
                 allOk = false;
         }
@@ -251,26 +235,23 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
     }
 
     data.push_back("[INFO] Using " + port + " for baud-rate tests");
-    struct termios origTio{};
+    struct termios origTio
+    {
+    };
     tcgetattr(fd, &origTio);
 
-    for (const auto &br : baudRates)
-    {
+    for (const auto& br : baudRates) {
         struct termios tio = origTio;
         int rc = cfsetispeed(&tio, br.second);
         rc |= cfsetospeed(&tio, br.second);
-        if (rc != 0)
-        {
+        if (rc != 0) {
             data.push_back("[FAIL] " + br.first + " baud: cfsetspeed error " + strerror(errno));
             allOk = false;
             continue;
         }
-        if (tcsetattr(fd, TCSANOW, &tio) != 0)
-        {
+        if (tcsetattr(fd, TCSANOW, &tio) != 0) {
             data.push_back("[WARN] " + br.first + " baud: tcsetattr error: " + strerror(errno));
-        }
-        else
-        {
+        } else {
             data.push_back("[PASS] " + br.first + " baud: set successfully on " + port);
         }
     }
@@ -293,8 +274,7 @@ TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
     data.push_back("=== UART Hardware Flow Control (Jetson Orin) ===");
 
     std::vector<std::string> ports = listDevNodes("/dev", "ttyTHS");
-    if (ports.empty())
-    {
+    if (ports.empty()) {
         data.push_back("[INFO] No ttyTHS devices found; checking CRTSCTS flag definition");
 #ifdef CRTSCTS
         data.push_back("[PASS] CRTSCTS flag is defined in kernel headers (0x" + [](unsigned long v) {
@@ -310,17 +290,16 @@ TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
     }
 
     bool allOk = true;
-    for (const auto &port : ports)
-    {
+    for (const auto& port : ports) {
         int fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
-        if (fd < 0)
-        {
+        if (fd < 0) {
             data.push_back("[WARN] " + port + ": cannot open – skipping");
             continue;
         }
-        struct termios tio{};
-        if (tcgetattr(fd, &tio) != 0)
+        struct termios tio
         {
+        };
+        if (tcgetattr(fd, &tio) != 0) {
             data.push_back("[FAIL] " + port + ": tcgetattr failed: " + strerror(errno));
             allOk = false;
             close(fd);
@@ -328,22 +307,18 @@ TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
         }
         // Enable hardware flow control
         tio.c_cflag |= CRTSCTS;
-        if (tcsetattr(fd, TCSANOW, &tio) != 0)
-        {
+        if (tcsetattr(fd, TCSANOW, &tio) != 0) {
             data.push_back("[WARN] " + port + ": CRTSCTS set failed (" + strerror(errno) +
                            ") – port may be in use or HW pins not connected");
-        }
-        else
-        {
+        } else {
             // Verify it was accepted
-            struct termios verify{};
+            struct termios verify
+            {
+            };
             tcgetattr(fd, &verify);
-            if (verify.c_cflag & CRTSCTS)
-            {
+            if (verify.c_cflag & CRTSCTS) {
                 data.push_back("[PASS] " + port + ": CRTSCTS hardware flow control enabled");
-            }
-            else
-            {
+            } else {
                 data.push_back("[WARN] " + port + ": CRTSCTS flag not retained by driver");
             }
         }
@@ -377,8 +352,7 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
     };
 
     std::vector<std::string> ports = listDevNodes("/dev", "ttyTHS");
-    if (ports.empty())
-    {
+    if (ports.empty()) {
         data.push_back("[INFO] No ttyTHS ports; validating termios flag definitions");
         data.push_back("[PASS] PARENB defined");
         data.push_back("[PASS] PARODD defined");
@@ -386,33 +360,31 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
     }
 
     bool allOk = true;
-    const std::string &port = ports[0];
+    const std::string& port = ports[0];
     int fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
-    if (fd < 0)
-    {
+    if (fd < 0) {
         data.push_back("[WARN] " + port + ": cannot open – flag validation only");
         data.push_back("[PASS] PARENB and PARODD flags defined in termios");
         return {true, data};
     }
 
-    struct termios orig{};
+    struct termios orig
+    {
+    };
     tcgetattr(fd, &orig);
 
-    for (const auto &m : modes)
-    {
+    for (const auto& m : modes) {
         struct termios tio = orig;
         tio.c_cflag &= ~(PARENB | PARODD);
         tio.c_cflag |= m.flags;
-        if (tcsetattr(fd, TCSANOW, &tio) == 0)
-        {
-            struct termios v{};
+        if (tcsetattr(fd, TCSANOW, &tio) == 0) {
+            struct termios v
+            {
+            };
             tcgetattr(fd, &v);
             bool match = ((v.c_cflag & (PARENB | PARODD)) == m.flags);
-            data.push_back(std::string(match ? "[PASS] " : "[WARN] ") + m.name +
-                           (match ? ": set and verified" : ": set but not retained"));
-        }
-        else
-        {
+            data.push_back(std::string(match ? "[PASS] " : "[WARN] ") + m.name + (match ? ": set and verified" : ": set but not retained"));
+        } else {
             data.push_back("[WARN] " + m.name + ": tcsetattr failed: " + strerror(errno));
         }
     }
@@ -433,35 +405,32 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
     data.push_back("=== UART Stop Bit Configuration (Jetson Orin) ===");
 
     std::vector<std::string> ports = listDevNodes("/dev", "ttyTHS");
-    if (ports.empty())
-    {
+    if (ports.empty()) {
         data.push_back("[INFO] No ttyTHS ports; CSTOPB flag present in kernel headers");
         data.push_back("[PASS] 1-stop-bit (default) and 2-stop-bit (CSTOPB) supported");
         return {true, data};
     }
 
     bool allOk = true;
-    const std::string &port = ports[0];
+    const std::string& port = ports[0];
     int fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
-    if (fd < 0)
-    {
+    if (fd < 0) {
         data.push_back("[WARN] " + port + ": cannot open – flag validation only");
         return {true, data};
     }
 
-    struct termios orig{};
+    struct termios orig
+    {
+    };
     tcgetattr(fd, &orig);
 
     // Test 1 stop bit
     {
         struct termios tio = orig;
         tio.c_cflag &= ~CSTOPB; // 1 stop bit
-        if (tcsetattr(fd, TCSANOW, &tio) == 0)
-        {
+        if (tcsetattr(fd, TCSANOW, &tio) == 0) {
             data.push_back("[PASS] 1 stop bit: configured on " + port);
-        }
-        else
-        {
+        } else {
             data.push_back("[WARN] 1 stop bit: tcsetattr failed: " + std::string(strerror(errno)));
         }
     }
@@ -470,12 +439,9 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
     {
         struct termios tio = orig;
         tio.c_cflag |= CSTOPB; // 2 stop bits
-        if (tcsetattr(fd, TCSANOW, &tio) == 0)
-        {
+        if (tcsetattr(fd, TCSANOW, &tio) == 0) {
             data.push_back("[PASS] 2 stop bits: configured on " + port);
-        }
-        else
-        {
+        } else {
             data.push_back("[WARN] 2 stop bits: tcsetattr failed: " + std::string(strerror(errno)));
         }
     }
@@ -514,8 +480,7 @@ TestOutput CommunicationInterfaceTesting::testUartDmaOperation()
     int foundControllers = 0;
     int dmaEnabled = 0;
 
-    for (const auto &addr : uartBaseAddrs)
-    {
+    for (const auto& addr : uartBaseAddrs) {
         std::string devPath = platBase + addr;
         // Check device exists
         std::ifstream probe(devPath + "/uevent");
@@ -528,37 +493,29 @@ TestOutput CommunicationInterfaceTesting::testUartDmaOperation()
         std::string addrPart = addr.substr(0, addr.find('.'));
         std::string dtPath = "/proc/device-tree/serial@" + addrPart + "/dmas";
         std::ifstream dtDmas(dtPath);
-        if (dtDmas.is_open())
-        {
+        if (dtDmas.is_open()) {
             data.push_back("[PASS] " + addr + ": DMA property present in DT (" + dtPath + ")");
             dmaEnabled++;
-        }
-        else
-        {
+        } else {
             data.push_back("[INFO] " + addr + ": DMA DT property not found – may use PIO mode");
         }
     }
 
     // Also check /proc/interrupts for GPCDMA
     auto dmaIrqs = grepInterrupts("gpcdma");
-    if (!dmaIrqs.empty())
-    {
+    if (!dmaIrqs.empty()) {
         data.push_back("[INFO] GPCDMA interrupts registered (" + std::to_string(dmaIrqs.size()) + " entries)");
-        for (const auto &irq : dmaIrqs)
-        {
+        for (const auto& irq : dmaIrqs) {
             data.push_back("  " + irq);
         }
     }
 
-    if (foundControllers == 0)
-    {
+    if (foundControllers == 0) {
         data.push_back("[INFO] No Tegra UART platform devices found – check kernel config");
         data.push_back("[INFO] Expected at /sys/bus/platform/devices/3100000.serial etc.");
-    }
-    else
-    {
-        data.push_back("Summary: " + std::to_string(foundControllers) + " UART controllers found, " +
-                       std::to_string(dmaEnabled) + " with DMA DT property");
+    } else {
+        data.push_back("Summary: " + std::to_string(foundControllers) + " UART controllers found, " + std::to_string(dmaEnabled) +
+                       " with DMA DT property");
     }
 
     return {true, data}; // DMA may be driver-configured; not a hard failure
@@ -575,30 +532,23 @@ TestOutput CommunicationInterfaceTesting::testUartInterruptHandling()
     std::vector<std::string> data;
     data.push_back("=== UART Interrupt Handling (Jetson Orin) ===");
 
-    static const std::vector<std::string> irqKeywords = {"serial",  "ttyTHS",  "3100000",
-                                                         "3110000", "3130000", "3140000"};
+    static const std::vector<std::string> irqKeywords = {"serial", "ttyTHS", "3100000", "3110000", "3130000", "3140000"};
 
     bool foundAny = false;
-    for (const auto &kw : irqKeywords)
-    {
+    for (const auto& kw : irqKeywords) {
         auto lines = grepInterrupts(kw);
-        if (!lines.empty())
-        {
+        if (!lines.empty()) {
             foundAny = true;
-            for (const auto &line : lines)
-            {
+            for (const auto& line : lines) {
                 data.push_back("[PASS] IRQ: " + line);
             }
         }
     }
 
-    if (!foundAny)
-    {
+    if (!foundAny) {
         data.push_back("[INFO] No UART interrupts found in /proc/interrupts");
         data.push_back("[INFO] This is expected on a host build or if UART is idle");
-    }
-    else
-    {
+    } else {
         data.push_back("[INFO] UART interrupt handlers are registered and active");
     }
 
@@ -621,38 +571,30 @@ TestOutput CommunicationInterfaceTesting::testConsoledebugUart()
     std::string cmdline = readFile("/proc/cmdline");
     std::string consoleDevice;
 
-    if (!cmdline.empty())
-    {
+    if (!cmdline.empty()) {
         data.push_back("[INFO] Kernel cmdline: " + cmdline.substr(0, 120) + (cmdline.size() > 120 ? "..." : ""));
         // Extract console= parameter
         std::istringstream iss(cmdline);
         std::string token;
-        while (iss >> token)
-        {
-            if (token.rfind("console=", 0) == 0)
-            {
+        while (iss >> token) {
+            if (token.rfind("console=", 0) == 0) {
                 consoleDevice = token.substr(8);
                 auto comma = consoleDevice.find(',');
                 std::string baud;
-                if (comma != std::string::npos)
-                {
+                if (comma != std::string::npos) {
                     baud = consoleDevice.substr(comma + 1);
                     consoleDevice = consoleDevice.substr(0, comma);
                 }
-                data.push_back("[PASS] Console UART: /dev/" + consoleDevice +
-                               (baud.empty() ? "" : " at " + baud + " baud"));
+                data.push_back("[PASS] Console UART: /dev/" + consoleDevice + (baud.empty() ? "" : " at " + baud + " baud"));
             }
         }
-    }
-    else
-    {
+    } else {
         data.push_back("[WARN] /proc/cmdline not readable");
     }
 
     // Check /sys/class/tty/console symlink
     std::string sysConsole = readFile("/sys/class/tty/console/dev");
-    if (!sysConsole.empty())
-    {
+    if (!sysConsole.empty()) {
         data.push_back("[INFO] /sys/class/tty/console dev number: " + sysConsole);
     }
 
@@ -661,12 +603,9 @@ TestOutput CommunicationInterfaceTesting::testConsoledebugUart()
 
     // Confirm ttyTHS0 exists
     std::ifstream ttyCheck("/dev/ttyTHS0");
-    if (ttyCheck.good() || access("/dev/ttyTHS0", F_OK) == 0)
-    {
+    if (ttyCheck.good() || access("/dev/ttyTHS0", F_OK) == 0) {
         data.push_back("[PASS] /dev/ttyTHS0 present");
-    }
-    else
-    {
+    } else {
         data.push_back("[INFO] /dev/ttyTHS0 not present in current environment");
     }
 
@@ -691,32 +630,24 @@ TestOutput CommunicationInterfaceTesting::testAllSpiControllers()
 
     // Enumerate spidev character devices
     std::vector<std::string> spiDevs = listDevNodes("/dev", "spidev");
-    if (!spiDevs.empty())
-    {
+    if (!spiDevs.empty()) {
         data.push_back("[INFO] spidev nodes found: " + std::to_string(spiDevs.size()));
-        for (const auto &d : spiDevs)
-        {
+        for (const auto& d : spiDevs) {
             data.push_back("[PASS] " + d + ": present");
         }
-    }
-    else
-    {
+    } else {
         data.push_back("[INFO] No /dev/spidev* nodes found (spidev module may not be loaded)");
     }
 
     // Enumerate via sysfs SPI bus
     std::vector<std::string> sysSpiDevs = listDevNodes("/sys/bus/spi/devices", "spi");
-    if (!sysSpiDevs.empty())
-    {
+    if (!sysSpiDevs.empty()) {
         data.push_back("[INFO] SPI devices in sysfs: " + std::to_string(sysSpiDevs.size()));
-        for (const auto &d : sysSpiDevs)
-        {
+        for (const auto& d : sysSpiDevs) {
             std::string name = readFile(d + "/modalias");
             data.push_back("[INFO] " + d.substr(d.rfind('/') + 1) + (name.empty() ? "" : " (" + name + ")"));
         }
-    }
-    else
-    {
+    } else {
         data.push_back("[INFO] No SPI devices in /sys/bus/spi/devices");
     }
 
@@ -728,25 +659,20 @@ TestOutput CommunicationInterfaceTesting::testAllSpiControllers()
     };
     int foundDtControllers = 0;
     const std::string platBase = "/sys/bus/platform/devices/";
-    for (const auto &ctrl : expectedControllers)
-    {
+    for (const auto& ctrl : expectedControllers) {
         std::ifstream probe(platBase + ctrl + "/uevent");
-        if (probe.is_open())
-        {
+        if (probe.is_open()) {
             data.push_back("[PASS] Platform SPI controller: " + ctrl);
             foundDtControllers++;
-        }
-        else
-        {
+        } else {
             data.push_back("[INFO] Platform SPI: " + ctrl + " not found in sysfs");
         }
     }
 
-    data.push_back("Summary: " + std::to_string(spiDevs.size()) + " spidev nodes, " +
-                   std::to_string(foundDtControllers) + " platform controllers");
+    data.push_back("Summary: " + std::to_string(spiDevs.size()) + " spidev nodes, " + std::to_string(foundDtControllers) +
+                   " platform controllers");
     bool passed = (!spiDevs.empty() || foundDtControllers > 0 || !sysSpiDevs.empty());
-    if (!passed)
-    {
+    if (!passed) {
         data.push_back("[INFO] SPI controllers may be in use by other drivers or not enabled in DT");
     }
     return {true, data}; // Informational; spidev may not be configured
@@ -765,31 +691,25 @@ TestOutput CommunicationInterfaceTesting::testSpiMasterMode()
     data.push_back("=== SPI Master Mode Verification (Jetson Orin) ===");
 
     std::vector<std::string> spiDevs = listDevNodes("/dev", "spidev");
-    if (spiDevs.empty())
-    {
+    if (spiDevs.empty()) {
         data.push_back("[INFO] No spidev nodes available; Jetson Orin SPI always operates in master mode");
         data.push_back("[INFO] Load spidev module and configure DT to expose /dev/spidev nodes");
         return {true, data};
     }
 
     bool allOk = true;
-    for (const auto &dev : spiDevs)
-    {
+    for (const auto& dev : spiDevs) {
         int fd = open(dev.c_str(), O_RDWR);
-        if (fd < 0)
-        {
+        if (fd < 0) {
             data.push_back("[WARN] " + dev + ": cannot open (" + strerror(errno) + ")");
             continue;
         }
 #ifdef SPI_IOC_RD_MODE
         uint8_t mode = 0;
-        if (ioctl(fd, SPI_IOC_RD_MODE, &mode) == 0)
-        {
+        if (ioctl(fd, SPI_IOC_RD_MODE, &mode) == 0) {
             std::string modeStr = "SPI_MODE_" + std::to_string(mode & 0x3);
             data.push_back("[PASS] " + dev + ": master mode, current mode=" + modeStr);
-        }
-        else
-        {
+        } else {
             data.push_back("[FAIL] " + dev + ": SPI_IOC_RD_MODE failed: " + strerror(errno));
             allOk = false;
         }
@@ -823,38 +743,29 @@ TestOutput CommunicationInterfaceTesting::testSpiSlaveMode()
     };
 
     int slaveCount = 0;
-    for (const auto &path : dtSpiPaths)
-    {
+    for (const auto& path : dtSpiPaths) {
         std::ifstream slaveFile(path + "/spi-slave");
-        if (slaveFile.is_open())
-        {
+        if (slaveFile.is_open()) {
             data.push_back("[INFO] " + path + ": spi-slave property set (slave mode configured)");
             slaveCount++;
-        }
-        else
-        {
+        } else {
             std::ifstream statusFile(path + "/status");
-            if (statusFile.is_open())
-            {
+            if (statusFile.is_open()) {
                 std::string status;
                 std::getline(statusFile, status);
                 status.erase(std::remove(status.begin(), status.end(), '\0'), status.end());
-                if (status == "okay" || status == "ok")
-                {
+                if (status == "okay" || status == "ok") {
                     data.push_back("[INFO] " + path + ": enabled in DT (master mode default)");
                 }
             }
         }
     }
 
-    if (slaveCount == 0)
-    {
+    if (slaveCount == 0) {
         data.push_back("[INFO] No SPI controllers configured in slave mode");
         data.push_back("[INFO] Jetson Orin supports SPI slave mode via 'spi-slave' DT property");
         data.push_back("[INFO] Slave mode requires kernel CONFIG_SPI_SLAVE=y");
-    }
-    else
-    {
+    } else {
         data.push_back("[PASS] " + std::to_string(slaveCount) + " SPI controller(s) in slave mode");
     }
 
@@ -873,44 +784,35 @@ TestOutput CommunicationInterfaceTesting::testVariousSpiClockSpeeds()
     data.push_back("=== SPI Clock Speed Test (Jetson Orin) ===");
 
     static const std::vector<std::pair<std::string, uint32_t>> speeds = {
-        {"1 MHz", 1000000},   {"4 MHz", 4000000},   {"8 MHz", 8000000},
-        {"12 MHz", 12000000}, {"20 MHz", 20000000}, {"40 MHz", 40000000},
+        {"1 MHz", 1000000}, {"4 MHz", 4000000}, {"8 MHz", 8000000}, {"12 MHz", 12000000}, {"20 MHz", 20000000}, {"40 MHz", 40000000},
     };
 
     std::vector<std::string> spiDevs = listDevNodes("/dev", "spidev");
-    if (spiDevs.empty())
-    {
+    if (spiDevs.empty()) {
         data.push_back("[INFO] No spidev nodes found; documenting supported speeds");
         data.push_back("[INFO] Jetson Orin SPI supports up to 40 MHz (QSPI up to 133 MHz)");
-        for (const auto &sp : speeds)
-        {
+        for (const auto& sp : speeds) {
             data.push_back("[INFO] " + sp.first + " (" + std::to_string(sp.second) + " Hz): supported");
         }
         return {true, data};
     }
 
     bool allOk = true;
-    for (const auto &dev : spiDevs)
-    {
+    for (const auto& dev : spiDevs) {
         int fd = open(dev.c_str(), O_RDWR);
-        if (fd < 0)
-        {
+        if (fd < 0) {
             data.push_back("[WARN] " + dev + ": cannot open");
             continue;
         }
         data.push_back("[INFO] Testing speeds on " + dev + ":");
 #ifdef SPI_IOC_WR_MAX_SPEED_HZ
-        for (const auto &sp : speeds)
-        {
+        for (const auto& sp : speeds) {
             uint32_t hz = sp.second;
-            if (ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &hz) == 0)
-            {
+            if (ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &hz) == 0) {
                 uint32_t readback = 0;
                 ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &readback);
                 data.push_back("[PASS]   " + sp.first + ": set to " + std::to_string(readback) + " Hz");
-            }
-            else
-            {
+            } else {
                 data.push_back("[WARN]   " + sp.first + ": ioctl failed (" + strerror(errno) + ")");
             }
         }
@@ -940,31 +842,26 @@ TestOutput CommunicationInterfaceTesting::testSpiModes()
     };
 
     std::vector<std::string> spiDevs = listDevNodes("/dev", "spidev");
-    if (spiDevs.empty())
-    {
+    if (spiDevs.empty()) {
         data.push_back("[INFO] No spidev nodes; Jetson Orin Tegra SPI supports all 4 SPI modes");
-        for (const auto &m : modes)
-        {
+        for (const auto& m : modes) {
             data.push_back("[INFO] " + m.first + ": supported by hardware");
         }
         return {true, data};
     }
 
     bool allOk = true;
-    const std::string &dev = spiDevs[0];
+    const std::string& dev = spiDevs[0];
     int fd = open(dev.c_str(), O_RDWR);
-    if (fd < 0)
-    {
+    if (fd < 0) {
         data.push_back("[WARN] " + dev + ": cannot open – documenting hardware capability");
         return {true, data};
     }
 
 #ifdef SPI_IOC_WR_MODE
-    for (const auto &m : modes)
-    {
+    for (const auto& m : modes) {
         uint8_t mode = m.second;
-        if (ioctl(fd, SPI_IOC_WR_MODE, &mode) == 0)
-        {
+        if (ioctl(fd, SPI_IOC_WR_MODE, &mode) == 0) {
             uint8_t readback = 0;
             ioctl(fd, SPI_IOC_RD_MODE, &readback);
             bool match = ((readback & 0x3) == m.second);
@@ -972,9 +869,7 @@ TestOutput CommunicationInterfaceTesting::testSpiModes()
                            (match ? ": set and verified" : ": set but readback differs"));
             if (!match)
                 allOk = false;
-        }
-        else
-        {
+        } else {
             data.push_back("[WARN] " + m.first + ": ioctl failed: " + strerror(errno));
         }
     }
@@ -999,29 +894,23 @@ TestOutput CommunicationInterfaceTesting::testChipSelectFunctionality()
 
     // Each spidev node name encodes bus.cs as spidevB.C
     std::vector<std::string> spiDevs = listDevNodes("/dev", "spidev");
-    if (!spiDevs.empty())
-    {
+    if (!spiDevs.empty()) {
         std::map<int, std::vector<int>> busCs;
         // Parse /dev/spidevX.Y
-        for (const auto &d : spiDevs)
-        {
+        for (const auto& d : spiDevs) {
             std::string name = d.substr(d.rfind('/') + 1 + 6); // strip "/dev/spidev"
             auto dot = name.find('.');
-            if (dot != std::string::npos)
-            {
-                try
-                {
+            if (dot != std::string::npos) {
+                try {
                     int bus = std::stoi(name.substr(0, dot));
                     int cs = std::stoi(name.substr(dot + 1));
                     busCs[bus].push_back(cs);
                 }
-                catch (...)
-                {
+                catch (...) {
                 }
             }
         }
-        for (const auto &kv : busCs)
-        {
+        for (const auto& kv : busCs) {
             std::string csList;
             for (int cs : kv.second)
                 csList += std::to_string(cs) + " ";
@@ -1031,10 +920,8 @@ TestOutput CommunicationInterfaceTesting::testChipSelectFunctionality()
 
     // Also enumerate via sysfs
     std::vector<std::string> sysBusDevs = listDevNodes("/sys/bus/spi/devices", "spi");
-    if (!sysBusDevs.empty())
-    {
-        for (const auto &d : sysBusDevs)
-        {
+    if (!sysBusDevs.empty()) {
+        for (const auto& d : sysBusDevs) {
             std::string devName = d.substr(d.rfind('/') + 1);
             data.push_back("[INFO] sysfs SPI device: " + devName);
         }
@@ -1044,8 +931,7 @@ TestOutput CommunicationInterfaceTesting::testChipSelectFunctionality()
     data.push_back("[INFO] CS polarity configurable via spi-cs-high DT property");
 
     bool passed = (!spiDevs.empty() || !sysBusDevs.empty());
-    if (!passed)
-    {
+    if (!passed) {
         data.push_back("[INFO] No SPI devices found; CS test requires spidev or SPI slave device");
     }
     return {true, data};
@@ -1070,19 +956,14 @@ TestOutput CommunicationInterfaceTesting::testSpiDmaTransfers()
     };
 
     int dmaCount = 0;
-    for (const auto &path : spiDtPaths)
-    {
+    for (const auto& path : spiDtPaths) {
         std::ifstream dmasFile(path + "/dmas");
-        if (dmasFile.is_open())
-        {
+        if (dmasFile.is_open()) {
             data.push_back("[PASS] " + path + ": DMA property found in DT");
             dmaCount++;
-        }
-        else
-        {
+        } else {
             std::ifstream statusFile(path + "/status");
-            if (statusFile.is_open())
-            {
+            if (statusFile.is_open()) {
                 data.push_back("[INFO] " + path + ": active but no DMA property (using PIO)");
             }
         }
@@ -1090,13 +971,11 @@ TestOutput CommunicationInterfaceTesting::testSpiDmaTransfers()
 
     // Check GPCDMA in interrupts
     auto dmaIrqs = grepInterrupts("gpcdma");
-    if (!dmaIrqs.empty())
-    {
+    if (!dmaIrqs.empty()) {
         data.push_back("[INFO] GPCDMA engine active – " + std::to_string(dmaIrqs.size()) + " interrupt(s) registered");
     }
 
-    if (dmaCount == 0)
-    {
+    if (dmaCount == 0) {
         data.push_back("[INFO] SPI DMA not detected via DT; driver may use auto-threshold DMA");
         data.push_back("[INFO] Jetson Orin Tegra SPI uses DMA for transfers > 64 bytes");
     }
@@ -1116,8 +995,7 @@ TestOutput CommunicationInterfaceTesting::testMultipleSpiDevices()
     data.push_back("=== Multiple SPI Devices per Bus (Jetson Orin) ===");
 
     std::vector<std::string> devs = listDevNodes("/sys/bus/spi/devices", "spi");
-    if (devs.empty())
-    {
+    if (devs.empty()) {
         data.push_back("[INFO] No SPI slave devices registered in /sys/bus/spi/devices");
         data.push_back("[INFO] Connect SPI peripherals and load appropriate drivers to populate this list");
         return {true, data};
@@ -1125,32 +1003,25 @@ TestOutput CommunicationInterfaceTesting::testMultipleSpiDevices()
 
     // Group by bus number
     std::map<int, std::vector<std::string>> busDev;
-    for (const auto &d : devs)
-    {
+    for (const auto& d : devs) {
         std::string name = d.substr(d.rfind('/') + 1 + 4); // strip leading "spi"
         // Expected format: spiB.D
         auto dot = name.find('.');
-        if (dot != std::string::npos)
-        {
-            try
-            {
+        if (dot != std::string::npos) {
+            try {
                 int bus = std::stoi(name.substr(0, dot));
                 std::string modalias = readFile(d + "/modalias");
                 busDev[bus].push_back(d.substr(d.rfind('/') + 1) + (modalias.empty() ? "" : " [" + modalias + "]"));
             }
-            catch (...)
-            {
+            catch (...) {
                 busDev[-1].push_back(d.substr(d.rfind('/') + 1));
             }
         }
     }
 
-    for (const auto &kv : busDev)
-    {
-        data.push_back("[INFO] SPI bus " + std::to_string(kv.first) + ": " + std::to_string(kv.second.size()) +
-                       " device(s)");
-        for (const auto &dev : kv.second)
-        {
+    for (const auto& kv : busDev) {
+        data.push_back("[INFO] SPI bus " + std::to_string(kv.first) + ": " + std::to_string(kv.second.size()) + " device(s)");
+        for (const auto& dev : kv.second) {
             data.push_back("  " + dev);
         }
     }
@@ -1175,28 +1046,22 @@ TestOutput CommunicationInterfaceTesting::testAllI2cBuses()
     data.push_back("=== I2C Bus Enumeration (Jetson Orin) ===");
 
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
-    if (i2cDevs.empty())
-    {
+    if (i2cDevs.empty()) {
         data.push_back("[INFO] No /dev/i2c-* devices found");
         data.push_back("[INFO] Ensure i2c-dev module is loaded: modprobe i2c-dev");
         return {true, data};
     }
 
     data.push_back("[INFO] Found " + std::to_string(i2cDevs.size()) + " I2C bus(es)");
-    for (const auto &dev : i2cDevs)
-    {
+    for (const auto& dev : i2cDevs) {
         std::string busNum = dev.substr(dev.rfind('-') + 1);
         std::string sysName = readFile("/sys/class/i2c-dev/i2c-" + busNum + "/name");
         int fd = open(dev.c_str(), O_RDWR);
-        if (fd >= 0)
-        {
+        if (fd >= 0) {
             data.push_back("[PASS] " + dev + ": accessible" + (sysName.empty() ? "" : " [" + sysName + "]"));
             close(fd);
-        }
-        else
-        {
-            data.push_back("[WARN] " + dev + ": cannot open (" + strerror(errno) + ")" +
-                           (sysName.empty() ? "" : " [" + sysName + "]"));
+        } else {
+            data.push_back("[WARN] " + dev + ": cannot open (" + strerror(errno) + ")" + (sysName.empty() ? "" : " [" + sysName + "]"));
         }
     }
 
@@ -1217,34 +1082,28 @@ TestOutput CommunicationInterfaceTesting::testI2cMasterMode()
     data.push_back("=== I2C Master Mode Verification (Jetson Orin) ===");
 
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
-    if (i2cDevs.empty())
-    {
+    if (i2cDevs.empty()) {
         data.push_back("[INFO] No I2C buses found; Jetson Orin I2C always operates in master mode");
         return {true, data};
     }
 
     bool allOk = true;
-    for (const auto &dev : i2cDevs)
-    {
+    for (const auto& dev : i2cDevs) {
         int fd = open(dev.c_str(), O_RDWR);
-        if (fd < 0)
-        {
+        if (fd < 0) {
             data.push_back("[WARN] " + dev + ": cannot open");
             continue;
         }
 #ifdef I2C_FUNCS
         unsigned long funcs = 0;
-        if (ioctl(fd, I2C_FUNCS, &funcs) == 0)
-        {
+        if (ioctl(fd, I2C_FUNCS, &funcs) == 0) {
             bool hasMaster = (funcs & I2C_FUNC_I2C) || (funcs & I2C_FUNC_SMBUS_BYTE);
             data.push_back(std::string(hasMaster ? "[PASS] " : "[WARN] ") + dev +
                            ": I2C_FUNC_I2C=" + std::string((funcs & I2C_FUNC_I2C) ? "yes" : "no") +
                            " SMBUS=" + std::string((funcs & I2C_FUNC_SMBUS_BYTE) ? "yes" : "no"));
             if (!hasMaster)
                 allOk = false;
-        }
-        else
-        {
+        } else {
             data.push_back("[FAIL] " + dev + ": I2C_FUNCS ioctl failed: " + strerror(errno));
             allOk = false;
         }
@@ -1273,22 +1132,17 @@ TestOutput CommunicationInterfaceTesting::testI2cSlaveMode()
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
     bool slaveCapability = false;
 
-    for (const auto &dev : i2cDevs)
-    {
+    for (const auto& dev : i2cDevs) {
         int fd = open(dev.c_str(), O_RDWR);
         if (fd < 0)
             continue;
 #if defined(I2C_FUNCS) && defined(I2C_FUNC_SLAVE)
         unsigned long funcs = 0;
-        if (ioctl(fd, I2C_FUNCS, &funcs) == 0)
-        {
-            if (funcs & I2C_FUNC_SLAVE)
-            {
+        if (ioctl(fd, I2C_FUNCS, &funcs) == 0) {
+            if (funcs & I2C_FUNC_SLAVE) {
                 data.push_back("[PASS] " + dev + ": I2C slave mode supported");
                 slaveCapability = true;
-            }
-            else
-            {
+            } else {
                 data.push_back("[INFO] " + dev + ": I2C slave mode not advertised by driver");
             }
         }
@@ -1298,8 +1152,7 @@ TestOutput CommunicationInterfaceTesting::testI2cSlaveMode()
         close(fd);
     }
 
-    if (!slaveCapability)
-    {
+    if (!slaveCapability) {
         data.push_back("[INFO] I2C slave mode not detected on current buses");
         data.push_back("[INFO] Jetson Orin supports I2C slave via i2c-slave-eeprom or custom driver");
         data.push_back("[INFO] Enable via: echo eeprom 0x64 > /sys/bus/i2c/devices/i2c-N/new_device");
@@ -1332,8 +1185,7 @@ TestOutput CommunicationInterfaceTesting::testStandardMode()
     };
 
     bool found = false;
-    for (const auto &path : i2cDtPaths)
-    {
+    for (const auto& path : i2cDtPaths) {
         std::string busName = path.substr(path.rfind('/') + 1);
         // clock-frequency is a big-endian u32 in DT
         std::ifstream clkFile(path + "/clock-frequency");
@@ -1341,32 +1193,24 @@ TestOutput CommunicationInterfaceTesting::testStandardMode()
             continue;
         // Read 4 bytes big-endian
         uint8_t buf[4] = {};
-        clkFile.read(reinterpret_cast<char *>(buf), 4);
-        if (clkFile.gcount() == 4)
-        {
+        clkFile.read(reinterpret_cast<char*>(buf), 4);
+        if (clkFile.gcount() == 4) {
             uint32_t freq = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
             found = true;
-            if (freq == 100000)
-            {
+            if (freq == 100000) {
                 data.push_back("[PASS] " + busName + ": standard mode 100 kHz");
-            }
-            else if (freq > 0)
-            {
+            } else if (freq > 0) {
                 data.push_back("[INFO] " + busName + ": clock-frequency=" + std::to_string(freq) + " Hz");
             }
         }
     }
 
-    if (!found)
-    {
+    if (!found) {
         data.push_back("[INFO] I2C DT clock-frequency not readable; checking sysfs");
         std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
-        if (i2cDevs.empty())
-        {
+        if (i2cDevs.empty()) {
             data.push_back("[INFO] No I2C devices; Jetson Orin I2C supports 100 kHz standard mode");
-        }
-        else
-        {
+        } else {
             data.push_back("[PASS] " + std::to_string(i2cDevs.size()) +
                            " I2C bus(es) present; standard mode 100 kHz supported by Tegra I2C");
         }
@@ -1390,31 +1234,25 @@ TestOutput CommunicationInterfaceTesting::testFastMode()
     };
 
     bool found = false;
-    for (const auto &path : i2cDtPaths)
-    {
+    for (const auto& path : i2cDtPaths) {
         std::string busName = path.substr(path.rfind('/') + 1);
         std::ifstream clkFile(path + "/clock-frequency");
         if (!clkFile.is_open())
             continue;
         uint8_t buf[4] = {};
-        clkFile.read(reinterpret_cast<char *>(buf), 4);
-        if (clkFile.gcount() == 4)
-        {
+        clkFile.read(reinterpret_cast<char*>(buf), 4);
+        if (clkFile.gcount() == 4) {
             uint32_t freq = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
             found = true;
-            if (freq == 400000)
-            {
+            if (freq == 400000) {
                 data.push_back("[PASS] " + busName + ": fast mode 400 kHz configured");
-            }
-            else if (freq > 100000)
-            {
+            } else if (freq > 100000) {
                 data.push_back("[INFO] " + busName + ": clock=" + std::to_string(freq) + " Hz");
             }
         }
     }
 
-    if (!found)
-    {
+    if (!found) {
         data.push_back("[INFO] Jetson Orin Tegra I2C controllers support 400 kHz Fast Mode");
         data.push_back("[INFO] Configure via clock-frequency = <400000> in device tree");
     }
@@ -1441,31 +1279,25 @@ TestOutput CommunicationInterfaceTesting::testFastModePlus()
     };
 
     bool found = false;
-    for (const auto &path : i2cDtPaths)
-    {
+    for (const auto& path : i2cDtPaths) {
         std::string busName = path.substr(path.rfind('/') + 1);
         std::ifstream clkFile(path + "/clock-frequency");
         if (!clkFile.is_open())
             continue;
         uint8_t buf[4] = {};
-        clkFile.read(reinterpret_cast<char *>(buf), 4);
-        if (clkFile.gcount() == 4)
-        {
+        clkFile.read(reinterpret_cast<char*>(buf), 4);
+        if (clkFile.gcount() == 4) {
             uint32_t freq = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
             found = true;
-            if (freq >= 1000000)
-            {
+            if (freq >= 1000000) {
                 data.push_back("[PASS] " + busName + ": Fast Mode Plus (" + std::to_string(freq) + " Hz) configured");
-            }
-            else
-            {
+            } else {
                 data.push_back("[INFO] " + busName + ": clock=" + std::to_string(freq) + " Hz (not in FM+ range)");
             }
         }
     }
 
-    if (!found)
-    {
+    if (!found) {
         data.push_back("[INFO] DT clock-frequency not readable from host; "
                        "Fast Mode Plus capability is hardware-supported");
     }
@@ -1493,32 +1325,25 @@ TestOutput CommunicationInterfaceTesting::testHighspeedMode()
     };
 
     bool found = false;
-    for (const auto &path : i2cDtPaths)
-    {
+    for (const auto& path : i2cDtPaths) {
         std::string busName = path.substr(path.rfind('/') + 1);
         std::ifstream clkFile(path + "/clock-frequency");
         if (!clkFile.is_open())
             continue;
         uint8_t buf[4] = {};
-        clkFile.read(reinterpret_cast<char *>(buf), 4);
-        if (clkFile.gcount() == 4)
-        {
+        clkFile.read(reinterpret_cast<char*>(buf), 4);
+        if (clkFile.gcount() == 4) {
             uint32_t freq = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
             found = true;
-            if (freq >= 3400000)
-            {
+            if (freq >= 3400000) {
                 data.push_back("[PASS] " + busName + ": High-Speed Mode (" + std::to_string(freq) + " Hz) configured");
-            }
-            else
-            {
-                data.push_back("[INFO] " + busName + ": clock=" + std::to_string(freq) +
-                               " Hz (below Hs-mode threshold of 3.4 MHz)");
+            } else {
+                data.push_back("[INFO] " + busName + ": clock=" + std::to_string(freq) + " Hz (below Hs-mode threshold of 3.4 MHz)");
             }
         }
     }
 
-    if (!found)
-    {
+    if (!found) {
         data.push_back("[INFO] DT not readable from host build environment");
         data.push_back("[INFO] High-speed mode availability confirmed by Tegra234 hardware spec");
     }
@@ -1540,15 +1365,13 @@ TestOutput CommunicationInterfaceTesting::testI2cClockStretching()
     // Check I2C_FUNC_PROTOCOL_MANGLING as a proxy for advanced protocol features
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
     bool found = false;
-    for (const auto &dev : i2cDevs)
-    {
+    for (const auto& dev : i2cDevs) {
         int fd = open(dev.c_str(), O_RDWR);
         if (fd < 0)
             continue;
 #if defined(I2C_FUNCS) && defined(I2C_FUNC_PROTOCOL_MANGLING)
         unsigned long funcs = 0;
-        if (ioctl(fd, I2C_FUNCS, &funcs) == 0)
-        {
+        if (ioctl(fd, I2C_FUNCS, &funcs) == 0) {
             found = true;
             bool stretch = (funcs & I2C_FUNC_I2C) != 0;
             data.push_back(std::string(stretch ? "[PASS] " : "[INFO] ") + dev +
@@ -1561,8 +1384,7 @@ TestOutput CommunicationInterfaceTesting::testI2cClockStretching()
         close(fd);
     }
 
-    if (!found)
-    {
+    if (!found) {
         data.push_back("[INFO] Jetson Orin Tegra I2C master handles clock stretching automatically");
         data.push_back("[INFO] SCL low timeout configurable via nvidia,timeout-dt property");
         data.push_back("[PASS] Clock stretching supported by hardware design");
@@ -1584,17 +1406,13 @@ TestOutput CommunicationInterfaceTesting::testMultimasterArbitration()
 
     // Check I2C interrupt lines – arbitration-lost interrupts are part of I2C IRQ
     auto i2cIrqs = grepInterrupts("i2c");
-    if (!i2cIrqs.empty())
-    {
+    if (!i2cIrqs.empty()) {
         data.push_back("[INFO] I2C interrupt handlers registered (" + std::to_string(i2cIrqs.size()) + " entries):");
-        for (const auto &irq : i2cIrqs)
-        {
+        for (const auto& irq : i2cIrqs) {
             data.push_back("  " + irq);
         }
         data.push_back("[PASS] I2C interrupt infrastructure active; arbitration-lost handled by IRQ");
-    }
-    else
-    {
+    } else {
         data.push_back("[INFO] No I2C interrupts found in /proc/interrupts");
     }
 
@@ -1618,20 +1436,17 @@ TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
 
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
     bool found = false;
-    for (const auto &dev : i2cDevs)
-    {
+    for (const auto& dev : i2cDevs) {
         int fd = open(dev.c_str(), O_RDWR);
         if (fd < 0)
             continue;
 #ifdef I2C_FUNCS
         unsigned long funcs = 0;
-        if (ioctl(fd, I2C_FUNCS, &funcs) == 0)
-        {
+        if (ioctl(fd, I2C_FUNCS, &funcs) == 0) {
             found = true;
             // I2C_FUNC_I2C implies combined message (repeated-start) support
             bool hasRestart = (funcs & I2C_FUNC_I2C) != 0;
-            data.push_back(std::string(hasRestart ? "[PASS] " : "[INFO] ") + dev +
-                           ": Repeated-start (I2C_RDWR combined messages) " +
+            data.push_back(std::string(hasRestart ? "[PASS] " : "[INFO] ") + dev + ": Repeated-start (I2C_RDWR combined messages) " +
                            std::string(hasRestart ? "supported" : "not supported"));
         }
 #else
@@ -1640,8 +1455,7 @@ TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
         close(fd);
     }
 
-    if (!found)
-    {
+    if (!found) {
         data.push_back("[INFO] Jetson Orin Tegra NDTM I2C controller supports repeated-start natively");
         data.push_back("[PASS] Repeated-start supported via I2C_RDWR ioctl with chained messages");
     }
@@ -1666,8 +1480,7 @@ TestOutput CommunicationInterfaceTesting::testCan20a()
     data.push_back("=== CAN 2.0A Standard Frame (11-bit ID) Test (Jetson Orin) ===");
 
     std::vector<std::string> canIfaces = listCanInterfaces();
-    if (canIfaces.empty())
-    {
+    if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found in /sys/class/net/can*");
         data.push_back("[INFO] Ensure CAN controllers are enabled and mttcan driver is loaded");
         data.push_back("[INFO] Jetson Orin has up to 4 Mira CAN (mttcan) controllers");
@@ -1675,8 +1488,7 @@ TestOutput CommunicationInterfaceTesting::testCan20a()
     }
 
     bool allOk = true;
-    for (const auto &iface : canIfaces)
-    {
+    for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
         std::string type = readFile(iface + "/type");
         std::string state = readFile(iface + "/operstate");
@@ -1684,8 +1496,7 @@ TestOutput CommunicationInterfaceTesting::testCan20a()
         data.push_back("       CAN 2.0A standard 11-bit ID: supported by mttcan hardware");
     }
 
-    data.push_back("[INFO] Configure with: ip link set " + canIfaces[0].substr(canIfaces[0].rfind('/') + 1) +
-                   " type can bitrate 500000");
+    data.push_back("[INFO] Configure with: ip link set " + canIfaces[0].substr(canIfaces[0].rfind('/') + 1) + " type can bitrate 500000");
     return {allOk, data};
 }
 
@@ -1700,15 +1511,13 @@ TestOutput CommunicationInterfaceTesting::testCan20b()
     data.push_back("=== CAN 2.0B Extended Frame (29-bit ID) Test (Jetson Orin) ===");
 
     std::vector<std::string> canIfaces = listCanInterfaces();
-    if (canIfaces.empty())
-    {
+    if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found");
         data.push_back("[INFO] Jetson Orin mttcan supports CAN 2.0B extended 29-bit IDs");
         return {true, data};
     }
 
-    for (const auto &iface : canIfaces)
-    {
+    for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
         // mttcan always supports extended frames; confirm via protocol type
         data.push_back("[PASS] " + ifName + ": CAN 2.0B extended 29-bit ID supported");
@@ -1730,22 +1539,19 @@ TestOutput CommunicationInterfaceTesting::testCanFd()
     data.push_back("=== CAN FD (Flexible Data-Rate) Support (Jetson Orin) ===");
 
     std::vector<std::string> canIfaces = listCanInterfaces();
-    if (canIfaces.empty())
-    {
+    if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found");
         data.push_back("[INFO] Jetson Orin mttcan supports CAN FD with up to 8 Mbps data phase");
         return {true, data};
     }
 
     bool anyFd = false;
-    for (const auto &iface : canIfaces)
-    {
+    for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
 
         // Check ctrlmode for FD support in sysfs
         std::string fdMode = readFile(iface + "/fd");
-        if (!fdMode.empty())
-        {
+        if (!fdMode.empty()) {
             data.push_back("[PASS] " + ifName + ": CAN FD sysfs fd attribute: " + fdMode);
             anyFd = true;
         }
@@ -1753,32 +1559,25 @@ TestOutput CommunicationInterfaceTesting::testCanFd()
         // Try creating a CANFD socket
 #if defined(__linux__) && defined(CAN_RAW)
         int s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
-        if (s >= 0)
-        {
+        if (s >= 0) {
             int enable = 1;
             int rc = setsockopt(s, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &enable, sizeof(enable));
-            if (rc == 0)
-            {
+            if (rc == 0) {
                 data.push_back("[PASS] " + ifName + ": CAN_RAW_FD_FRAMES socket option supported");
                 anyFd = true;
-            }
-            else
-            {
+            } else {
                 data.push_back("[INFO] " + ifName + ": CAN_RAW_FD_FRAMES setsockopt: " + strerror(errno));
             }
             close(s);
         }
 #endif
-        if (fdMode.empty())
-        {
+        if (fdMode.empty()) {
             data.push_back("[INFO] " + ifName + ": CAN FD – mttcan supports ISO 11898-1:2015 CAN FD");
-            data.push_back("       Configure: ip link set " + ifName +
-                           " type can bitrate 500000 dbitrate 2000000 fd on");
+            data.push_back("       Configure: ip link set " + ifName + " type can bitrate 500000 dbitrate 2000000 fd on");
         }
     }
 
-    if (!anyFd && !canIfaces.empty())
-    {
+    if (!anyFd && !canIfaces.empty()) {
         data.push_back("[INFO] CAN FD may need interface to be brought up with 'fd on'");
     }
 
@@ -1801,18 +1600,15 @@ TestOutput CommunicationInterfaceTesting::testVariousCanBitrates()
                                                                "250000", "500000", "800000", "1000000"};
 
     std::vector<std::string> canIfaces = listCanInterfaces();
-    if (canIfaces.empty())
-    {
+    if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found; documenting supported bitrates");
-        for (const auto &br : supportedBitrates)
-        {
+        for (const auto& br : supportedBitrates) {
             data.push_back("[INFO] " + br + " bps: supported by mttcan");
         }
         return {true, data};
     }
 
-    for (const auto &iface : canIfaces)
-    {
+    for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
         // Read bitrate from sysfs statistics / netlink info
         std::string bitrate = readFile(iface + "/statistics/tx_bytes"); // placeholder
@@ -1841,16 +1637,14 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
     data.push_back("=== CAN Error Detection (Jetson Orin) ===");
 
     std::vector<std::string> canIfaces = listCanInterfaces();
-    if (canIfaces.empty())
-    {
+    if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found");
         data.push_back("[INFO] Jetson Orin mttcan detects: bit, stuff, CRC, form, and ACK errors");
         data.push_back("[INFO] Error frames enabled with: ip link set canX type can berr-reporting on");
         return {true, data};
     }
 
-    for (const auto &iface : canIfaces)
-    {
+    for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
         std::string statsPath = iface + "/statistics/";
 
@@ -1858,11 +1652,9 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
                                                           "bus_off",   "arbitration_lost", "restarts"};
 
         data.push_back("[INFO] " + ifName + " error counters:");
-        for (const auto &cnt : counters)
-        {
+        for (const auto& cnt : counters) {
             std::string val = readFile(statsPath + cnt);
-            if (!val.empty())
-            {
+            if (!val.empty()) {
                 data.push_back("  " + cnt + " = " + val);
             }
         }
@@ -1874,11 +1666,9 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
 
     // Check for mttcan interrupts
     auto canIrqs = grepInterrupts("mttcan");
-    if (!canIrqs.empty())
-    {
+    if (!canIrqs.empty()) {
         data.push_back("[PASS] mttcan interrupt handlers registered:");
-        for (const auto &irq : canIrqs)
-        {
+        for (const auto& irq : canIrqs) {
             data.push_back("  " + irq);
         }
     }
@@ -1899,27 +1689,23 @@ TestOutput CommunicationInterfaceTesting::testCanBusoffRecovery()
     data.push_back("=== CAN Bus-Off Recovery (Jetson Orin) ===");
 
     std::vector<std::string> canIfaces = listCanInterfaces();
-    if (canIfaces.empty())
-    {
+    if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found");
         data.push_back("[INFO] Jetson Orin mttcan supports automatic bus-off recovery");
         data.push_back("[INFO] Manual: ip link set canX type can restart-ms 100");
         return {true, data};
     }
 
-    for (const auto &iface : canIfaces)
-    {
+    for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
         std::string busOff = readFile(iface + "/statistics/bus_off");
         std::string restarts = readFile(iface + "/statistics/restarts");
 
         data.push_back("[PASS] " + ifName + ": bus-off recovery supported by mttcan");
-        if (!busOff.empty())
-        {
+        if (!busOff.empty()) {
             data.push_back("  bus_off events: " + busOff);
         }
-        if (!restarts.empty())
-        {
+        if (!restarts.empty()) {
             data.push_back("  controller restarts: " + restarts);
         }
         data.push_back("  Config: ip link set " + ifName + " type can restart-ms 100   (auto-recovery in 100ms)");
@@ -1943,8 +1729,7 @@ TestOutput CommunicationInterfaceTesting::testCanMessageFiltering()
 
 #if defined(__linux__) && defined(CAN_RAW)
     int s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
-    if (s >= 0)
-    {
+    if (s >= 0) {
         // Test standard frame filter
         struct can_filter rfilter[2];
         rfilter[0].can_id = 0x123;
@@ -1952,34 +1737,25 @@ TestOutput CommunicationInterfaceTesting::testCanMessageFiltering()
         rfilter[1].can_id = 0x456 | CAN_EFF_FLAG;
         rfilter[1].can_mask = CAN_EFF_MASK | CAN_EFF_FLAG;
 
-        if (setsockopt(s, SOL_CAN_RAW, CAN_RAW_FILTER, &rfilter, sizeof(rfilter)) == 0)
-        {
+        if (setsockopt(s, SOL_CAN_RAW, CAN_RAW_FILTER, &rfilter, sizeof(rfilter)) == 0) {
             data.push_back("[PASS] CAN_RAW_FILTER: 2-entry filter set successfully");
             data.push_back("       Filter 0: ID=0x123 mask=0x7FF (11-bit standard)");
             data.push_back("       Filter 1: ID=0x456 mask=0x1FFFFFFF (29-bit extended)");
-        }
-        else
-        {
+        } else {
             data.push_back("[WARN] CAN_RAW_FILTER setsockopt: " + std::string(strerror(errno)));
         }
 
         // Test error mask filter
         can_err_mask_t errMask = CAN_ERR_MASK; // Full error mask – detects busoff, arb-lost, controller errors
-        if (setsockopt(s, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &errMask, sizeof(errMask)) == 0)
-        {
+        if (setsockopt(s, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &errMask, sizeof(errMask)) == 0) {
             data.push_back("[PASS] CAN_RAW_ERR_FILTER: error frame filter set");
-        }
-        else
-        {
+        } else {
             data.push_back("[WARN] CAN_RAW_ERR_FILTER: " + std::string(strerror(errno)));
         }
 
         close(s);
-    }
-    else
-    {
-        data.push_back("[INFO] CAN socket creation failed (" + std::string(strerror(errno)) +
-                       ") – CAN modules may not be loaded");
+    } else {
+        data.push_back("[INFO] CAN socket creation failed (" + std::string(strerror(errno)) + ") – CAN modules may not be loaded");
         data.push_back("[INFO] Load: modprobe can can_raw mttcan");
     }
 #else
@@ -2348,145 +2124,78 @@ std::vector<std::string> CommunicationInterfaceTesting::getAvailableTests()
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult CommunicationInterfaceTesting::runSingleTest(const std::string &testName)
+TestResult CommunicationInterfaceTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
-    if (testName == "testAllUartPortsFunctionality")
-    {
+    if (testName == "testAllUartPortsFunctionality") {
         result = testAllUartPortsFunctionality();
-    }
-    else if (testName == "testVariousBaudRates")
-    {
+    } else if (testName == "testVariousBaudRates") {
         result = testVariousBaudRates();
-    }
-    else if (testName == "testHardwareFlowControl")
-    {
+    } else if (testName == "testHardwareFlowControl") {
         result = testHardwareFlowControl();
-    }
-    else if (testName == "testParityChecking")
-    {
+    } else if (testName == "testParityChecking") {
         result = testParityChecking();
-    }
-    else if (testName == "testStopBitConfiguration")
-    {
+    } else if (testName == "testStopBitConfiguration") {
         result = testStopBitConfiguration();
-    }
-    else if (testName == "testUartDmaOperation")
-    {
+    } else if (testName == "testUartDmaOperation") {
         result = testUartDmaOperation();
-    }
-    else if (testName == "testUartInterruptHandling")
-    {
+    } else if (testName == "testUartInterruptHandling") {
         result = testUartInterruptHandling();
-    }
-    else if (testName == "testConsoledebugUart")
-    {
+    } else if (testName == "testConsoledebugUart") {
         result = testConsoledebugUart();
-    }
-    else if (testName == "testAllSpiControllers")
-    {
+    } else if (testName == "testAllSpiControllers") {
         result = testAllSpiControllers();
-    }
-    else if (testName == "testSpiMasterMode")
-    {
+    } else if (testName == "testSpiMasterMode") {
         result = testSpiMasterMode();
-    }
-    else if (testName == "testSpiSlaveMode")
-    {
+    } else if (testName == "testSpiSlaveMode") {
         result = testSpiSlaveMode();
-    }
-    else if (testName == "testVariousSpiClockSpeeds")
-    {
+    } else if (testName == "testVariousSpiClockSpeeds") {
         result = testVariousSpiClockSpeeds();
-    }
-    else if (testName == "testSpiModes")
-    {
+    } else if (testName == "testSpiModes") {
         result = testSpiModes();
-    }
-    else if (testName == "testChipSelectFunctionality")
-    {
+    } else if (testName == "testChipSelectFunctionality") {
         result = testChipSelectFunctionality();
-    }
-    else if (testName == "testSpiDmaTransfers")
-    {
+    } else if (testName == "testSpiDmaTransfers") {
         result = testSpiDmaTransfers();
-    }
-    else if (testName == "testMultipleSpiDevices")
-    {
+    } else if (testName == "testMultipleSpiDevices") {
         result = testMultipleSpiDevices();
-    }
-    else if (testName == "testAllI2cBuses")
-    {
+    } else if (testName == "testAllI2cBuses") {
         result = testAllI2cBuses();
-    }
-    else if (testName == "testI2cMasterMode")
-    {
+    } else if (testName == "testI2cMasterMode") {
         result = testI2cMasterMode();
-    }
-    else if (testName == "testI2cSlaveMode")
-    {
+    } else if (testName == "testI2cSlaveMode") {
         result = testI2cSlaveMode();
-    }
-    else if (testName == "testStandardMode")
-    {
+    } else if (testName == "testStandardMode") {
         result = testStandardMode();
-    }
-    else if (testName == "testFastMode")
-    {
+    } else if (testName == "testFastMode") {
         result = testFastMode();
-    }
-    else if (testName == "testFastModePlus")
-    {
+    } else if (testName == "testFastModePlus") {
         result = testFastModePlus();
-    }
-    else if (testName == "testHighspeedMode")
-    {
+    } else if (testName == "testHighspeedMode") {
         result = testHighspeedMode();
-    }
-    else if (testName == "testI2cClockStretching")
-    {
+    } else if (testName == "testI2cClockStretching") {
         result = testI2cClockStretching();
-    }
-    else if (testName == "testMultimasterArbitration")
-    {
+    } else if (testName == "testMultimasterArbitration") {
         result = testMultimasterArbitration();
-    }
-    else if (testName == "testI2cRepeatedStart")
-    {
+    } else if (testName == "testI2cRepeatedStart") {
         result = testI2cRepeatedStart();
-    }
-    else if (testName == "testCan20a")
-    {
+    } else if (testName == "testCan20a") {
         result = testCan20a();
-    }
-    else if (testName == "testCan20b")
-    {
+    } else if (testName == "testCan20b") {
         result = testCan20b();
-    }
-    else if (testName == "testCanFd")
-    {
+    } else if (testName == "testCanFd") {
         result = testCanFd();
-    }
-    else if (testName == "testVariousCanBitrates")
-    {
+    } else if (testName == "testVariousCanBitrates") {
         result = testVariousCanBitrates();
-    }
-    else if (testName == "testCanErrorDetection")
-    {
+    } else if (testName == "testCanErrorDetection") {
         result = testCanErrorDetection();
-    }
-    else if (testName == "testCanBusoffRecovery")
-    {
+    } else if (testName == "testCanBusoffRecovery") {
         result = testCanBusoffRecovery();
-    }
-    else if (testName == "testCanMessageFiltering")
-    {
+    } else if (testName == "testCanMessageFiltering") {
         result = testCanMessageFiltering();
-    }
-    else
-    {
+    } else {
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;

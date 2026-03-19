@@ -122,7 +122,7 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
     // Run testWatchdogTimerFunctionality
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testWatchdogTimerFunctionality();
+        TestOutput result = testWatchdogTimerFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testWatchdogTimerFunctionality", result, duration});
@@ -131,7 +131,7 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
     // Run testWatchdogTimeoutConfiguration
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testWatchdogTimeoutConfiguration();
+        TestOutput result = testWatchdogTimeoutConfiguration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testWatchdogTimeoutConfiguration", result, duration});
@@ -140,7 +140,7 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
     // Run testWatchdogResetGeneration
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testWatchdogResetGeneration();
+        TestOutput result = testWatchdogResetGeneration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testWatchdogResetGeneration", result, duration});
@@ -149,7 +149,7 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
     // Run testWatchdogInterruptGeneration
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testWatchdogInterruptGeneration();
+        TestOutput result = testWatchdogInterruptGeneration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testWatchdogInterruptGeneration", result, duration});
@@ -158,7 +158,7 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
     // Run testPoweronReset
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testPoweronReset();
+        TestOutput result = testPoweronReset();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testPoweronReset", result, duration});
@@ -167,7 +167,7 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
     // Run testHardwareResetButton
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testHardwareResetButton();
+        TestOutput result = testHardwareResetButton();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testHardwareResetButton", result, duration});
@@ -176,7 +176,7 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
     // Run testSoftwareReset
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testSoftwareReset();
+        TestOutput result = testSoftwareReset();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testSoftwareReset", result, duration});
@@ -185,7 +185,7 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
     // Run testWatchdogReset
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testWatchdogReset();
+        TestOutput result = testWatchdogReset();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testWatchdogReset", result, duration});
@@ -194,7 +194,7 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
     // Run testThermalReset
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testThermalReset();
+        TestOutput result = testThermalReset();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testThermalReset", result, duration});
@@ -203,7 +203,7 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
     // Run testResetReasonLogging
     {
         auto start = std::chrono::high_resolution_clock::now();
-         TestOutput result = testResetReasonLogging();
+        TestOutput result = testResetReasonLogging();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
         results.push_back({"testResetReasonLogging", result, duration});
@@ -216,7 +216,8 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
  * @brief Get list of all available test names
  * @return Vector of test names
  */
-std::vector<std::string> WatchdogAndResetTesting::getAvailableTests() {
+std::vector<std::string> WatchdogAndResetTesting::getAvailableTests()
+{
     return {
         "testWatchdogTimerFunctionality",
         "testWatchdogTimeoutConfiguration",
@@ -236,7 +237,8 @@ std::vector<std::string> WatchdogAndResetTesting::getAvailableTests() {
  * @param testName Name of the test to run
  * @return Test result with timing
  */
-TestResult WatchdogAndResetTesting::runSingleTest(const std::string& testName) {
+TestResult WatchdogAndResetTesting::runSingleTest(const std::string& testName)
+{
     auto start = std::chrono::high_resolution_clock::now();
     TestOutput result = {false, {}};
 
