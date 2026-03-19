@@ -21,7 +21,7 @@ void signal_handler(int signal)
 
 int main(int argc, char *argv[])
 {
-    TestMode mode = TestMode::MONITORING;
+    TestMode mode = TestMode::ONE_SHOT;
     if (argc > 1)
     {
         std::string arg = argv[1];
