@@ -16,12 +16,14 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror")
 # Enable position independent code for shared libraries
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-SET (MAINFOLDER ${PROJECT_BINARY_DIR})
-SET (EXECUTABLE_OUTPUT_PATH "${MAINFOLDER}/bin")
-SET (LIBRARY_OUTPUT_PATH "${MAINFOLDER}/lib")
+set(MAINFOLDER ${PROJECT_BINARY_DIR})
+set(EXECUTABLE_OUTPUT_PATH "${MAINFOLDER}/bin")
+set(LIBRARY_OUTPUT_PATH "${MAINFOLDER}/lib")
 
 # Collect all source files for formatting and analysis
-file(GLOB_RECURSE ALL_SOURCES
+file(
+    GLOB_RECURSE
+    ALL_SOURCES
     "src/*.cpp"
     "src/*.h"
     "tests/*.cpp"
