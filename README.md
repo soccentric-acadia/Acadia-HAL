@@ -2,7 +2,7 @@
 
 ## Overview
 
-The ACU (Automotive Control Unit) Test Framework is a comprehensive testing suite designed specifically for NVIDIA Jetson platforms and other NVIDIA-based embedded systems. This framework provides a modular, extensible architecture for testing various hardware interfaces and system components commonly found in automotive and industrial applications.
+The ACU Test Framework is a comprehensive testing suite designed specifically for NVIDIA Jetson platforms and other NVIDIA-based embedded systems. This framework provides a modular, extensible architecture for testing various hardware interfaces and system components commonly found in automotive and industrial applications.
 
 ### Key Features
 
@@ -24,16 +24,7 @@ The ACU (Automotive Control Unit) Test Framework is a comprehensive testing suit
   - Ninja build system
   - Make
   - Git
-- **Libraries**:
-  - Protocol Buffers 3.21+
-  - gRPC 1.54+
-  - Boost (system, date-time)
-  - SQLite3
-
-### For Docker-based Cross-Compilation
-
 - Docker installed and running
-- NVIDIA Docker support (if using GPU acceleration)
 
 ## Build Process
 
@@ -46,17 +37,10 @@ The project supports two primary build methods:
 
 Native compilation builds the project for the host architecture (typically x86_64).
 
-#### Step-by-Step Build Process
+#### Build Process
 
-1. **Clone the Repository**
+1. **Install Dependencies**
    ```bash
-   git clone <repository-url>
-   cd acu-test-framework-nvidia-platform
-   ```
-
-2. **Install Dependencies**
-   ```bash
-   # Ubuntu/Debian
    sudo apt update
    sudo apt install -y build-essential cmake ninja-build git \
                        protobuf-compiler libprotobuf-dev libprotoc-dev \
@@ -64,186 +48,100 @@ Native compilation builds the project for the host architecture (typically x86_6
                        libboost-date-time-dev doxygen clang-format cppcheck
    ```
 
-3. **Configure the Build**
-   ```bash
-   make configure
-   ```
-
-4. **Build the Project**
+2. **Build and Run Tests**
    ```bash
    make build
+   make run
    ```
-
-5. **Run Tests (Optional)**
-   ```bash
-   make test
-   ```
-
-6. **Generate Documentation (Optional)**
-   ```bash
-   make doc
-   # Documentation will be generated in build/html/
-   ```
-
-7. **Install the Project (Optional)**
-   ```bash
-   make install
-   ```
-
-#### Additional Native Build Targets
-
-- `make format`: Format code using clang-format
-- `make cppcheck`: Run static analysis with cppcheck
-- `make clean`: Clean build artifacts
-- `make rebuild`: Quick rebuild without reconfiguring
 
 ### Docker-based Cross-Compilation
 
 Docker-based compilation uses NVIDIA's L4T (Linux for Tegra) base image to cross-compile for ARM64 architectures, specifically targeting NVIDIA Jetson platforms.
 
-#### Step-by-Step Docker Build Process
+#### Build Process
 
 1. **Ensure Docker is Installed**
    ```bash
-   make install-docker
+   make docker-install
    ```
 
 2. **Build the Docker Image**
    ```bash
-   make build-docker
+   make docker-image
    ```
 
-   This creates a Docker image named `jetson-builder` based on `nvcr.io/nvidia/l4t-base:r35.1.0` with all necessary build dependencies pre-installed.
+   This creates a Docker image named `jetson-builder` based on `nvcr.io/nvidia/l4t-base` with all necessary build dependencies pre-installed.
 
-3. **Build the Project Using Docker**
+3. **Build**
    ```bash
-   make docker-build-project
+   make docker-build
    ```
 
    This command:
    - Runs the Docker container with the project mounted
    - Configures the build system with Ninja generator
    - Builds all targets
-   - Outputs binaries in the `build/` directory
+   - Outputs binaries in the `build/cross/` directory
 
-#### Alternative Docker Build Methods
-
-**Using Individual Targets:**
-```bash
-# Build image
-make docker-build-image
-
-# Configure project
-make docker-configure
-
-# Build project
-make docker-build
-```
-
-**Interactive Docker Shell:**
-```bash
-make docker-shell
-# This starts an interactive shell in the Docker container
-# You can then run build commands manually
-```
-
-#### Docker Build Artifacts
-
-After successful build, the following artifacts are created in the `build/` directory:
-- `lib/libacu_full_test.a`: Static library
-- `lib/libacu_full_test_shared.so`: Shared library
-- `bin/`: Executable test applications
-- `html/`: Doxygen documentation (if generated)
-
-### Deployment
-
-The framework includes automated deployment tools for testing on NVIDIA devices.
-
-#### Deploy to Target Devices
+4. **Run at target**
 
 ```bash
-make deploy
+   # For Orin Primary
+   make run-a
+   # For Orin Secondary
+   make run-b
+   # IP address specified
+   make run-b IP_B=192.168.200.2
 ```
 
-This deploys the built libraries and executables to predefined NVIDIA devices:
-- Device A: 192.168.1.3 (user: nvidia)
-- Device B: 192.168.1.13 (user: nvidia)
 
-#### Run Tests on Target Devices
+## Make Targets
+
+For the full list of supported commands, run:
 
 ```bash
-# Run on Device A
-make run-a <test_application> [arguments]
-
-# Run on Device B
-make run-b <test_application> [arguments]
-
-# Example
-make run-a gpu_test --verbose
+make help
 ```
 
-#### Run Tests Locally
+Current output:
 
-```bash
-make run-local <test_application> [arguments]
+```text
+Available targets:
+  Native builds (host architecture):
+    configure    - Configure the project with CMake/Ninja
+    build        - Build the project (configures if needed)
+    test         - Run tests
+    run          - Run test app locally (usage: make run [name] [args...], no args = run all)
+
+  Common (host an docker):
+    clean        - Remove build directory
+    list         - List available test applications
+
+  Cross builds (Docker):
+    all                  - Alias for docker-build (default)
+    docker-install       - Install Docker if not present
+    docker-image         - Build Docker image if not exists
+    docker-configure     - Configure project with Docker/Ninja
+    docker-build         - Build project with Docker/Ninja
+    docker-clean         - Clean Docker build artifacts
+    docker-shell         - Start Docker shell for development
+
+  Deploy & Run (on target device):
+    deploy       - Deploy to all devices (deploy-a + deploy-b)
+    deploy-a     - Deploy lib and bin to 192.168.1.3
+    deploy-b     - Deploy lib and bin to 192.168.1.13
+    run-a        - Run test app on 192.168.1.3 (usage: make run-a [name] [args...], no args = run all)
+    run-b        - Run test app on 192.168.1.13 (usage: make run-b [name] [args...], no args = run all)
+
+  Code quality & Docs:
+    format       - Format code with clang-format
+    cppcheck     - Run static analysis with cppcheck
+    doc          - Generate Doxygen documentation
+
+  Misc:
+    setup-completion - Set up bash completion for make (adds to ~/.bashrc)
 ```
 
-## Development Workflow
-
-### Code Formatting
-
-```bash
-# Native
-make format
-
-# Docker
-make docker-format
-```
-
-### Static Analysis
-
-```bash
-# Native
-make cppcheck
-
-# Docker
-make docker-cppcheck
-```
-
-### Documentation
-
-```bash
-# Native
-make doc
-
-# Docker
-make docker-doc
-```
-
-### Bash Completion
-
-Set up bash completion for make targets:
-
-```bash
-make setup-completion
-source ~/.bashrc
-```
-
-## Configuration
-
-### Build Options
-
-The Makefile handles all build configuration automatically. The project is configured to use:
-- Ninja generator for fast builds
-- Release build type by default
-- Testing enabled by default
-
-### Environment Variables
-
-- `BUILD_DIR`: Build directory (default: `build`)
-- `DOCKER_IMAGE`: Docker image name (default: `jetson-builder`)
-- `IP_A`, `IP_B`: Target device IP addresses
-- `USER`: SSH username for deployment (default: `nvidia`)
 
 ## Contributing
 
