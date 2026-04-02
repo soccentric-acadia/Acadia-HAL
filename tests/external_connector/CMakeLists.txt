@@ -1,0 +1,4 @@
+add_executable(test_external_connector main.cpp)
+target_link_libraries(test_external_connector external_connector_lib)
+target_include_directories(test_external_connector PRIVATE ../src/external_connector_lib)
+add_test(NAME test_external_connector COMMAND test_external_connector)

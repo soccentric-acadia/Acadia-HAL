@@ -1,0 +1,4 @@
+add_executable(test_display_interfaces main.cpp)
+target_link_libraries(test_display_interfaces display_interfaces)
+target_include_directories(test_display_interfaces PRIVATE ../src)
+add_test(NAME test_display_interfaces COMMAND test_display_interfaces)

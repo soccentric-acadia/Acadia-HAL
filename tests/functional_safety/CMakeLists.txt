@@ -1,0 +1,4 @@
+add_executable(test_functional_safety main.cpp)
+target_link_libraries(test_functional_safety functional_safety_lib)
+target_include_directories(test_functional_safety PRIVATE ../src/functional_safety_lib)
+add_test(NAME test_functional_safety COMMAND test_functional_safety)

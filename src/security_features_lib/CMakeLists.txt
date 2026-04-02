@@ -1,0 +1,3 @@
+add_library(security_features_lib security_features_lib.cpp security_features_lib.h)
+target_include_directories(security_features_lib PUBLIC ${CMAKE_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(security_features_lib lib_base)

@@ -1,0 +1,4 @@
+add_executable(test_video_encode_decode main.cpp)
+target_link_libraries(test_video_encode_decode video_encode_decode_lib)
+target_include_directories(test_video_encode_decode PRIVATE ../src/video_encode_decode_lib)
+add_test(NAME test_video_encode_decode COMMAND test_video_encode_decode)
