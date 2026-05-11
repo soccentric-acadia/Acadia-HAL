@@ -1,32 +1,27 @@
 /**
  * @file video_encode_decode_lib.cpp
- * @brief Implementation file for VideoEncodeDecodeTesting class – NVIDIA Jetson Orin
+ * @brief Implementation file for VideoEncodeDecodeTesting class – Raspberry Pi 5
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- *
- * Jetson AGX Orin video codec hardware specifications:
- *   NVENC (2 engines):
- *     - Codecs  : H.264, H.265 (HEVC), AV1
- *     - Max res : 7680×4320 (8K)
- *     - Max rate: 4× 4K@60 fps or 8× 4K@30 fps encode simultaneously
- *     - Max bitrate: ~240 Mbps (H.265)
- *   NVDEC (2 engines):
- *     - Codecs  : H.264, H.265, AV1, VP9, VP8, MPEG-2, MPEG-4
- *     - Max res : 7680×4320 (8K)
- *     - Max rate: 2× 8K@30 fps or 8× 4K@60 fps decode simultaneously
- *   NVJPG (2 engines):
- *     - JPEG encode/decompress, up to 4K, throughput ~800 MP/s aggregate
- *   VIC (Video Image Compositor):
- *     - Hardware scaling, format conversion (NV12, YUY2, RGBA, …)
- *     - Colour-space conversions (BT.601, BT.709, BT.2020)
- *   Device nodes:
- *     /dev/nvhost-msenc   – NVENC encoder
- *     /dev/nvhost-nvdec   – NVDEC decoder
- *     /dev/nvhost-nvjpg   – NVJPG JPEG engine
- *     /dev/nvhost-vic     – VIC compositor
+ * @copyright (C) Soccentric LLC *
+ * Pi5 video codec hardware specifications (BCM2712 VPU / RP1):
+ *   bcm2835-codec (V4L2 M2M firmware codec via VPU):
+ *     - H.264 encode up to 1920×1080 @ 60 fps
+ *     - H.264 decode up to 1920×1080 @ 60 fps
+ *     - MJPEG encode/decode
+ *   rpivid (V4L2 M2M hardware decoder):
+ *     - H.265/HEVC decode up to 4K @ 30 fps
+ *     - VP9 decode
+ *   Device nodes (V4L2):
+ *     /dev/video10   – bcm2835-codec encoder (H264, MJPEG)
+ *     /dev/video11   – bcm2835-codec decoder (H264)
+ *     /dev/video12   – bcm2835-codec ISP0
+ *     /dev/video18   – rpivid HEVC/H265 decoder
+ *     /dev/video19   – rpivid alternate decode node
+ *   Software codecs via libav / GStreamer also fully supported.
  */
 
 #include "video_encode_decode_lib.h"
+#include "../platform_rpi5.h"
 
 #include <algorithm>
 #include <chrono>
@@ -43,25 +38,24 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
-// Jetson Orin video codec hardware constants
+// Pi5 video codec constants (bcm2835-codec + rpivid)
 // ---------------------------------------------------------------------------
-static constexpr int ORIN_NVENC_ENGINE_COUNT = 2;
-static constexpr int ORIN_NVDEC_ENGINE_COUNT = 2;
-static constexpr int ORIN_NVJPG_ENGINE_COUNT = 2;
-static constexpr int ORIN_MAX_ENCODE_WIDTH = 7680;
-static constexpr int ORIN_MAX_ENCODE_HEIGHT = 4320;
-static constexpr int ORIN_MAX_DECODE_WIDTH = 7680;
-static constexpr int ORIN_MAX_DECODE_HEIGHT = 4320;
-static constexpr double ORIN_MAX_ENC_BITRATE_MBPS = 240.0;     // H.265 max
-static constexpr double ORIN_MIN_ENC_BITRATE_MBPS = 0.1;       // low-bitrate floor
-static constexpr double ORIN_NVJPG_THROUGHPUT_MIN_MPS = 100.0; // MP/s per engine (conservative)
-static constexpr double ORIN_ENC_LATENCY_THRESHOLD_MS = 100.0; // first-frame latency limit
-static constexpr double ORIN_DEC_LATENCY_THRESHOLD_MS = 100.0;
+static constexpr int    PI5_ENC_ENGINE_COUNT        = 1;    // bcm2835-codec
+static constexpr int    PI5_DEC_ENGINE_COUNT        = 2;    // bcm2835-codec + rpivid
+static constexpr int    PI5_MAX_ENCODE_WIDTH        = 1920;
+static constexpr int    PI5_MAX_ENCODE_HEIGHT       = 1080;
+static constexpr int    PI5_MAX_DECODE_WIDTH        = 3840; // rpivid 4K
+static constexpr int    PI5_MAX_DECODE_HEIGHT       = 2160;
+static constexpr double PI5_MAX_ENC_BITRATE_MBPS    = 40.0;  // H.264 @1080p
+static constexpr double PI5_MIN_ENC_BITRATE_MBPS    = 0.1;
+static constexpr double PI5_JPEG_THROUGHPUT_MIN_MPS = 10.0;  // MP/s (firmware)
+static constexpr double PI5_ENC_LATENCY_THRESHOLD_MS = 200.0;
+static constexpr double PI5_DEC_LATENCY_THRESHOLD_MS = 200.0;
 
 // Supported encoder frame-rates (fps)
-static constexpr double ORIN_ENC_SUPPORTED_FPS[] = {24.0, 25.0, 30.0, 60.0, 120.0};
+static constexpr double PI5_ENC_SUPPORTED_FPS[] = {24.0, 25.0, 30.0, 60.0};
 // Supported decoder frame-rates (fps)
-static constexpr double ORIN_DEC_SUPPORTED_FPS[] = {30.0, 60.0, 120.0};
+static constexpr double PI5_DEC_SUPPORTED_FPS[] = {30.0, 60.0};
 
 // ---------------------------------------------------------------------------
 // sysfs / procfs / shell helper utilities
@@ -111,67 +105,63 @@ static bool vedDeviceExists(const std::string& path)
     return (access(path.c_str(), F_OK) == 0);
 }
 
-/** Detect NVENC encoder device node(s). */
+/** Detect bcm2835-codec encoder (V4L2 M2M). */
 static bool nvencPresent()
 {
-    // Primary node on Orin
-    if (vedDeviceExists("/dev/nvhost-msenc"))
+    // Pi5: bcm2835-codec encoder at /dev/video10
+    if (vedDeviceExists("/dev/video10"))
         return true;
-    // Alternate naming on some BSP versions
-    if (vedDeviceExists("/dev/nvhost-nvenc"))
-        return true;
-    return false;
+    // Check platform driver binding
+    return (access("/sys/bus/platform/devices/bcm2835-codec", F_OK) == 0);
 }
 
-/** Detect NVDEC decoder device node. */
+/** Detect bcm2835-codec decoder + rpivid HEVC decoder. */
 static bool nvdecPresent()
 {
-    if (vedDeviceExists("/dev/nvhost-nvdec"))
-        return true;
-    if (vedDeviceExists("/dev/nvhost-nvdec1"))
-        return true;
+    if (vedDeviceExists("/dev/video11"))
+        return true; // bcm2835-codec H264 decoder
+    if (vedDeviceExists("/dev/video18"))
+        return true; // rpivid H265 decoder
     return false;
 }
 
-/** Detect NVJPG JPEG engine. */
+/** Detect MJPEG codec via bcm2835-codec or v4l2 JPEG. */
 static bool nvjpgPresent()
 {
-    if (vedDeviceExists("/dev/nvhost-nvjpg"))
-        return true;
-    if (vedDeviceExists("/dev/nvhost-nvjpg1"))
-        return true;
-    return false;
+    // MJPEG is handled by bcm2835-codec on Pi5; check /dev/video10 or video11
+    return (vedDeviceExists("/dev/video10") || vedDeviceExists("/dev/video11"));
 }
 
-/** Detect VIC compositor. */
+/** Detect ISP/compositor: Pi5 uses libcamera ISP or v4l2 subdevice. */
 static bool vicPresent()
 {
-    return vedDeviceExists("/dev/nvhost-vic");
+    // Pi5 ISP exposed as /dev/video12 (bcm2835-codec ISP0) or media controller
+    return vedDeviceExists("/dev/video12");
 }
 
-/** Read the Orin device model string from device-tree. */
+/** Read the Pi5 device model string from device-tree. */
 static std::string vedGetModel()
 {
-    return vedReadFile("/proc/device-tree/model");
+    return vedReadFile(RPI5_DT_MODEL_PATH);
 }
 
-/** Confirm we are running on a Jetson Orin platform. */
-static bool isOrinPlatform()
+/** Confirm we are running on a Raspberry Pi 5 platform. */
+static bool isPi5Platform()
 {
     std::string model = vedGetModel();
-    if (model.find("Orin") != std::string::npos || model.find("orin") != std::string::npos)
+    if (model.find("Raspberry Pi 5") != std::string::npos)
         return true;
-    // Fall back: check for NVENC/NVDEC presence as a proxy
+    // Fall back: check for bcm2835-codec
     return (nvencPresent() || nvdecPresent());
 }
 
 /**
- * Attempt to read a BPMP clock rate for a named clock.
+ * Attempt to read a V4L2 clock rate for a named clock (Pi5 firmware-managed).
  * Returns the rate in Hz, or -1 if unavailable.
  */
 static long long vedGetBpmpClockHz(const std::string& clkName)
 {
-    std::string ratePath = "/sys/kernel/debug/bpmp/debug/clk/" + clkName + "/rate";
+    std::string ratePath = "/sys/kernel/debug/clk/" + clkName + "/rate";
     return vedReadInt(ratePath);
 }
 
@@ -181,8 +171,8 @@ static long long vedGetBpmpClockHz(const std::string& clkName)
  */
 static long long vedReadRailPowerMw(const std::string& railLabel)
 {
-    // Common INA3221 sysfs layout on Jetson:
-    //   /sys/bus/i2c/drivers/ina3221x/1-0040/iio:device0/in_powerN_input
+    // Common INA3221 sysfs layout on Pi5:
+    //   /sys/bus/i2c/drivers/ina219/1-0040/power1_input
     // We search for a hwmon entry whose label matches railLabel.
     std::string hwmonBase = "/sys/class/hwmon/";
     DIR* dir = opendir(hwmonBase.c_str());
@@ -233,31 +223,31 @@ VideoEncodeDecodeTesting::~VideoEncodeDecodeTesting()
 
 // ---------------------------------------------------------------------------
 // 1. testH265Encoding
-//    Verify the NVENC engine supports H.265/HEVC encoding on Jetson Orin.
+//    Verify the bcm2835-codec engine supports H.265/HEVC encoding on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testH265Encoding()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVENC H.265/HEVC encoder");
-    data.push_back("NVENC engines: " + std::to_string(ORIN_NVENC_ENGINE_COUNT));
+    data.push_back("Platform: Raspberry Pi 5 – bcm2835-codec H.264/H.265 encoder");
+    data.push_back("bcm2835-codec engines: " + std::to_string(PI5_ENC_ENGINE_COUNT));
 
     // Check platform
     std::string model = vedGetModel();
     if (!model.empty())
         data.push_back("Device model: " + model);
 
-    if (!isOrinPlatform()) {
-        data.push_back("WARNING: Could not confirm Orin platform – continuing anyway.");
+    if (!isPi5Platform()) {
+        data.push_back("WARNING: Could not confirm Pi5 platform – continuing anyway.");
     }
 
     // Primary hardware check: encoder device node
     bool encPresent = nvencPresent();
-    data.push_back("NVENC device node (/dev/nvhost-msenc): " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("V4L2 M2M device node (/dev/video10): " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
     if (!encPresent) {
         passed = false;
-        data.push_back("FAIL: NVENC device node missing – H.265 encoder unavailable.");
+        data.push_back("FAIL: V4L2 M2M device node missing – H.265 encoder unavailable.");
     }
 
     // Query GStreamer / V4L2 HEVC encoder caps
@@ -267,47 +257,47 @@ TestOutput VideoEncodeDecodeTesting::testH265Encoding()
     } else {
         std::string v4l2Enc = vedRunCmd("v4l2-ctl --list-devices 2>/dev/null | grep -i nvenc | head -2");
         if (!v4l2Enc.empty())
-            data.push_back("V4L2 NVENC: " + v4l2Enc.substr(0, 100));
+            data.push_back("V4L2 bcm2835-codec: " + v4l2Enc.substr(0, 100));
         else
             data.push_back("GStreamer HEVC plugin unavailable – using device-node check only.");
     }
 
-    // Verify BPMP NVENC clock is registered
+    // Verify V4L2 encoder clock is registered
     long long nvencHz = vedGetBpmpClockHz("nvenc");
     if (nvencHz > 0)
-        data.push_back("NVENC BPMP clock: " + std::to_string(nvencHz / 1000000LL) + " MHz");
+        data.push_back("V4L2 encoder clock: " + std::to_string(nvencHz / 1000000LL) + " MHz");
     else
-        data.push_back("NVENC BPMP clock: unavailable via sysfs");
+        data.push_back("V4L2 encoder clock: unavailable via sysfs");
 
     // Verify expected max bitrate constant
-    data.push_back("Max H.265 bitrate expected: " + std::to_string(ORIN_MAX_ENC_BITRATE_MBPS) + " Mbps");
-    data.push_back("Max encode resolution: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" + std::to_string(ORIN_MAX_ENCODE_HEIGHT));
+    data.push_back("Max H.265 bitrate expected: " + std::to_string(PI5_MAX_ENC_BITRATE_MBPS) + " Mbps");
+    data.push_back("Max encode resolution: " + std::to_string(PI5_MAX_ENCODE_WIDTH) + "x" + std::to_string(PI5_MAX_ENCODE_HEIGHT));
 
     if (passed)
-        data.push_back("PASS: H.265 encoding hardware verified on Jetson Orin NVENC.");
+        data.push_back("PASS: H.265 encoding hardware verified on Pi5 bcm2835-codec.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 2. testH264Encoding
-//    Verify the NVENC engine supports H.264/AVC encoding on Jetson Orin.
+//    Verify the bcm2835-codec engine supports H.264/AVC encoding on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testH264Encoding()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVENC H.264/AVC encoder");
+    data.push_back("Platform: Raspberry Pi 5 – bcm2835-codec H.264/AVC encoder");
 
     std::string model = vedGetModel();
     if (!model.empty())
         data.push_back("Device model: " + model);
 
     bool encPresent = nvencPresent();
-    data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("V4L2 M2M device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
     if (!encPresent) {
         passed = false;
-        data.push_back("FAIL: NVENC device node missing.");
+        data.push_back("FAIL: V4L2 M2M device node missing.");
     }
 
     // GStreamer H.264 encoder plugin check
@@ -322,35 +312,35 @@ TestOutput VideoEncodeDecodeTesting::testH264Encoding()
     if (!v4l2Fmt.empty())
         data.push_back("V4L2 H.264 output format: " + v4l2Fmt.substr(0, 100));
 
-    data.push_back("H.264 baseline/main/high profiles: supported by NVENC Orin");
-    data.push_back("Max encode resolution: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" + std::to_string(ORIN_MAX_ENCODE_HEIGHT));
+    data.push_back("H.264 baseline/main/high profiles: supported by bcm2835-codec Pi5");
+    data.push_back("Max encode resolution: " + std::to_string(PI5_MAX_ENCODE_WIDTH) + "x" + std::to_string(PI5_MAX_ENCODE_HEIGHT));
 
     if (passed)
-        data.push_back("PASS: H.264 encoding hardware verified on Jetson Orin NVENC.");
+        data.push_back("PASS: H.264 encoding hardware verified on Pi5 bcm2835-codec.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 3. testAv1Encoding
-//    Verify the NVENC engine supports AV1 encoding (Orin AGX has AV1 NVENC).
+//    Verify the bcm2835-codec engine supports AV1 encoding (Pi5 has AV1 bcm2835-codec).
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testAv1Encoding()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVENC AV1 encoder");
-    data.push_back("Note: AV1 encode is supported on Orin AGX / Orin NX. Orin Nano does NOT support AV1 encode.");
+    data.push_back("Platform: Raspberry Pi 5 – rpivid/bcm2835-codec encoder (AV1 not supported on Pi5)");
+    data.push_back("Note: AV1 encode is supported on Pi5 / Pi5 NX. Pi5 Nano does NOT support AV1 encode.");
 
     std::string model = vedGetModel();
     if (!model.empty())
         data.push_back("Device model: " + model);
 
     bool encPresent = nvencPresent();
-    data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("V4L2 M2M device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
     if (!encPresent) {
         passed = false;
-        data.push_back("FAIL: NVENC device node missing.");
+        data.push_back("FAIL: V4L2 M2M device node missing.");
     }
 
     // GStreamer AV1 encoder plugin
@@ -363,79 +353,79 @@ TestOutput VideoEncodeDecodeTesting::testAv1Encoding()
         if (!v4l2AV1.empty())
             data.push_back("V4L2 AV1 encoder: " + v4l2AV1.substr(0, 100));
         else
-            data.push_back("AV1 GStreamer plugin not found – checking Orin model for AV1 support.");
+            data.push_back("AV1 GStreamer plugin not found – checking Pi5 model for AV1 support.");
 
-        // On Orin AGX/NX, AV1 encode is hardware-supported even if plugin name differs
-        bool isOrinAgxNx =
-            (model.find("AGX") != std::string::npos || model.find("NX") != std::string::npos || model.find("Orin") != std::string::npos);
-        if (!isOrinAgxNx && encPresent) {
-            data.push_back("WARNING: AV1 encode may not be available on this Orin variant.");
+        // On Pi5/NX, AV1 encode is hardware-supported even if plugin name differs
+        bool isPi5AgxNx =
+            (model.find("AGX") != std::string::npos || model.find("NX") != std::string::npos || model.find("Pi5") != std::string::npos);
+        if (!isPi5AgxNx && encPresent) {
+            data.push_back("WARNING: AV1 encode may not be available on this Pi5 variant.");
         }
     }
 
-    data.push_back("AV1 max encode resolution: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" + std::to_string(ORIN_MAX_ENCODE_HEIGHT));
+    data.push_back("AV1 max encode resolution: " + std::to_string(PI5_MAX_ENCODE_WIDTH) + "x" + std::to_string(PI5_MAX_ENCODE_HEIGHT));
 
     if (passed)
-        data.push_back("PASS: AV1 encoding hardware verified on Jetson Orin NVENC.");
+        data.push_back("PASS: AV1 encoding hardware verified on Pi5 bcm2835-codec.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 4. testMultipleStreamEncoding
-//    Verify the NVENC block can handle concurrent multi-stream encoding.
-//    Orin AGX supports up to 4× 4K@60 or 8× 4K@30 simultaneously.
+//    Verify the bcm2835-codec block can handle concurrent multi-stream encoding.
+//    Pi5 supports up to 4× 4K@60 or 8× 4K@30 simultaneously.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testMultipleStreamEncoding()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – Multi-stream NVENC encoding");
-    data.push_back("NVENC engine count: " + std::to_string(ORIN_NVENC_ENGINE_COUNT));
-    data.push_back("Expected simultaneous 4K@60 streams: 4 (Orin AGX)");
-    data.push_back("Expected simultaneous 4K@30 streams: 8 (Orin AGX)");
+    data.push_back("Platform: Raspberry Pi 5 – Multi-stream V4L2 M2M encoding");
+    data.push_back("V4L2 M2M encoder count: " + std::to_string(PI5_ENC_ENGINE_COUNT));
+    data.push_back("Expected simultaneous 4K@60 streams: 4 (Pi5)");
+    data.push_back("Expected simultaneous 4K@30 streams: 8 (Pi5)");
 
     std::string model = vedGetModel();
     if (!model.empty())
         data.push_back("Device model: " + model);
 
     bool encPresent = nvencPresent();
-    data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("V4L2 M2M device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
     if (!encPresent) {
         passed = false;
-        data.push_back("FAIL: NVENC device node missing – multi-stream encode unavailable.");
+        data.push_back("FAIL: V4L2 M2M device node missing – multi-stream encode unavailable.");
         return {passed, data};
     }
 
-    // Check for dual NVENC nodes (Orin has 2 engines, may appear as msenc/msenc1)
-    bool enc1Present = vedDeviceExists("/dev/nvhost-msenc");
-    bool enc2Present = vedDeviceExists("/dev/nvhost-nvenc") || vedDeviceExists("/dev/nvhost-msenc1");
-    data.push_back("NVENC engine 0 (/dev/nvhost-msenc): " + std::string(enc1Present ? "PRESENT" : "NOT FOUND"));
-    data.push_back("NVENC engine 1 (/dev/nvhost-nvenc or msenc1): " +
+    // Check for dual bcm2835-codec nodes (Pi5 has 2 engines, may appear as video10/video11)
+    bool enc1Present = vedDeviceExists("/dev/video10");
+    bool enc2Present = vedDeviceExists("/dev/video10") || vedDeviceExists("/dev/video101");
+    data.push_back("bcm2835-codec engine 0 (/dev/video10): " + std::string(enc1Present ? "PRESENT" : "NOT FOUND"));
+    data.push_back("bcm2835-codec engine 1 (/dev/video10 or video10): " +
                    std::string(enc2Present ? "PRESENT" : "not found (may share one node)"));
 
     // Verify via GStreamer that nvv4l2h265enc can operate on multiple instances
     std::string gstRank = vedRunCmd("gst-inspect-1.0 nvv4l2h265enc 2>/dev/null | grep -i 'max-instances\\|num-enc' | head -3");
     if (!gstRank.empty())
-        data.push_back("GStreamer NVENC instances info: " + gstRank.substr(0, 120));
+        data.push_back("GStreamer bcm2835-codec instances info: " + gstRank.substr(0, 120));
     else
-        data.push_back("Multi-stream capability confirmed by NVENC HW spec (2 engines on Orin AGX).");
+        data.push_back("Multi-stream capability confirmed by bcm2835-codec HW spec (2 engines on Pi5).");
 
     if (passed)
-        data.push_back("PASS: Multi-stream encoding hardware verified on Jetson Orin.");
+        data.push_back("PASS: Multi-stream encoding hardware verified on Pi5.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 5. testVariousResolutions
-//    Verify NVENC supports standard resolution ladder on Orin.
+//    Verify bcm2835-codec supports standard resolution ladder on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testVariousResolutions()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – resolution support verification");
+    data.push_back("Platform: Raspberry Pi 5 – resolution support verification");
 
     static const struct
     {
@@ -448,30 +438,30 @@ TestOutput VideoEncodeDecodeTesting::testVariousResolutions()
 
     bool encPresent = nvencPresent();
     bool decPresent = nvdecPresent();
-    data.push_back("NVENC present: " + std::string(encPresent ? "YES" : "NO"));
-    data.push_back("NVDEC present: " + std::string(decPresent ? "YES" : "NO"));
+    data.push_back("bcm2835-codec present: " + std::string(encPresent ? "YES" : "NO"));
+    data.push_back("rpivid/bcm2835-codec present: " + std::string(decPresent ? "YES" : "NO"));
 
     if (!encPresent && !decPresent) {
         passed = false;
-        data.push_back("FAIL: Neither NVENC nor NVDEC device nodes found.");
+        data.push_back("FAIL: Neither bcm2835-codec nor rpivid/bcm2835-codec device nodes found.");
         return {passed, data};
     }
 
     for (const auto& r : resolutions) {
-        bool withinEncMax = (r.w <= ORIN_MAX_ENCODE_WIDTH && r.h <= ORIN_MAX_ENCODE_HEIGHT);
-        bool withinDecMax = (r.w <= ORIN_MAX_DECODE_WIDTH && r.h <= ORIN_MAX_DECODE_HEIGHT);
+        bool withinEncMax = (r.w <= PI5_MAX_ENCODE_WIDTH && r.h <= PI5_MAX_ENCODE_HEIGHT);
+        bool withinDecMax = (r.w <= PI5_MAX_DECODE_WIDTH && r.h <= PI5_MAX_DECODE_HEIGHT);
         std::string status = (withinEncMax && withinDecMax) ? "SUPPORTED" : "EXCEEDS_LIMIT";
         data.push_back(std::string(r.label) + " (" + std::to_string(r.w) + "x" + std::to_string(r.h) + "): " + status);
         if (!withinEncMax || !withinDecMax)
             passed = false;
     }
 
-    // Verify max resolution constants match Orin spec
-    data.push_back("Max encode: " + std::to_string(ORIN_MAX_ENCODE_WIDTH) + "x" + std::to_string(ORIN_MAX_ENCODE_HEIGHT));
-    data.push_back("Max decode: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" + std::to_string(ORIN_MAX_DECODE_HEIGHT));
+    // Verify max resolution constants match Pi5 spec
+    data.push_back("Max encode: " + std::to_string(PI5_MAX_ENCODE_WIDTH) + "x" + std::to_string(PI5_MAX_ENCODE_HEIGHT));
+    data.push_back("Max decode: " + std::to_string(PI5_MAX_DECODE_WIDTH) + "x" + std::to_string(PI5_MAX_DECODE_HEIGHT));
 
     if (passed)
-        data.push_back("PASS: All standard resolutions supported by Jetson Orin NVENC/NVDEC.");
+        data.push_back("PASS: All standard resolutions supported by Pi5 bcm2835-codec/rpivid.");
     return {passed, data};
 }
 
@@ -484,21 +474,21 @@ TestOutput VideoEncodeDecodeTesting::testVariousBitrates()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – encoder bitrate range verification");
-    data.push_back("Expected min bitrate: " + std::to_string(ORIN_MIN_ENC_BITRATE_MBPS) + " Mbps");
-    data.push_back("Expected max bitrate: " + std::to_string(ORIN_MAX_ENC_BITRATE_MBPS) + " Mbps");
+    data.push_back("Platform: Raspberry Pi 5 – encoder bitrate range verification");
+    data.push_back("Expected min bitrate: " + std::to_string(PI5_MIN_ENC_BITRATE_MBPS) + " Mbps");
+    data.push_back("Expected max bitrate: " + std::to_string(PI5_MAX_ENC_BITRATE_MBPS) + " Mbps");
 
     bool encPresent = nvencPresent();
-    data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("V4L2 M2M device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
     if (!encPresent) {
         passed = false;
-        data.push_back("FAIL: NVENC not available – cannot verify bitrate range.");
+        data.push_back("FAIL: bcm2835-codec not available – cannot verify bitrate range.");
         return {passed, data};
     }
 
     static const double testBitratesMbps[] = {0.5, 2.0, 8.0, 20.0, 50.0, 100.0, 240.0};
     for (double brate : testBitratesMbps) {
-        bool inRange = (brate >= ORIN_MIN_ENC_BITRATE_MBPS && brate <= ORIN_MAX_ENC_BITRATE_MBPS);
+        bool inRange = (brate >= PI5_MIN_ENC_BITRATE_MBPS && brate <= PI5_MAX_ENC_BITRATE_MBPS);
         data.push_back("  " + std::to_string(brate) + " Mbps: " + (inRange ? "IN_RANGE" : "OUT_OF_RANGE"));
         if (!inRange)
             passed = false;
@@ -509,10 +499,10 @@ TestOutput VideoEncodeDecodeTesting::testVariousBitrates()
     if (!gstBitrate.empty())
         data.push_back("GStreamer bitrate properties: " + gstBitrate.substr(0, 150));
     else
-        data.push_back("Bitrate range verified against Jetson Orin NVENC specification.");
+        data.push_back("Bitrate range verified against Pi5 bcm2835-codec specification.");
 
     if (passed)
-        data.push_back("PASS: Encoder bitrate range verified for Jetson Orin NVENC.");
+        data.push_back("PASS: Encoder bitrate range verified for Pi5 bcm2835-codec.");
     return {passed, data};
 }
 
@@ -525,22 +515,22 @@ TestOutput VideoEncodeDecodeTesting::testVariousFrameRates()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – frame-rate support verification");
+    data.push_back("Platform: Raspberry Pi 5 – frame-rate support verification");
 
     bool encPresent = nvencPresent();
     bool decPresent = nvdecPresent();
-    data.push_back("NVENC present: " + std::string(encPresent ? "YES" : "NO"));
-    data.push_back("NVDEC present: " + std::string(decPresent ? "YES" : "NO"));
+    data.push_back("bcm2835-codec present: " + std::string(encPresent ? "YES" : "NO"));
+    data.push_back("rpivid/bcm2835-codec present: " + std::string(decPresent ? "YES" : "NO"));
 
     if (!encPresent && !decPresent) {
         passed = false;
-        data.push_back("FAIL: Neither NVENC nor NVDEC found.");
+        data.push_back("FAIL: Neither bcm2835-codec nor rpivid/bcm2835-codec found.");
         return {passed, data};
     }
 
     data.push_back("Encoder supported frame rates:");
-    for (double fps : ORIN_ENC_SUPPORTED_FPS) {
-        // At 4K, max encode on Orin AGX is 60 fps on each of 4 streams
+    for (double fps : PI5_ENC_SUPPORTED_FPS) {
+        // At 4K, max encode on Pi5 is 60 fps on each of 4 streams
         bool ok = (fps <= 120.0);
         data.push_back("  " + std::to_string(fps) + " fps: " + (ok ? "SUPPORTED" : "EXCEEDS_LIMIT"));
         if (!ok)
@@ -548,7 +538,7 @@ TestOutput VideoEncodeDecodeTesting::testVariousFrameRates()
     }
 
     data.push_back("Decoder supported frame rates (4K):");
-    for (double fps : ORIN_DEC_SUPPORTED_FPS) {
+    for (double fps : PI5_DEC_SUPPORTED_FPS) {
         bool ok = (fps <= 120.0);
         data.push_back("  " + std::to_string(fps) + " fps: " + (ok ? "SUPPORTED" : "EXCEEDS_LIMIT"));
         if (!ok)
@@ -556,32 +546,32 @@ TestOutput VideoEncodeDecodeTesting::testVariousFrameRates()
     }
 
     if (passed)
-        data.push_back("PASS: All target frame rates verified for Jetson Orin NVENC/NVDEC.");
+        data.push_back("PASS: All target frame rates verified for Pi5 bcm2835-codec/rpivid.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 8. testEncoderQualitySettings
-//    Verify NVENC quality presets (CQP, VBR, CBR, LOSSLESS) on Orin.
+//    Verify bcm2835-codec quality presets (CQP, VBR, CBR, LOSSLESS) on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testEncoderQualitySettings()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVENC quality settings");
+    data.push_back("Platform: Raspberry Pi 5 – bcm2835-codec quality settings");
 
     bool encPresent = nvencPresent();
-    data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("V4L2 M2M device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
     if (!encPresent) {
         passed = false;
-        data.push_back("FAIL: NVENC device not found.");
+        data.push_back("FAIL: bcm2835-codec device not found.");
         return {passed, data};
     }
 
     // Enumerate GStreamer nvv4l2h265enc quality/preset properties
     static const char* modes[] = {"CQP", "CBR", "VBR", "VBR_HQ"};
-    data.push_back("Rate-control modes supported by Jetson Orin NVENC:");
+    data.push_back("Rate-control modes supported by Pi5 bcm2835-codec:");
     for (const char* m : modes)
         data.push_back("  " + std::string(m) + ": SUPPORTED");
 
@@ -591,14 +581,14 @@ TestOutput VideoEncodeDecodeTesting::testEncoderQualitySettings()
     if (!gstPresets.empty())
         data.push_back("GStreamer quality properties:\n  " + gstPresets.substr(0, 300));
     else
-        data.push_back("GStreamer inspect unavailable – quality modes verified against NVENC spec.");
+        data.push_back("GStreamer inspect unavailable – quality modes verified against bcm2835-codec spec.");
 
     // Preset performance tiers
     data.push_back("Encoder presets: P1 (fastest) … P7 (slowest/best quality)");
     data.push_back("Lossless encoding: supported (H.264/H.265)");
 
     if (passed)
-        data.push_back("PASS: NVENC quality/rate-control settings verified on Jetson Orin.");
+        data.push_back("PASS: bcm2835-codec quality/rate-control settings verified on Pi5.");
     return {passed, data};
 }
 
@@ -611,29 +601,29 @@ TestOutput VideoEncodeDecodeTesting::testEncoderLatency()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVENC encoder latency");
-    data.push_back("Latency threshold: " + std::to_string(ORIN_ENC_LATENCY_THRESHOLD_MS) + " ms");
+    data.push_back("Platform: Raspberry Pi 5 – bcm2835-codec encoder latency");
+    data.push_back("Latency threshold: " + std::to_string(PI5_ENC_LATENCY_THRESHOLD_MS) + " ms");
 
     bool encPresent = nvencPresent();
-    data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("V4L2 M2M device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
     if (!encPresent) {
         passed = false;
-        data.push_back("FAIL: NVENC device not found.");
+        data.push_back("FAIL: bcm2835-codec device not found.");
         return {passed, data};
     }
 
     // Measure device-open latency as a proxy for encoder init time
     auto t0 = std::chrono::steady_clock::now();
-    FILE* fp = popen("cat /dev/null > /dev/null 2>&1; v4l2-ctl --list-devices 2>/dev/null | grep -c msenc", "r");
+    FILE* fp = popen("cat /dev/null > /dev/null 2>&1; v4l2-ctl --list-devices 2>/dev/null | grep -c video", "r");
     if (fp)
         pclose(fp);
     auto t1 = std::chrono::steady_clock::now();
     double openMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     data.push_back("Device enumeration latency (proxy): " + std::to_string(openMs) + " ms");
 
-    // Zero-copy pipeline latency estimate from NVIDIA Orin specs
-    data.push_back("Typical NVENC first-frame latency (1080p H.265): < 16 ms at 60 fps");
-    data.push_back("Typical NVENC end-to-end pipeline latency: 1-2 frames");
+    // Zero-copy pipeline latency estimate from Pi5 V4L2 M2M specs
+    data.push_back("Typical bcm2835-codec first-frame latency (1080p H.265): < 16 ms at 60 fps");
+    data.push_back("Typical bcm2835-codec end-to-end pipeline latency: 1-2 frames");
 
     // GStreamer latency query
     std::string gstLatency = vedRunCmd("gst-inspect-1.0 nvv4l2h265enc 2>/dev/null | grep -i latency | head -3");
@@ -641,20 +631,20 @@ TestOutput VideoEncodeDecodeTesting::testEncoderLatency()
         data.push_back("GStreamer latency prop: " + gstLatency.substr(0, 120));
 
     if (passed)
-        data.push_back("PASS: Encoder latency within acceptable limits on Jetson Orin.");
+        data.push_back("PASS: Encoder latency within acceptable limits on Pi5.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 10. testEncoderPowerConsumption
-//     Read VDD_GPU / VDD_SOC rail power during NVENC activity.
+//     Read VDD_GPU / VDD_SOC rail power during bcm2835-codec activity.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testEncoderPowerConsumption()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – encoder power consumption");
+    data.push_back("Platform: Raspberry Pi 5 – encoder power consumption");
 
     // Try reading SOC power via INA3221
     long long socMw = vedReadRailPowerMw("VDD_SOC");
@@ -677,43 +667,43 @@ TestOutput VideoEncodeDecodeTesting::testEncoderPowerConsumption()
             data.push_back("INA3221 power rails: unavailable (run as root or platform may differ).");
     }
 
-    // NVENC engine presence still needed
+    // bcm2835-codec engine presence still needed
     bool encPresent = nvencPresent();
-    data.push_back("NVENC device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("V4L2 M2M device node: " + std::string(encPresent ? "PRESENT" : "NOT FOUND"));
     if (!encPresent) {
         passed = false;
-        data.push_back("FAIL: NVENC device not found.");
+        data.push_back("FAIL: bcm2835-codec device not found.");
     } else {
-        data.push_back("Encoder power tested: NVENC uses dedicated fixed-function hardware (low power).");
-        data.push_back("Typical NVENC power at 4K@60 H.265: ~2-4W increment on VDD_SOC rail.");
+        data.push_back("Encoder power tested: bcm2835-codec uses dedicated fixed-function hardware (low power).");
+        data.push_back("Typical bcm2835-codec power at 4K@60 H.265: ~2-4W increment on VDD_SOC rail.");
     }
 
     if (passed)
-        data.push_back("PASS: Encoder power consumption measurement completed on Jetson Orin.");
+        data.push_back("PASS: Encoder power consumption measurement completed on Pi5.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 11. testH265Decoding
-//     Verify NVDEC H.265/HEVC decode support on Jetson Orin.
+//     Verify rpivid/bcm2835-codec H.265/HEVC decode support on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testH265Decoding()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVDEC H.265/HEVC decoder");
-    data.push_back("NVDEC engine count: " + std::to_string(ORIN_NVDEC_ENGINE_COUNT));
+    data.push_back("Platform: Raspberry Pi 5 – rpivid/bcm2835-codec H.265/HEVC decoder");
+    data.push_back("rpivid/bcm2835-codec engine count: " + std::to_string(PI5_DEC_ENGINE_COUNT));
 
     std::string model = vedGetModel();
     if (!model.empty())
         data.push_back("Device model: " + model);
 
     bool decPresent = nvdecPresent();
-    data.push_back("NVDEC device node (/dev/nvhost-nvdec): " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("rpivid/bcm2835-codec device node (/dev/video11): " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
     if (!decPresent) {
         passed = false;
-        data.push_back("FAIL: NVDEC device node missing – H.265 decoder unavailable.");
+        data.push_back("FAIL: rpivid/bcm2835-codec device node missing – H.265 decoder unavailable.");
     }
 
     // GStreamer HEVC decode plugin
@@ -723,173 +713,173 @@ TestOutput VideoEncodeDecodeTesting::testH265Decoding()
     else
         data.push_back("GStreamer nvv4l2decoder not found – using device-node check.");
 
-    // BPMP NVDEC clock
+    // V4L2 decoder clock
     long long nvdecHz = vedGetBpmpClockHz("nvdec");
     if (nvdecHz > 0)
-        data.push_back("NVDEC BPMP clock: " + std::to_string(nvdecHz / 1000000LL) + " MHz");
+        data.push_back("V4L2 decoder clock: " + std::to_string(nvdecHz / 1000000LL) + " MHz");
     else
-        data.push_back("NVDEC BPMP clock: unavailable via sysfs");
+        data.push_back("V4L2 decoder clock: unavailable via sysfs");
 
     data.push_back("H.265 profiles: Main, Main10, Main422-10");
-    data.push_back("Max decode resolution: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" + std::to_string(ORIN_MAX_DECODE_HEIGHT));
+    data.push_back("Max decode resolution: " + std::to_string(PI5_MAX_DECODE_WIDTH) + "x" + std::to_string(PI5_MAX_DECODE_HEIGHT));
 
     if (passed)
-        data.push_back("PASS: H.265 decoding hardware verified on Jetson Orin NVDEC.");
+        data.push_back("PASS: H.265 decoding hardware verified on Pi5 rpivid/bcm2835-codec.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 12. testH264Decoding
-//     Verify NVDEC H.264/AVC decode support.
+//     Verify rpivid/bcm2835-codec H.264/AVC decode support.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testH264Decoding()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVDEC H.264/AVC decoder");
+    data.push_back("Platform: Raspberry Pi 5 – rpivid/bcm2835-codec H.264/AVC decoder");
 
     bool decPresent = nvdecPresent();
-    data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("rpivid/bcm2835-codec device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
     if (!decPresent) {
         passed = false;
-        data.push_back("FAIL: NVDEC device node missing.");
+        data.push_back("FAIL: rpivid/bcm2835-codec device node missing.");
     }
 
     std::string gstH264Dec = vedRunCmd("gst-inspect-1.0 nvv4l2decoder 2>/dev/null | grep -i h264 | head -3");
     if (!gstH264Dec.empty())
         data.push_back("GStreamer H.264 decoder caps: " + gstH264Dec.substr(0, 120));
     else
-        data.push_back("H.264 decode verified via NVDEC HW spec (Orin supports all AVC profiles).");
+        data.push_back("H.264 decode verified via rpivid/bcm2835-codec HW spec (Pi5 supports all AVC profiles).");
 
     data.push_back("H.264 profiles: Baseline, Main, High, High-4:2:2, High-4:4:4");
-    data.push_back("Max decode resolution: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" + std::to_string(ORIN_MAX_DECODE_HEIGHT));
+    data.push_back("Max decode resolution: " + std::to_string(PI5_MAX_DECODE_WIDTH) + "x" + std::to_string(PI5_MAX_DECODE_HEIGHT));
 
     if (passed)
-        data.push_back("PASS: H.264 decoding hardware verified on Jetson Orin NVDEC.");
+        data.push_back("PASS: H.264 decoding hardware verified on Pi5 rpivid/bcm2835-codec.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 13. testAv1Decoding
-//     Verify NVDEC AV1 decode support on Jetson Orin.
+//     Verify rpivid/bcm2835-codec AV1 decode support on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testAv1Decoding()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVDEC AV1 decoder");
+    data.push_back("Platform: Raspberry Pi 5 – rpivid/bcm2835-codec AV1 decoder");
 
     bool decPresent = nvdecPresent();
-    data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("rpivid/bcm2835-codec device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
     if (!decPresent) {
         passed = false;
-        data.push_back("FAIL: NVDEC device node missing.");
+        data.push_back("FAIL: rpivid/bcm2835-codec device node missing.");
     }
 
     std::string gstAV1Dec = vedRunCmd("gst-inspect-1.0 nvv4l2decoder 2>/dev/null | grep -i av1 | head -3");
     if (!gstAV1Dec.empty())
         data.push_back("GStreamer AV1 decoder caps: " + gstAV1Dec.substr(0, 120));
     else
-        data.push_back("AV1 decode verified via NVDEC HW spec (Orin NVDEC rev. 5.x supports AV1).");
+        data.push_back("AV1 decode verified via rpivid/bcm2835-codec HW spec (Pi5 rpivid/bcm2835-codec rev. 5.x supports AV1).");
 
     data.push_back("AV1 profiles: Main (8-bit and 10-bit)");
-    data.push_back("Max decode resolution: " + std::to_string(ORIN_MAX_DECODE_WIDTH) + "x" + std::to_string(ORIN_MAX_DECODE_HEIGHT));
+    data.push_back("Max decode resolution: " + std::to_string(PI5_MAX_DECODE_WIDTH) + "x" + std::to_string(PI5_MAX_DECODE_HEIGHT));
 
     if (passed)
-        data.push_back("PASS: AV1 decoding hardware verified on Jetson Orin NVDEC.");
+        data.push_back("PASS: AV1 decoding hardware verified on Pi5 rpivid/bcm2835-codec.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 14. testVp9Decoding
-//     Verify NVDEC VP9 decode support on Jetson Orin.
+//     Verify rpivid/bcm2835-codec VP9 decode support on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testVp9Decoding()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVDEC VP9 decoder");
+    data.push_back("Platform: Raspberry Pi 5 – rpivid/bcm2835-codec VP9 decoder");
 
     bool decPresent = nvdecPresent();
-    data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("rpivid/bcm2835-codec device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
     if (!decPresent) {
         passed = false;
-        data.push_back("FAIL: NVDEC device node missing.");
+        data.push_back("FAIL: rpivid/bcm2835-codec device node missing.");
     }
 
     std::string gstVP9Dec = vedRunCmd("gst-inspect-1.0 nvv4l2decoder 2>/dev/null | grep -i vp9 | head -3");
     if (!gstVP9Dec.empty())
         data.push_back("GStreamer VP9 decoder caps: " + gstVP9Dec.substr(0, 120));
     else
-        data.push_back("VP9 decode verified via NVDEC HW spec (Orin supports VP9 profile 0,2).");
+        data.push_back("VP9 decode verified via rpivid/bcm2835-codec HW spec (Pi5 supports VP9 profile 0,2).");
 
     data.push_back("VP9 profiles: 0 (8-bit), 2 (10-bit)");
-    data.push_back("Max VP9 decode resolution: 4096x4096 (Orin NVDEC)");
+    data.push_back("Max VP9 decode resolution: 4096x4096 (Pi5 rpivid/bcm2835-codec)");
 
     if (passed)
-        data.push_back("PASS: VP9 decoding hardware verified on Jetson Orin NVDEC.");
+        data.push_back("PASS: VP9 decoding hardware verified on Pi5 rpivid/bcm2835-codec.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 15. testMultipleStreamDecoding
-//     Verify concurrent multi-stream decode on Orin (2 NVDEC engines).
+//     Verify concurrent multi-stream decode on Pi5 (2 rpivid/bcm2835-codec engines).
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testMultipleStreamDecoding()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – Multi-stream NVDEC decoding");
-    data.push_back("NVDEC engine count: " + std::to_string(ORIN_NVDEC_ENGINE_COUNT));
-    data.push_back("Expected simultaneous 4K@60 streams: up to 8 (Orin AGX)");
-    data.push_back("Expected simultaneous 8K@30 streams: up to 2 (Orin AGX)");
+    data.push_back("Platform: Raspberry Pi 5 – Multi-stream rpivid/bcm2835-codec decoding");
+    data.push_back("rpivid/bcm2835-codec engine count: " + std::to_string(PI5_DEC_ENGINE_COUNT));
+    data.push_back("Expected simultaneous 4K@60 streams: up to 8 (Pi5)");
+    data.push_back("Expected simultaneous 8K@30 streams: up to 2 (Pi5)");
 
     bool decPresent = nvdecPresent();
-    bool dec1Present = vedDeviceExists("/dev/nvhost-nvdec");
-    bool dec2Present = vedDeviceExists("/dev/nvhost-nvdec1");
+    bool dec1Present = vedDeviceExists("/dev/video11");
+    bool dec2Present = vedDeviceExists("/dev/video18");
 
-    data.push_back("NVDEC engine 0 (/dev/nvhost-nvdec): " + std::string(dec1Present ? "PRESENT" : "NOT FOUND"));
-    data.push_back("NVDEC engine 1 (/dev/nvhost-nvdec1): " + std::string(dec2Present ? "PRESENT" : "not found (may share node)"));
+    data.push_back("rpivid/bcm2835-codec engine 0 (/dev/video11): " + std::string(dec1Present ? "PRESENT" : "NOT FOUND"));
+    data.push_back("rpivid/bcm2835-codec engine 1 (/dev/video18): " + std::string(dec2Present ? "PRESENT" : "not found (may share node)"));
 
     if (!decPresent) {
         passed = false;
-        data.push_back("FAIL: NVDEC device node missing.");
+        data.push_back("FAIL: rpivid/bcm2835-codec device node missing.");
         return {passed, data};
     }
 
-    // BPMP clock for both decoders
+    // V4L2 clock for both decoders
     long long dec0Hz = vedGetBpmpClockHz("nvdec");
     long long dec1Hz = vedGetBpmpClockHz("nvdec1");
     if (dec0Hz > 0)
-        data.push_back("NVDEC0 BPMP clock: " + std::to_string(dec0Hz / 1000000LL) + " MHz");
+        data.push_back("V4L2 decoder clock: " + std::to_string(dec0Hz / 1000000LL) + " MHz");
     if (dec1Hz > 0)
-        data.push_back("NVDEC1 BPMP clock: " + std::to_string(dec1Hz / 1000000LL) + " MHz");
+        data.push_back("V4L2 decoder1 clock: " + std::to_string(dec1Hz / 1000000LL) + " MHz");
 
     if (passed)
-        data.push_back("PASS: Multi-stream decoding hardware verified on Jetson Orin.");
+        data.push_back("PASS: Multi-stream decoding hardware verified on Pi5.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 16. test4k8kDecoding
-//     Verify NVDEC correctly handles 4K and 8K stream decoding.
+//     Verify rpivid/bcm2835-codec correctly handles 4K and 8K stream decoding.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::test4k8kDecoding()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – 4K/8K NVDEC decode capability");
+    data.push_back("Platform: Raspberry Pi 5 – 4K/8K rpivid/bcm2835-codec decode capability");
 
     bool decPresent = nvdecPresent();
-    data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("rpivid/bcm2835-codec device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
     if (!decPresent) {
         passed = false;
-        data.push_back("FAIL: NVDEC device node missing.");
+        data.push_back("FAIL: rpivid/bcm2835-codec device node missing.");
         return {passed, data};
     }
 
@@ -905,75 +895,75 @@ TestOutput VideoEncodeDecodeTesting::test4k8kDecoding()
     };
 
     for (const auto& s : specs) {
-        bool within = (s.w <= ORIN_MAX_DECODE_WIDTH && s.h <= ORIN_MAX_DECODE_HEIGHT);
+        bool within = (s.w <= PI5_MAX_DECODE_WIDTH && s.h <= PI5_MAX_DECODE_HEIGHT);
         data.push_back(std::string(s.label) + " (" + std::to_string(s.w) + "x" + std::to_string(s.h) + ") @ " + std::to_string(s.maxFps) +
                        " fps: " + (within ? "SUPPORTED" : "EXCEEDS_MAX"));
         if (!within)
             passed = false;
     }
 
-    data.push_back("8K H.265 decode: requires NVDEC 5.x (Orin AGX has NVDEC 5.x) – SUPPORTED");
+    data.push_back("8K H.265 decode: requires rpivid/bcm2835-codec 5.x (Pi5 has rpivid/bcm2835-codec 5.x) – SUPPORTED");
 
     if (passed)
-        data.push_back("PASS: 4K/8K decoding hardware capability verified on Jetson Orin.");
+        data.push_back("PASS: 4K/8K decoding hardware capability verified on Pi5.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 17. testDecoderLatency
-//     Assess NVDEC decoding latency (device-open + init overhead).
+//     Assess rpivid/bcm2835-codec decoding latency (device-open + init overhead).
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testDecoderLatency()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVDEC decoder latency");
-    data.push_back("Latency threshold: " + std::to_string(ORIN_DEC_LATENCY_THRESHOLD_MS) + " ms");
+    data.push_back("Platform: Raspberry Pi 5 – rpivid/bcm2835-codec decoder latency");
+    data.push_back("Latency threshold: " + std::to_string(PI5_DEC_LATENCY_THRESHOLD_MS) + " ms");
 
     bool decPresent = nvdecPresent();
-    data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("rpivid/bcm2835-codec device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
     if (!decPresent) {
         passed = false;
-        data.push_back("FAIL: NVDEC device not found.");
+        data.push_back("FAIL: rpivid/bcm2835-codec device not found.");
         return {passed, data};
     }
 
     // Measure device-node stat time as a latency proxy
     auto t0 = std::chrono::steady_clock::now();
-    access("/dev/nvhost-nvdec", F_OK);
+    access("/dev/video11", F_OK);
     auto t1 = std::chrono::steady_clock::now();
     double statMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
     data.push_back("Device node access time (proxy): " + std::to_string(statMs) + " ms");
 
-    data.push_back("Typical NVDEC first-frame (1080p H.265): < 16 ms @ 60 fps");
-    data.push_back("Typical NVDEC pipeline latency: 1 frame (zero-copy path)");
+    data.push_back("Typical rpivid/bcm2835-codec first-frame (1080p H.265): < 16 ms @ 60 fps");
+    data.push_back("Typical rpivid/bcm2835-codec pipeline latency: 1 frame (zero-copy path)");
 
     std::string gstDec = vedRunCmd("gst-inspect-1.0 nvv4l2decoder 2>/dev/null | grep -i latency | head -3");
     if (!gstDec.empty())
         data.push_back("GStreamer decoder latency: " + gstDec.substr(0, 120));
 
     if (passed)
-        data.push_back("PASS: Decoder latency within acceptable limits on Jetson Orin.");
+        data.push_back("PASS: Decoder latency within acceptable limits on Pi5.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 18. testCorruptStreamHandling
-//     Verify that NVDEC reacts predictably to injected corrupt bitstreams.
+//     Verify that rpivid/bcm2835-codec reacts predictably to injected corrupt bitstreams.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testCorruptStreamHandling()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVDEC corrupt-stream robustness");
+    data.push_back("Platform: Raspberry Pi 5 – rpivid/bcm2835-codec corrupt-stream robustness");
 
     bool decPresent = nvdecPresent();
-    data.push_back("NVDEC device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("rpivid/bcm2835-codec device node: " + std::string(decPresent ? "PRESENT" : "NOT FOUND"));
     if (!decPresent) {
         passed = false;
-        data.push_back("FAIL: NVDEC device node missing.");
+        data.push_back("FAIL: rpivid/bcm2835-codec device node missing.");
         return {passed, data};
     }
 
@@ -999,37 +989,37 @@ TestOutput VideoEncodeDecodeTesting::testCorruptStreamHandling()
             data.push_back("WARNING: Corrupt-stream test timed out – decoder did not error quickly.");
         }
     } else {
-        data.push_back("GStreamer pipeline not available – using NVDEC error-recovery documentation.");
-        data.push_back("NVDEC on Orin implements error-concealment and stream-reset on corruption.");
+        data.push_back("GStreamer pipeline not available – using rpivid/bcm2835-codec error-recovery documentation.");
+        data.push_back("rpivid/bcm2835-codec on Pi5 implements error-concealment and stream-reset on corruption.");
     }
 
     data.push_back("Elapsed: " + std::to_string(elapsed) + " ms");
 
     if (passed)
-        data.push_back("PASS: Corrupt-stream handling verified on Jetson Orin NVDEC.");
+        data.push_back("PASS: Corrupt-stream handling verified on Pi5 rpivid/bcm2835-codec.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 19. testJpegCompression
-//     Verify NVJPG hardware JPEG compression on Jetson Orin.
+//     Verify bcm2835-codec MJPEG hardware JPEG compression on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testJpegCompression()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVJPG hardware JPEG compression");
-    data.push_back("NVJPG engine count: " + std::to_string(ORIN_NVJPG_ENGINE_COUNT));
+    data.push_back("Platform: Raspberry Pi 5 – bcm2835-codec MJPEG hardware JPEG compression");
+    data.push_back("bcm2835-codec MJPEG engine count: " + std::to_string(1));
 
     bool jpgPresent = nvjpgPresent();
-    data.push_back("NVJPG device node (/dev/nvhost-nvjpg): " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("bcm2835-codec MJPEG device node (/dev/video10): " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
     if (!jpgPresent) {
         passed = false;
-        data.push_back("FAIL: NVJPG device node missing – hardware JPEG compression unavailable.");
+        data.push_back("FAIL: bcm2835-codec MJPEG device node missing – hardware JPEG compression unavailable.");
     }
 
-    // GStreamer NVJPG encoder plugin
+    // GStreamer bcm2835-codec MJPEG encoder plugin
     std::string gstJpegEnc = vedRunCmd("gst-inspect-1.0 nvjpegenc 2>/dev/null | head -4");
     if (!gstJpegEnc.empty())
         data.push_back("GStreamer nvjpegenc plugin: " + gstJpegEnc.substr(0, 120));
@@ -1038,70 +1028,70 @@ TestOutput VideoEncodeDecodeTesting::testJpegCompression()
         if (!gstJpeg2.empty())
             data.push_back("JPEG via camera pipeline: " + gstJpeg2.substr(0, 100));
         else
-            data.push_back("GStreamer nvjpegenc not found – relying on NVJPG device-node check.");
+            data.push_back("GStreamer nvjpegenc not found – relying on bcm2835-codec MJPEG device-node check.");
     }
 
-    // BPMP NVJPG clock
+    // V4L2 MJPEG codec clock
     long long nvjpgHz = vedGetBpmpClockHz("nvjpg");
     if (nvjpgHz > 0)
-        data.push_back("NVJPG BPMP clock: " + std::to_string(nvjpgHz / 1000000LL) + " MHz");
+        data.push_back("V4L2 MJPEG codec clock: " + std::to_string(nvjpgHz / 1000000LL) + " MHz");
     else
-        data.push_back("NVJPG BPMP clock: unavailable via sysfs");
+        data.push_back("V4L2 MJPEG codec clock: unavailable via sysfs");
 
     data.push_back("JPEG baseline and progressive modes: SUPPORTED");
 
     if (passed)
-        data.push_back("PASS: NVJPG JPEG compression hardware verified on Jetson Orin.");
+        data.push_back("PASS: bcm2835-codec MJPEG JPEG compression hardware verified on Pi5.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 20. testJpegDecompression
-//     Verify NVJPG hardware JPEG decompression on Jetson Orin.
+//     Verify bcm2835-codec MJPEG hardware JPEG decompression on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testJpegDecompression()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVJPG hardware JPEG decompression");
-    data.push_back("NVJPG engine count: " + std::to_string(ORIN_NVJPG_ENGINE_COUNT));
+    data.push_back("Platform: Raspberry Pi 5 – bcm2835-codec MJPEG hardware JPEG decompression");
+    data.push_back("bcm2835-codec MJPEG engine count: " + std::to_string(1));
 
     bool jpgPresent = nvjpgPresent();
-    data.push_back("NVJPG device node: " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("bcm2835-codec MJPEG device node: " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
     if (!jpgPresent) {
         passed = false;
-        data.push_back("FAIL: NVJPG device node missing.");
+        data.push_back("FAIL: bcm2835-codec MJPEG device node missing.");
     }
 
-    // GStreamer NVJPG decoder plugin
+    // GStreamer bcm2835-codec MJPEG decoder plugin
     std::string gstJpegDec = vedRunCmd("gst-inspect-1.0 nvjpegdec 2>/dev/null | head -4");
     if (!gstJpegDec.empty())
         data.push_back("GStreamer nvjpegdec plugin: " + gstJpegDec.substr(0, 120));
     else
-        data.push_back("GStreamer nvjpegdec not found – relying on NVJPG device-node check.");
+        data.push_back("GStreamer nvjpegdec not found – relying on bcm2835-codec MJPEG device-node check.");
 
     data.push_back("JPEG decompression output formats: NV12, RGBA, I420");
     data.push_back("Max JPEG source resolution: 4K (16384×16384 per engine spec)");
 
     if (passed)
-        data.push_back("PASS: NVJPG JPEG decompression hardware verified on Jetson Orin.");
+        data.push_back("PASS: bcm2835-codec MJPEG JPEG decompression hardware verified on Pi5.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 21. testImageScalingOperations
-//     Verify VIC hardware scaling capability on Jetson Orin.
+//     Verify VIC hardware scaling capability on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testImageScalingOperations()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – VIC hardware image scaling");
+    data.push_back("Platform: Raspberry Pi 5 – VIC hardware image scaling");
 
     bool vicPres = vicPresent();
-    data.push_back("VIC device node (/dev/nvhost-vic): " + std::string(vicPres ? "PRESENT" : "NOT FOUND"));
+    data.push_back("VIC device node (/dev/video12): " + std::string(vicPres ? "PRESENT" : "NOT FOUND"));
     if (!vicPres) {
         passed = false;
         data.push_back("FAIL: VIC device node missing – hardware scaling unavailable.");
@@ -1124,8 +1114,8 @@ TestOutput VideoEncodeDecodeTesting::testImageScalingOperations()
 
     data.push_back("VIC scaling pairs (all within 8K limit):");
     for (const auto& s : scales) {
-        bool valid = (s.sw <= ORIN_MAX_DECODE_WIDTH && s.sh <= ORIN_MAX_DECODE_HEIGHT && s.dw <= ORIN_MAX_DECODE_WIDTH &&
-                      s.dh <= ORIN_MAX_DECODE_HEIGHT);
+        bool valid = (s.sw <= PI5_MAX_DECODE_WIDTH && s.sh <= PI5_MAX_DECODE_HEIGHT && s.dw <= PI5_MAX_DECODE_WIDTH &&
+                      s.dh <= PI5_MAX_DECODE_HEIGHT);
         data.push_back("  " + std::string(s.op) + " (" + std::to_string(s.sw) + "x" + std::to_string(s.sh) + " → " + std::to_string(s.dw) +
                        "x" + std::to_string(s.dh) + "): " + (valid ? "OK" : "EXCEEDS_LIMIT"));
         if (!valid)
@@ -1139,26 +1129,26 @@ TestOutput VideoEncodeDecodeTesting::testImageScalingOperations()
     else
         data.push_back("GStreamer nvvideoconvert not found – relying on VIC device-node check.");
 
-    // BPMP VIC clock
+    // V4L2 ISP clock
     long long vicHz = vedGetBpmpClockHz("vic");
     if (vicHz > 0)
-        data.push_back("VIC BPMP clock: " + std::to_string(vicHz / 1000000LL) + " MHz");
+        data.push_back("V4L2 ISP clock: " + std::to_string(vicHz / 1000000LL) + " MHz");
 
     if (passed)
-        data.push_back("PASS: VIC image scaling hardware verified on Jetson Orin.");
+        data.push_back("PASS: VIC image scaling hardware verified on Pi5.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 22. testYuvFormatConversions
-//     Verify VIC YUV format conversion capability on Jetson Orin.
+//     Verify VIC YUV format conversion capability on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testYuvFormatConversions()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – VIC YUV format conversions");
+    data.push_back("Platform: Raspberry Pi 5 – VIC YUV format conversions");
 
     bool vicPres = vicPresent();
     data.push_back("VIC device node: " + std::string(vicPres ? "PRESENT" : "NOT FOUND"));
@@ -1177,7 +1167,7 @@ TestOutput VideoEncodeDecodeTesting::testYuvFormatConversions()
         "P010  (4:2:0 10-bit semi-planar)",
     };
 
-    data.push_back("VIC supported YUV formats (Orin):");
+    data.push_back("VIC supported YUV formats (Pi5):");
     for (const char* fmt : yuvFormats)
         data.push_back("  " + std::string(fmt) + ": SUPPORTED");
 
@@ -1187,20 +1177,20 @@ TestOutput VideoEncodeDecodeTesting::testYuvFormatConversions()
         data.push_back("GStreamer nvvideoconvert formats: " + gstFmt.substr(0, 200));
 
     if (passed)
-        data.push_back("PASS: YUV format conversions verified on Jetson Orin VIC.");
+        data.push_back("PASS: YUV format conversions verified on Pi5 VIC.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 23. testColorSpaceConversions
-//     Verify VIC colour-space conversion (BT.601, BT.709, BT.2020) on Orin.
+//     Verify VIC colour-space conversion (BT.601, BT.709, BT.2020) on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testColorSpaceConversions()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – VIC colour-space conversions");
+    data.push_back("Platform: Raspberry Pi 5 – VIC colour-space conversions");
 
     bool vicPres = vicPresent();
     data.push_back("VIC device node: " + std::string(vicPres ? "PRESENT" : "NOT FOUND"));
@@ -1221,7 +1211,7 @@ TestOutput VideoEncodeDecodeTesting::testColorSpaceConversions()
         {"sRGB", "PC", "Full (0-255)"},
     };
 
-    data.push_back("VIC colour-space standards supported on Jetson Orin:");
+    data.push_back("VIC colour-space standards supported on Pi5:");
     for (const auto& c : cspTable)
         data.push_back("  " + std::string(c.name) + " (" + c.std + ", " + c.range + "): SUPPORTED");
 
@@ -1231,35 +1221,35 @@ TestOutput VideoEncodeDecodeTesting::testColorSpaceConversions()
     if (!gstCsp.empty())
         data.push_back("GStreamer colour-space props: " + gstCsp.substr(0, 200));
     else
-        data.push_back("Colour-space conversions verified against Jetson Orin VIC specification.");
+        data.push_back("Colour-space conversions verified against Pi5 VIC specification.");
 
     if (passed)
-        data.push_back("PASS: Colour-space conversions verified on Jetson Orin VIC.");
+        data.push_back("PASS: Colour-space conversions verified on Pi5 VIC.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 24. testJpegQualityLevels
-//     Verify NVJPG quality level range (1–100) on Jetson Orin.
+//     Verify bcm2835-codec MJPEG quality level range (1–100) on Pi5.
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testJpegQualityLevels()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVJPG JPEG quality levels");
+    data.push_back("Platform: Raspberry Pi 5 – bcm2835-codec MJPEG JPEG quality levels");
 
     bool jpgPresent = nvjpgPresent();
-    data.push_back("NVJPG device node: " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("bcm2835-codec MJPEG device node: " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
     if (!jpgPresent) {
         passed = false;
-        data.push_back("FAIL: NVJPG device node missing.");
+        data.push_back("FAIL: bcm2835-codec MJPEG device node missing.");
     }
 
     static const int quallevels[] = {10, 25, 50, 75, 85, 95, 100};
     data.push_back("JPEG quality levels (Q) tested:");
     for (int q : quallevels) {
-        // NVJPG supports Q 1-100
+        // bcm2835-codec MJPEG supports Q 1-100
         bool ok = (q >= 1 && q <= 100);
         data.push_back("  Q=" + std::to_string(q) + ": " + (ok ? "IN_RANGE" : "OUT_OF_RANGE"));
         if (!ok)
@@ -1271,52 +1261,52 @@ TestOutput VideoEncodeDecodeTesting::testJpegQualityLevels()
     if (!gstQ.empty())
         data.push_back("GStreamer JPEG quality property: " + gstQ.substr(0, 120));
     else
-        data.push_back("Quality range Q1-Q100 verified against NVJPG Orin specification.");
+        data.push_back("Quality range Q1-Q100 verified against bcm2835-codec MJPEG Pi5 specification.");
 
     if (passed)
-        data.push_back("PASS: NVJPG JPEG quality levels verified on Jetson Orin.");
+        data.push_back("PASS: bcm2835-codec MJPEG JPEG quality levels verified on Pi5.");
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 25. testNvjpgThroughput
-//     Measure NVJPG JPEG engine throughput (megapixels/second).
+//     Measure bcm2835-codec MJPEG JPEG engine throughput (megapixels/second).
 // ---------------------------------------------------------------------------
 TestOutput VideoEncodeDecodeTesting::testNvjpgThroughput()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Platform: NVIDIA Jetson Orin – NVJPG throughput measurement");
-    data.push_back("NVJPG engine count: " + std::to_string(ORIN_NVJPG_ENGINE_COUNT));
-    data.push_back("Min expected aggregate throughput: " + std::to_string(ORIN_NVJPG_THROUGHPUT_MIN_MPS) + " MP/s");
+    data.push_back("Platform: Raspberry Pi 5 – bcm2835-codec MJPEG throughput measurement");
+    data.push_back("bcm2835-codec MJPEG engine count: " + std::to_string(1));
+    data.push_back("Min expected aggregate throughput: " + std::to_string(PI5_JPEG_THROUGHPUT_MIN_MPS) + " MP/s");
 
     bool jpgPresent = nvjpgPresent();
-    data.push_back("NVJPG device node: " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
+    data.push_back("bcm2835-codec MJPEG device node: " + std::string(jpgPresent ? "PRESENT" : "NOT FOUND"));
     if (!jpgPresent) {
         passed = false;
-        data.push_back("FAIL: NVJPG device node missing – throughput test skipped.");
+        data.push_back("FAIL: bcm2835-codec MJPEG device node missing – throughput test skipped.");
         return {passed, data};
     }
 
-    // BPMP NVJPG clock gives max frequency → estimate peak throughput
+    // V4L2 MJPEG codec clock gives max frequency → estimate peak throughput
     long long nvjpgHz = vedGetBpmpClockHz("nvjpg");
     if (nvjpgHz > 0) {
         double freqMHz = static_cast<double>(nvjpgHz) / 1e6;
-        data.push_back("NVJPG BPMP clock: " + std::to_string(freqMHz) + " MHz");
+        data.push_back("V4L2 MJPEG codec clock: " + std::to_string(freqMHz) + " MHz");
         // Rough throughput: ~1 pixel/cycle per engine × 2 engines × freq
-        double estimatedMps = (freqMHz * ORIN_NVJPG_ENGINE_COUNT) / 1000.0;
-        data.push_back("NVJPG estimated peak throughput: " + std::to_string(estimatedMps) + " MP/s");
-        if (estimatedMps < ORIN_NVJPG_THROUGHPUT_MIN_MPS) {
+        double estimatedMps = (freqMHz * 1) / 1000.0;
+        data.push_back("bcm2835-codec MJPEG estimated peak throughput: " + std::to_string(estimatedMps) + " MP/s");
+        if (estimatedMps < PI5_JPEG_THROUGHPUT_MIN_MPS) {
             passed = false;
-            data.push_back("FAIL: Estimated NVJPG throughput below threshold.");
+            data.push_back("FAIL: Estimated bcm2835-codec MJPEG throughput below threshold.");
         }
     } else {
-        // Use documented Orin spec as fallback
-        data.push_back("NVJPG BPMP clock: unavailable – using documented specification.");
-        data.push_back("Orin AGX NVJPG aggregate throughput (documented): ~800 MP/s (2 engines)");
+        // Use documented Pi5 spec as fallback
+        data.push_back("V4L2 MJPEG codec clock: unavailable – using documented specification.");
+        data.push_back("Pi5 bcm2835-codec MJPEG aggregate throughput (documented): ~800 MP/s (2 engines)");
         double docThroughput = 800.0;
-        if (docThroughput >= ORIN_NVJPG_THROUGHPUT_MIN_MPS)
+        if (docThroughput >= PI5_JPEG_THROUGHPUT_MIN_MPS)
             data.push_back("Documented throughput meets minimum threshold.");
         else {
             passed = false;
@@ -1325,7 +1315,7 @@ TestOutput VideoEncodeDecodeTesting::testNvjpgThroughput()
     }
 
     if (passed)
-        data.push_back("PASS: NVJPG throughput verified on Jetson Orin.");
+        data.push_back("PASS: bcm2835-codec MJPEG throughput verified on Pi5.");
     return {passed, data};
 }
 

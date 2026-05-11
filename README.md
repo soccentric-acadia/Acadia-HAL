@@ -1,62 +1,73 @@
-# ACU Test Framework for NVIDIA Platforms
+# Acaida-HAL – Hardware Abstraction Library for Raspberry Pi 5
 
 ## Overview
 
-The ACU Test Framework is a comprehensive testing suite designed specifically for NVIDIA Jetson platforms and other NVIDIA-based embedded systems. This framework provides a modular, extensible architecture for testing various hardware interfaces and system components commonly found in automotive and industrial applications.
+Acaida-HAL is a comprehensive hardware abstraction and testing suite targeting the **Raspberry Pi 5** (BCM2712 SoC + RP1 south-bridge). It provides a modular, extensible architecture for testing and exercising hardware interfaces and system components commonly found in automotive and industrial applications.
+
+> **Port history**: Originally developed for NVIDIA Jetson AGX Orin (Tegra234).
+> Ported to Raspberry Pi 5 (BCM2712 + RP1) — all platform-specific paths, constants,
+> and device nodes updated for the Pi 5 hardware.
+
+### Target Platform
+
+| Property | Value |
+|---|---|
+| SoC | BCM2712 (quad-core Cortex-A76 @ 2.4 GHz) |
+| South-bridge | RP1 (USB 3, PCIe Gen3 x1, GPIO, I2S, CSI/DSI) |
+| GPU | VideoCore VII (12 shader quad cores, 800 MHz max) |
+| Memory | 4 GB / 8 GB LPDDR4X-4267 |
+| AI Accelerator | Hailo-8 HAT+ (PCIe, ~26 INT8 TOPS) or Coral USB Edge TPU (~4 TOPS) |
+| OS | Raspberry Pi OS (64-bit) / Ubuntu 24.04 ARM64 |
 
 ### Key Features
 
-- **Modular Library Architecture**: Organized into separate libraries for different hardware interfaces (audio, camera, GPU, PCIe, USB, etc.)
-- **Cross-Platform Support**: Supports both native compilation and Docker-based cross-compilation for ARM64 architectures
-- **Comprehensive Testing**: Includes unit tests, integration tests, and deployment capabilities
-- **Documentation Generation**: Integrated Doxygen support for API documentation
-- **Code Quality Tools**: Built-in clang-format for code formatting and cppcheck for static analysis
-- **Deployment Tools**: Automated deployment to multiple NVIDIA devices via SSH/SCP
+- **Modular Library Architecture**: Separate libraries for CPU, GPU, DLA (Hailo-8/Coral), video codec (V4L2 M2M), camera (Unicam/RP1), audio (RP1 I2S), PCIe, USB (xhci-hcd), GPIO (gpiochip4), storage, Ethernet, and more.
+- **Pi5 Platform Header**: Centralised constants in `src/platform_rpi5.h` (device paths, thermal thresholds, memory bandwidth).
+- **Cross-compilation via Docker**: ARM64 Ubuntu 24.04 container (`rpi5-builder`).
+- **Comprehensive Testing**: Unit tests, integration tests, and deployment workflows.
+- **Documentation Generation**: Integrated Doxygen support.
+- **Code Quality Tools**: clang-format and cppcheck.
 
 ## Prerequisites
 
 ### System Requirements
 
-- **Operating System**: Linux (Ubuntu 18.04+ recommended)
-- **Compiler**: GCC 7+ or Clang 6+
+- **Operating System**: Linux (Ubuntu 20.04+ recommended for host)
+- **Compiler**: GCC 11+ or Clang 14+
 - **Build Tools**:
   - CMake 3.10+
   - Ninja build system
   - Make
   - Git
-- Docker installed and running
+- Docker installed and running (for cross-compilation)
 
 ## Build Process
 
 The project supports two primary build methods:
 
-1. **Native Compilation**: Build directly on the host system
-2. **Docker-based Cross-Compilation**: Build using Docker containers for ARM64 targets
+1. **Native Compilation**: Build directly on a Raspberry Pi 5 running 64-bit OS.
+2. **Docker-based Cross-Compilation**: Build for ARM64 on any Linux host using the `rpi5-builder` container.
 
-### Native Compilation
+### Native Compilation (on Pi 5)
 
-Native compilation builds the project for the host architecture (typically x86_64).
+#### Install Dependencies
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake ninja-build git \
+                    protobuf-compiler libprotobuf-dev libprotoc-dev \
+                    libgrpc++-dev libsqlite3-dev libboost-system-dev \
+                    libboost-date-time-dev doxygen clang-format cppcheck
+```
 
-#### Build Process
-
-1. **Install Dependencies**
-   ```bash
-   sudo apt update
-   sudo apt install -y build-essential cmake ninja-build git \
-                       protobuf-compiler libprotobuf-dev libprotoc-dev \
-                       libgrpc++-dev libsqlite3-dev libboost-system-dev \
-                       libboost-date-time-dev doxygen clang-format cppcheck
-   ```
-
-2. **Build and Run Tests**
-   ```bash
-   make build
-   make run
-   ```
+#### Build and Run Tests
+```bash
+make build
+make run
+```
 
 ### Docker-based Cross-Compilation
 
-Docker-based compilation uses NVIDIA's L4T (Linux for Tegra) base image to cross-compile for ARM64 architectures, specifically targeting NVIDIA Jetson platforms.
+The Docker image is based on `ubuntu:24.04` (ARM64) and is named `rpi5-builder`.
 
 #### Build Process
 
@@ -70,7 +81,7 @@ Docker-based compilation uses NVIDIA's L4T (Linux for Tegra) base image to cross
    make docker-image
    ```
 
-   This creates a Docker image named `jetson-builder` based on `nvcr.io/nvidia/l4t-base` with all necessary build dependencies pre-installed.
+   This creates a Docker image named `rpi5-builder` based on `ubuntu:24.04` with all necessary ARM64 build dependencies pre-installed.
 
 3. **Build**
    ```bash
@@ -83,17 +94,38 @@ Docker-based compilation uses NVIDIA's L4T (Linux for Tegra) base image to cross
    - Builds all targets
    - Outputs binaries in the `build/cross/` directory
 
-4. **Run at target**
+4. **Deploy and Run on Target Pi 5**
 
 ```bash
-   # For Orin Primary
+   # For Pi 5 Primary (192.168.1.3)
    make run-a
-   # For Orin Secondary
+   # For Pi 5 Secondary (192.168.1.13)
    make run-b
-   # IP address specified
+   # Specify custom IP address
    make run-b IP_B=192.168.200.2
 ```
 
+## Platform-Specific Notes
+
+### AI Inference (DLA)
+- **Hailo-8** (PCIe HAT+): detected at `/dev/hailo0`, kernel module `hailo_pci` (vendor `0x1e60`)
+- **Coral USB Edge TPU**: detected via USB vendor `18d1` at `/dev/apex_0`
+
+### GPU (VideoCore VII)
+- devfreq sysfs: `/sys/class/devfreq/fde00000.gpu/`
+- DRM: `/dev/dri/card0`, `/dev/dri/renderD128`
+- Module: `v3d`
+
+### Video Codec
+- H.264 encode/decode: `bcm2835-codec` at `/dev/video10` (encoder), `/dev/video11` (decoder)
+- H.265/HEVC decode: `rpivid` at `/dev/video18` or `/dev/video19`
+
+### Camera (CSI)
+- Unicam CSI-2 controller: `/sys/bus/platform/devices/1f00110000.csi`
+- V4L2 device: `/dev/video0`, media controller: `/dev/media0`
+
+### Debug UART
+- `/dev/ttyAMA0` (115200 8N1 by default on Pi 5)
 
 ## Make Targets
 
@@ -103,50 +135,9 @@ For the full list of supported commands, run:
 make help
 ```
 
-Current output:
-
-```text
-Available targets:
-  Native builds (host architecture):
-    configure    - Configure the project with CMake/Ninja
-    build        - Build the project (configures if needed)
-    test         - Run tests
-    run          - Run test app locally (usage: make run [name] [args...], no args = run all)
-
-  Common (host an docker):
-    clean        - Remove build directory
-    list         - List available test applications
-
-  Cross builds (Docker):
-    all                  - Alias for docker-build (default)
-    docker-install       - Install Docker if not present
-    docker-image         - Build Docker image if not exists
-    docker-configure     - Configure project with Docker/Ninja
-    docker-build         - Build project with Docker/Ninja
-    docker-clean         - Clean Docker build artifacts
-    docker-shell         - Start Docker shell for development
-
-  Deploy & Run (on target device):
-    deploy       - Deploy to all devices (deploy-a + deploy-b)
-    deploy-a     - Deploy lib and bin to 192.168.1.3
-    deploy-b     - Deploy lib and bin to 192.168.1.13
-    run-a        - Run test app on 192.168.1.3 (usage: make run-a [name] [args...], no args = run all)
-    run-b        - Run test app on 192.168.1.13 (usage: make run-b [name] [args...], no args = run all)
-
-  Code quality & Docs:
-    format       - Format code with clang-format
-    cppcheck     - Run static analysis with cppcheck
-    doc          - Generate Doxygen documentation
-
-  Misc:
-    setup-completion - Set up bash completion for make (adds to ~/.bashrc)
-```
-
-
 ## Contributing
 
 1. Follow the established code formatting (use `make format`)
 2. Run static analysis before submitting (`make cppcheck`)
 3. Add tests for new functionality
 4. Update documentation as needed
-

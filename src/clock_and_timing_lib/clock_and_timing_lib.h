@@ -3,8 +3,7 @@
  * @file clock_and_timing_lib.h
  * @brief Header file for ClockAndTimingTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef CLOCKANDTIMINGTESTING_H
 #define CLOCKANDTIMINGTESTING_H
 #include "lib_base.h"

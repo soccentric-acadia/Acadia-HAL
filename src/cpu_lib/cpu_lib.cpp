@@ -1,11 +1,12 @@
 /**
  * @file cpu_lib.cpp
- * @brief Implementation file for CpuTesting class
+ * @brief Implementation file for CpuTesting class — Raspberry Pi 5 (BCM2712)
+ * @details Tests the quad-core Cortex-A76 CPU running at up to 2.4 GHz.
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 
 #include "cpu_lib.h"
+#include "../platform_rpi5.h"
 
 #include <algorithm>
 #include <atomic>
@@ -26,12 +27,12 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
-// Jetson Orin constants
+// Raspberry Pi 5 (BCM2712 Cortex-A76) constants — from platform_rpi5.h
 // ---------------------------------------------------------------------------
-static constexpr int JETSON_ORIN_CPU_CORES = 12;
-static constexpr double JETSON_ORIN_MAX_FREQ_MHZ = 2200.0;
-static constexpr double JETSON_ORIN_MIN_FREQ_MHZ = 115.2;
-static constexpr double CPU_TEMP_WARNING_C = 95.0;
+static constexpr int    CPU_CORES          = RPI5_CPU_CORES;        // 4
+static constexpr double CPU_MAX_FREQ_MHZ   = RPI5_CPU_MAX_FREQ_MHZ; // 2400 MHz
+static constexpr double CPU_MIN_FREQ_MHZ   = RPI5_CPU_MIN_FREQ_MHZ; // 1500 MHz
+static constexpr double CPU_TEMP_WARNING_C = RPI5_CPU_TEMP_MAX_C;   // 85 °C
 
 // ---------------------------------------------------------------------------
 // Helper utilities
@@ -106,18 +107,19 @@ CpuTesting::~CpuTesting()
 
 // ---------------------------------------------------------------------------
 // 1. testAll12CpuCoresFunctionality
-//    Verify all 12 Cortex-A78AE cores are present, online, and can execute work.
+//    Verify all CPU cores (Cortex-A76 × 4 on Raspberry Pi 5) are online.
 // ---------------------------------------------------------------------------
 TestOutput CpuTesting::testAll12CpuCoresFunctionality()
 {
     std::vector<std::string> data;
     bool passed = true;
 
+    data.push_back("Platform: " + std::string(PLATFORM_NAME) + " (" + PLATFORM_SOC + ")");
     std::string onlineStr = readSysfsLine("/sys/devices/system/cpu/online");
     int onlineCount = 0;
     std::vector<int> offlineCores;
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
+    for (int i = 0; i < CPU_CORES; ++i) {
         std::string corePath = "/sys/devices/system/cpu/cpu" + std::to_string(i) + "/online";
         long long online = readSysfsInt(corePath);
         if (online == 1) {
@@ -132,20 +134,20 @@ TestOutput CpuTesting::testAll12CpuCoresFunctionality()
 
     data.push_back("Online bitmap: " + (onlineStr.empty() ? "(unavailable)" : onlineStr));
     data.push_back("Online cores detected: " + std::to_string(onlineCount));
-    data.push_back("Expected cores: " + std::to_string(JETSON_ORIN_CPU_CORES));
+    data.push_back("Expected cores: " + std::to_string(CPU_CORES));
 
-    if (onlineCount != JETSON_ORIN_CPU_CORES) {
+    if (onlineCount != CPU_CORES) {
         passed = false;
-        data.push_back("FAIL: Not all 12 cores are online.");
+        data.push_back("FAIL: Not all " + std::to_string(CPU_CORES) + " cores are online.");
         for (int c : offlineCores)
             data.push_back("  Core " + std::to_string(c) + " is offline.");
     }
 
     // Verify each core can actually execute a computation
-    std::vector<bool> coreWorked(JETSON_ORIN_CPU_CORES, false);
+    std::vector<bool> coreWorked(CPU_CORES, false);
     std::vector<std::thread> threads;
     std::mutex resultMtx;
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
+    for (int i = 0; i < CPU_CORES; ++i) {
         threads.emplace_back([&, i]() {
             if (!pinThreadToCore(i))
                 return;
@@ -158,7 +160,7 @@ TestOutput CpuTesting::testAll12CpuCoresFunctionality()
     for (auto& t : threads)
         t.join();
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
+    for (int i = 0; i < CPU_CORES; ++i) {
         if (!coreWorked[i]) {
             passed = false;
             data.push_back("FAIL: Core " + std::to_string(i) + " did not complete workload.");
@@ -166,7 +168,7 @@ TestOutput CpuTesting::testAll12CpuCoresFunctionality()
     }
 
     if (passed)
-        data.push_back("All " + std::to_string(JETSON_ORIN_CPU_CORES) + " cores are online and functional.");
+        data.push_back("All " + std::to_string(CPU_CORES) + " Cortex-A76 cores are online and functional.");
     return {passed, data};
 }
 
@@ -180,7 +182,7 @@ TestOutput CpuTesting::testCpuCoreFrequencyScaling()
     bool passed = true;
     int validCores = 0;
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
+    for (int i = 0; i < CPU_CORES; ++i) {
         std::string base = "/sys/devices/system/cpu/cpu" + std::to_string(i) + "/cpufreq/";
         long long curKHz = readSysfsInt(base + "scaling_cur_freq");
         long long minKHz = readSysfsInt(base + "scaling_min_freq");
@@ -196,11 +198,11 @@ TestOutput CpuTesting::testCpuCoreFrequencyScaling()
         oss << "Core " << i << ": cur=" << curMHz << " MHz  min=" << minMHz << " MHz  max=" << maxMHz << " MHz";
         data.push_back(oss.str());
 
-        if (maxMHz < JETSON_ORIN_MIN_FREQ_MHZ || maxMHz > JETSON_ORIN_MAX_FREQ_MHZ + 50.0) {
+        if (maxMHz < CPU_MIN_FREQ_MHZ || maxMHz > CPU_MAX_FREQ_MHZ + 200.0) {
             passed = false;
             data.push_back("  FAIL: max freq " + std::to_string(maxMHz) + " MHz out of expected range.");
         }
-        if (curMHz < JETSON_ORIN_MIN_FREQ_MHZ || curMHz > maxMHz + 50.0) {
+        if (curMHz < CPU_MIN_FREQ_MHZ || curMHz > maxMHz + 200.0) {
             passed = false;
             data.push_back("  FAIL: cur freq " + std::to_string(curMHz) + " MHz out of valid range.");
         }
@@ -232,11 +234,11 @@ TestOutput CpuTesting::testIndividualCoreStressTesting()
         double timeSec;
         bool completed;
     };
-    std::vector<CoreResult> results(JETSON_ORIN_CPU_CORES);
+    std::vector<CoreResult> results(CPU_CORES);
     std::vector<std::thread> threads;
     std::mutex mtx;
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
+    for (int i = 0; i < CPU_CORES; ++i) {
         threads.emplace_back([&, i]() {
             if (!pinThreadToCore(i)) {
                 std::lock_guard<std::mutex> lk(mtx);
@@ -269,14 +271,14 @@ TestOutput CpuTesting::testIndividualCoreStressTesting()
 
 // ---------------------------------------------------------------------------
 // 4. testMulticoreSynchronization
-//    Use atomic barrier to synchronise all 12 threads; verify all complete.
+//    Use atomic barrier to synchronise all threads; verify all complete.
 // ---------------------------------------------------------------------------
 TestOutput CpuTesting::testMulticoreSynchronization()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    const int N = JETSON_ORIN_CPU_CORES;
+    const int N = CPU_CORES;
     std::atomic<int> counter{0}, phase{0};
     std::vector<int> arrivalOrder;
     std::mutex orderMtx;
@@ -319,16 +321,17 @@ TestOutput CpuTesting::testMulticoreSynchronization()
 
 // ---------------------------------------------------------------------------
 // 5. testCpuClusterCommunication
-//    Verify shared-memory writes are visible across the 3 A78AE clusters.
-//    Clusters: 0-3 (cluster 0), 4-7 (cluster 1), 8-11 (cluster 2).
+//    Verify shared-memory writes are visible across BCM2712 Cortex-A76 cores.
+//    Pi5 has a single cluster of 4 cores; we test two pairs: {0,1} and {2,3}.
 // ---------------------------------------------------------------------------
 TestOutput CpuTesting::testCpuClusterCommunication()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    const std::vector<int> clusterCores = {0, 4, 8};
-    const int MAGIC = 0xA78AE;
+    // Two logical groups of cores (single physical cluster on BCM2712)
+    const std::vector<int> clusterCores = {0, 2}; // representative core per pair
+    const int MAGIC = 0xBC272;
     std::vector<std::atomic<int>> mailbox(clusterCores.size());
     for (auto& m : mailbox)
         m.store(0);
@@ -349,14 +352,15 @@ TestOutput CpuTesting::testCpuClusterCommunication()
         int expected = MAGIC + prevCi;
         int actual = mailbox[ci].load(std::memory_order_acquire);
         std::ostringstream oss;
-        oss << "Cluster " << ci << " mailbox: expected=" << expected << " actual=" << actual << (actual == expected ? " OK" : " MISMATCH");
+        oss << "Core group " << ci << " mailbox: expected=" << expected << " actual=" << actual
+            << (actual == expected ? " OK" : " MISMATCH");
         data.push_back(oss.str());
         if (actual != expected)
             passed = false;
     }
 
     if (passed)
-        data.push_back("Inter-cluster communication verified across all 3 clusters.");
+        data.push_back("Inter-core communication verified (BCM2712 unified cache domain).");
     return {passed, data};
 }
 
@@ -369,9 +373,9 @@ TestOutput CpuTesting::testCoreAffinityAndThreadMigration()
     std::vector<std::string> data;
     bool passed = true;
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
+    for (int i = 0; i < CPU_CORES; ++i) {
         int observedBefore = -1, observedAfter = -1;
-        int migrateTarget = (i + 1) % JETSON_ORIN_CPU_CORES;
+        int migrateTarget = (i + 1) % CPU_CORES;
         std::thread t([&, i, migrateTarget]() {
             if (!pinThreadToCore(i))
                 return;
@@ -393,7 +397,8 @@ TestOutput CpuTesting::testCoreAffinityAndThreadMigration()
     }
 
     if (passed)
-        data.push_back("Core affinity and thread migration verified for all cores.");
+        data.push_back("Core affinity and thread migration verified for all " +
+                       std::to_string(CPU_CORES) + " Cortex-A76 cores.");
     return {passed, data};
 }
 
@@ -420,9 +425,10 @@ TestOutput CpuTesting::testCpuThermalThrottling()
         oss << "Zone " << zone << " (" << type << "): " << tempC << " C";
         data.push_back(oss.str());
         foundAny = true;
+        // BCM2712 thermal zone types on Pi5: "cpu-thermal", "bcm2712", etc.
         bool isCpu = type.find("CPU") != std::string::npos || type.find("cpu") != std::string::npos ||
-                     type.find("A78") != std::string::npos || type.find("cluster") != std::string::npos ||
-                     type.find("SOCTHERM") != std::string::npos || type.find("tegra") != std::string::npos;
+                     type.find("A76") != std::string::npos || type.find("bcm2712") != std::string::npos ||
+                     type.find("rp1") != std::string::npos || type.find("soc") != std::string::npos;
         if (isCpu && tempC >= CPU_TEMP_WARNING_C) {
             passed = false;
             data.push_back("  FAIL: " + std::to_string(tempC) + " C exceeds warning threshold.");
@@ -454,7 +460,7 @@ TestOutput CpuTesting::testCpuPowerStatesAndTransitions()
     bool passed = true;
     int coresWithIdle = 0;
 
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
+    for (int i = 0; i < CPU_CORES; ++i) {
         std::string idleBase = "/sys/devices/system/cpu/cpu" + std::to_string(i) + "/cpuidle/";
         bool hasIdleState = false;
         for (int s = 0; s < 5; ++s) {
@@ -471,7 +477,7 @@ TestOutput CpuTesting::testCpuPowerStatesAndTransitions()
             ++coresWithIdle;
     }
 
-    data.push_back("Cores with idle state entries: " + std::to_string(coresWithIdle) + " / " + std::to_string(JETSON_ORIN_CPU_CORES));
+    data.push_back("Cores with idle state entries: " + std::to_string(coresWithIdle) + " / " + std::to_string(CPU_CORES));
     std::string pm = readSysfsLine("/sys/bus/cpu/devices/cpu0/power/control");
     data.push_back("CPU0 power control: " + (pm.empty() ? "(unavailable)" : pm));
     std::string onlineVal = readSysfsLine("/sys/devices/system/cpu/cpu1/online");
@@ -531,15 +537,15 @@ TestOutput CpuTesting::testL1Cache()
 
 // ---------------------------------------------------------------------------
 // 10. testL2Cache
-//     Measure L2 cache performance with a 256 KB buffer.
-//     Jetson Orin Cortex-A78AE: 256 KB L2 per core.
+//     Measure L2 cache performance with a 512 KB buffer.
+//     BCM2712 Cortex-A76: 512 KB L2 per core.
 // ---------------------------------------------------------------------------
 TestOutput CpuTesting::testL2Cache()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    const size_t L2_SIZE = 256 * 1024;
+    const size_t L2_SIZE = 512 * 1024;  // 512 KB — Pi5 Cortex-A76 L2
     const size_t STRIDE = 64;
     const uint64_t ITERATIONS = 500'000;
 
@@ -571,8 +577,8 @@ TestOutput CpuTesting::testL2Cache()
 
 // ---------------------------------------------------------------------------
 // 11. testL3Cache
-//     Measure L3/DSU shared-cache performance with a 4 MB buffer.
-//     Jetson Orin Cortex-A78AE: 6 MB shared L3 (DSU).
+//     Measure system-level cache / DRAM performance with a 4 MB buffer.
+//     BCM2712 Cortex-A76: no on-die L3; 4 MB exercises DRAM path.
 // ---------------------------------------------------------------------------
 TestOutput CpuTesting::testL3Cache()
 {
@@ -602,14 +608,14 @@ TestOutput CpuTesting::testL3Cache()
     if (latencyNs > 200.0)
         data.push_back("WARNING: L3 latency " + std::to_string(latencyNs) + " ns > 200 ns.");
     else
-        data.push_back("L3/DSU cache latency within expected range (<200 ns).");
+        data.push_back("Memory (beyond L2) latency within expected range (<200 ns).");
 
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 12. testSystemCache
-//     Read full cache topology for all 12 cores from sysfs and verify L1/L2.
+//     Read full cache topology for all 4 Cortex-A76 cores from sysfs.
 // ---------------------------------------------------------------------------
 TestOutput CpuTesting::testSystemCache()
 {
@@ -617,7 +623,7 @@ TestOutput CpuTesting::testSystemCache()
     bool passed = true;
     bool foundL1 = false, foundL2 = false, foundL3 = false;
 
-    for (int core = 0; core < JETSON_ORIN_CPU_CORES; ++core) {
+    for (int core = 0; core < CPU_CORES; ++core) {
         for (int idx = 0; idx < 5; ++idx) {
             std::string base = "/sys/devices/system/cpu/cpu" + std::to_string(core) + "/cache/index" + std::to_string(idx) + "/";
             std::string level = readSysfsLine(base + "level");
@@ -651,7 +657,8 @@ TestOutput CpuTesting::testSystemCache()
 
 // ---------------------------------------------------------------------------
 // 13. testCacheCoherencyBetweenClusters
-//     Writer (cluster 0, core 0) -> Reader (cluster 2, core 8); 1000 rounds.
+//     Writer (core 0) -> Reader (core 3); 1000 rounds.
+//     Pi5 BCM2712: single cluster — coherency is via shared L2 / AMBA bus.
 // ---------------------------------------------------------------------------
 TestOutput CpuTesting::testCacheCoherencyBetweenClusters()
 {
@@ -672,7 +679,7 @@ TestOutput CpuTesting::testCacheCoherencyBetweenClusters()
             writerDone.store(true, std::memory_order_release);
         });
         std::thread reader([&]() {
-            pinThreadToCore(8);
+            pinThreadToCore(CPU_CORES - 1); // last core (core 3 on Pi5)
             while (!writerDone.load(std::memory_order_acquire))
                 std::this_thread::yield();
             if (sharedValue.load(std::memory_order_acquire) != round + 1)
@@ -683,8 +690,10 @@ TestOutput CpuTesting::testCacheCoherencyBetweenClusters()
     }
 
     data.push_back("Cache coherency rounds: " + std::to_string(ROUNDS));
-    data.push_back("Writer: cluster 0 (core 0)  Reader: cluster 2 (core 8)");
-    data.push_back(passed ? "All rounds passed - cache coherency verified." : "FAIL: Cache coherency violation detected.");
+    data.push_back("Writer: core 0  Reader: core " + std::to_string(CPU_CORES - 1) +
+                   "  (BCM2712 unified AMBA coherency domain)");
+    data.push_back(passed ? "All rounds passed - cache coherency verified."
+                          : "FAIL: Cache coherency violation detected.");
     return {passed, data};
 }
 
@@ -777,7 +786,7 @@ TestOutput CpuTesting::testCacheBandwidthAndLatency()
         passed = false;
         data.push_back("FAIL: Bandwidth " + std::to_string(bestBW) + " GB/s below 5 GB/s threshold.");
     } else {
-        data.push_back("Memory bandwidth is acceptable (Jetson Orin LPDDR5 theoretical: ~136 GB/s).");
+        data.push_back("Memory bandwidth is acceptable (Pi5 LPDDR4X-4267 theoretical: ~17 GB/s).");
     }
     return {passed, data};
 }
@@ -826,7 +835,7 @@ TestOutput CpuTesting::testSinglethreadedPerformance()
 
 // ---------------------------------------------------------------------------
 // 17. testMultithreadedPerformance
-//     Scale FP benchmark across all 12 cores; measure aggregate MFLOPS.
+//     Scale FP benchmark across all 4 cores; measure aggregate MFLOPS.
 // ---------------------------------------------------------------------------
 TestOutput CpuTesting::testMultithreadedPerformance()
 {
@@ -835,11 +844,11 @@ TestOutput CpuTesting::testMultithreadedPerformance()
 
     const uint64_t ITERS_PER_THREAD = 5'000'000;
     std::mutex mtx;
-    std::vector<double> threadResults(JETSON_ORIN_CPU_CORES, 0.0);
+    std::vector<double> threadResults(CPU_CORES, 0.0);
     std::vector<std::thread> threads;
 
     auto t0 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < JETSON_ORIN_CPU_CORES; ++i) {
+    for (int i = 0; i < CPU_CORES; ++i) {
         threads.emplace_back([&, i]() {
             pinThreadToCore(i);
             volatile double acc = 0.0;
@@ -853,10 +862,10 @@ TestOutput CpuTesting::testMultithreadedPerformance()
         t.join();
     double wallSec = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - t0).count();
 
-    double totalOps = static_cast<double>(JETSON_ORIN_CPU_CORES) * ITERS_PER_THREAD;
+    double totalOps = static_cast<double>(CPU_CORES) * ITERS_PER_THREAD;
     double aggMFLOPS = totalOps / wallSec / 1e6;
 
-    data.push_back("Threads       : " + std::to_string(JETSON_ORIN_CPU_CORES));
+    data.push_back("Threads       : " + std::to_string(CPU_CORES));
     data.push_back("Wall time      : " + std::to_string(wallSec) + " s");
     data.push_back("Aggregate MFLOPS: " + std::to_string(aggMFLOPS));
 

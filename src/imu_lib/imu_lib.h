@@ -3,8 +3,7 @@
  * @file imu_lib.h
  * @brief Header file for ImuTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef IMUTESTING_H
 #define IMUTESTING_H
 #include "lib_base.h"

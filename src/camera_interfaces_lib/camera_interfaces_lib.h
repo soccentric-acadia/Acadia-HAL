@@ -3,8 +3,7 @@
  * @file camera_interfaces_lib.h
  * @brief Header file for CameraInterfacesTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef CAMERAINTERFACESTESTING_H
 #define CAMERAINTERFACESTESTING_H
 #include "lib_base.h"

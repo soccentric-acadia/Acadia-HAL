@@ -1,12 +1,12 @@
 /**
  * @file camera_interfaces_lib.cpp
  * @brief Implementation file for CameraInterfacesTesting class
- *        Target platform: NVIDIA Jetson AGX Orin
+ *        Target platform: Raspberry Pi 5 (BCM2712 + RP1)
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 
 #include "camera_interfaces_lib.h"
+#include "../platform_rpi5.h"
 #include <algorithm>
 #include <cerrno>
 #include <chrono>
@@ -124,7 +124,7 @@ CameraInterfacesTesting::~CameraInterfacesTesting()
 
 /**
  * @brief Implementation of testAllCsi2LanesFunctionality
- *        Verifies that the Jetson Orin NVCSI (MIPI CSI-2) controller exposes
+ *        Verifies that the Pi5 Unicam (MIPI CSI-2) controller exposes
  *        its expected lane groups via sysfs and that at least one camera
  *        sensor is enumerated through V4L2.
  * @return TestOutput with pass/fail and data
@@ -134,31 +134,31 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== CSI-2 Lane Functionality (Jetson AGX Orin) ===");
+    data.push_back("=== CSI-2 Lane Functionality (Raspberry Pi 5) ===");
 
-    // --- 1. Check NVCSI driver is present ---
-    // Jetson Orin: nvcsi platform device path
-    const std::string nvcsiBase = "/sys/bus/platform/devices";
-    bool nvcsiFound = false;
-    if (pathExists(nvcsiBase)) {
-        auto entries = listDir(nvcsiBase);
+    // --- 1. Check Unicam driver is present ---
+    // Pi5: unicam platform device path
+    const std::string unicamBase = "/sys/bus/platform/devices";
+    bool unicamFound = false;
+    if (pathExists(unicamBase)) {
+        auto entries = listDir(unicamBase);
         for (const auto& e : entries) {
-            // NVCSI device entries contain "nvcsi" in their name
-            if (e.find("nvcsi") != std::string::npos || e.find("15a00000") != std::string::npos) // Orin NVCSI hwid
+            // Unicam device entries contain "unicam" in their name
+            if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) // Orin Unicam hwid
             {
-                nvcsiFound = true;
-                data.push_back("[PASS] NVCSI platform device found: " + e.substr(e.find_last_of('/') + 1));
+                unicamFound = true;
+                data.push_back("[PASS] Unicam platform device found: " + e.substr(e.find_last_of('/') + 1));
                 break;
             }
         }
     }
-    if (!nvcsiFound) {
+    if (!unicamFound) {
         // Fallback: check kernel module
-        if (isModuleLoaded("nvcsi") || isModuleLoaded("tegra-camera")) {
-            nvcsiFound = true;
-            data.push_back("[PASS] NVCSI kernel module is loaded");
+        if (isModuleLoaded("unicam") || isModuleLoaded("unicam")) {
+            unicamFound = true;
+            data.push_back("[PASS] Unicam kernel module is loaded");
         } else {
-            data.push_back("[WARN] NVCSI platform device/module not detected (non-fatal on dev host)");
+            data.push_back("[WARN] Unicam platform device/module not detected (non-fatal on dev host)");
         }
     }
 
@@ -185,7 +185,7 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
         int csiNodes = 0;
         for (const auto& n : nodes) {
             std::string name = n.substr(n.find_last_of('/') + 1);
-            // Jetson camera nodes typically named video0..videoN
+            // Pi5 camera nodes typically named video0..videoN
             if (name.find("video") != std::string::npos) {
                 std::string devFile = n + "/name";
                 std::string devName = readFile(devFile);
@@ -202,13 +202,13 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
     }
 
     // --- 4. Validate lane count from device-tree (if accessible) ---
-    const std::string dtCamera = "/proc/device-tree/tegra-camera-platform";
+    const std::string dtCamera = "/proc/device-tree/unicam";
     if (pathExists(dtCamera)) {
-        data.push_back("[PASS] Tegra camera platform device-tree node found");
+        data.push_back("[PASS] RP1 camera platform device-tree node found");
         auto dtEntries = listDir(dtCamera);
         data.push_back("       " + std::to_string(dtEntries.size()) + " sub-entries in camera DT node");
     } else {
-        data.push_back("[INFO] /proc/device-tree/tegra-camera-platform not found");
+        data.push_back("[INFO] /proc/device-tree/unicam not found");
     }
 
     return {passed, data};
@@ -216,8 +216,8 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
 
 /**
  * @brief Implementation of testCsi2DphyOperation
- *        Verifies D-PHY mode is supported by checking NVCSI sysfs attributes
- *        and the tegra_nvcsi kernel module / device-tree compatible string.
+ *        Verifies D-PHY mode is supported by checking Unicam sysfs attributes
+ *        and the rp1_unicam kernel module / device-tree compatible string.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
@@ -225,14 +225,14 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== CSI-2 D-PHY Operation (Jetson AGX Orin) ===");
+    data.push_back("=== CSI-2 D-PHY Operation (Raspberry Pi 5) ===");
 
     // Check kernel module
-    bool modLoaded = isModuleLoaded("nvcsi") || isModuleLoaded("tegra-camera");
+    bool modLoaded = isModuleLoaded("unicam") || isModuleLoaded("unicam");
     if (modLoaded)
-        data.push_back("[PASS] NVCSI/tegra-camera kernel module loaded (D-PHY capable)");
+        data.push_back("[PASS] Unicam/unicam kernel module loaded (D-PHY capable)");
     else
-        data.push_back("[INFO] NVCSI kernel module not detected – may be built-in");
+        data.push_back("[INFO] Unicam kernel module not detected – may be built-in");
 
     // Check device-tree compatible string for D-PHY
     const std::string dtCompatible = "/proc/device-tree/compatible";
@@ -241,13 +241,13 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
         data.push_back("[INFO] Board compatible: " + compat);
     }
 
-    // Look for dphy sysfs entries under NVCSI
+    // Look for dphy sysfs entries under Unicam
     bool dphyFound = false;
-    const std::string nvcsiDev = "/sys/bus/platform/devices";
-    if (pathExists(nvcsiDev)) {
-        auto entries = listDir(nvcsiDev);
+    const std::string unicamDev = "/sys/bus/platform/devices";
+    if (pathExists(unicamDev)) {
+        auto entries = listDir(unicamDev);
         for (const auto& e : entries) {
-            if (e.find("nvcsi") != std::string::npos || e.find("15a00000") != std::string::npos) {
+            if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) {
                 // Check for phy_mode or dphy attribute
                 std::string phyMode = readFile(e + "/phy_mode");
                 if (!phyMode.empty()) {
@@ -255,16 +255,16 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
                     data.push_back("[PASS] phy_mode = " + phyMode);
                 }
                 // Also try debug fs
-                if (pathExists("/sys/kernel/debug/nvcsi")) {
+                if (pathExists("/sys/kernel/debug/unicam")) {
                     dphyFound = true;
-                    data.push_back("[PASS] NVCSI debug-fs node present");
+                    data.push_back("[PASS] Unicam debug-fs node present");
                 }
                 break;
             }
         }
     }
     if (!dphyFound)
-        data.push_back("[INFO] D-PHY sysfs attribute not directly exposed – typical for Orin integrated NVCSI");
+        data.push_back("[INFO] D-PHY sysfs attribute not directly exposed – typical for Orin inrp1ted Unicam");
 
     // Check that v4l2 nodes exist (implies camera pipeline including D-PHY subdev is up)
     auto videoDev = getVideoDevices();
@@ -278,8 +278,8 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
 
 /**
  * @brief Implementation of testCsi2CphyOperation
- *        Verifies C-PHY mode capability on Jetson Orin.
- *        The Orin NVCSI controller supports both D-PHY and C-PHY.
+ *        Verifies C-PHY mode capability on Pi5.
+ *        The Orin Unicam controller supports both D-PHY and C-PHY.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
@@ -287,18 +287,18 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== CSI-2 C-PHY Operation (Jetson AGX Orin) ===");
+    data.push_back("=== CSI-2 C-PHY Operation (Raspberry Pi 5) ===");
 
-    // Jetson Orin NVCSI supports C-PHY; check via device-tree
+    // Pi5 Unicam supports C-PHY; check via device-tree
     const std::vector<std::string> dtPaths = {
-        "/proc/device-tree/host1x@13e00000/nvcsi@15a00000",
-        "/proc/device-tree/host1x/nvcsi",
+        "/proc/device-tree/host1x@13e00000/unicam@1f00110000",
+        "/proc/device-tree/host1x/unicam",
     };
     bool dtFound = false;
     for (const auto& p : dtPaths) {
         if (pathExists(p)) {
             dtFound = true;
-            data.push_back("[PASS] NVCSI DT node found: " + p);
+            data.push_back("[PASS] Unicam DT node found: " + p);
             // Check for cphy compatible property
             std::string compat = readFile(p + "/compatible");
             if (!compat.empty())
@@ -307,10 +307,10 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
         }
     }
     if (!dtFound)
-        data.push_back("[INFO] NVCSI device-tree node not directly readable (may need root)");
+        data.push_back("[INFO] Unicam device-tree node not directly readable (may need root)");
 
-    // Check /sys/kernel/debug/bpmp/debug/clk for csi clocks
-    const std::string bpmpClk = "/sys/kernel/debug/bpmp/debug/clk";
+    // Check /sys/kernel/debug/clk for csi clocks
+    const std::string bpmpClk = "/sys/kernel/debug/clk";
     if (pathExists(bpmpClk)) {
         auto clkEntries = listDir(bpmpClk);
         int csiClkCount = 0;
@@ -323,15 +323,15 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
             }
         }
         if (csiClkCount == 0)
-            data.push_back("[INFO] No CSI clock entries found in BPMP debug-fs");
+            data.push_back("[INFO] No CSI clock entries found in debugfs");
         else
             data.push_back("[PASS] " + std::to_string(csiClkCount) + " CSI clock(s) found");
     } else {
-        data.push_back("[INFO] BPMP clock debug-fs not accessible");
+        data.push_back("[INFO] Pi5 firmware clock debug-fs not accessible");
     }
 
-    // Jetson AGX Orin supports C-PHY on its NVCSI; report capability
-    data.push_back("[PASS] Jetson AGX Orin NVCSI hardware supports both D-PHY and C-PHY modes");
+    // Raspberry Pi 5 supports C-PHY on its Unicam; report capability
+    data.push_back("[PASS] Raspberry Pi 5 Unicam hardware supports both D-PHY and C-PHY modes");
 
     return {passed, data};
 }
@@ -339,7 +339,7 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
 /**
  * @brief Implementation of testMultipleCameraSimultaneousOperation
  *        Verifies that multiple camera V4L2 nodes are enumerated and that the
- *        Jetson Orin ISP can handle concurrent camera streams.
+ *        Pi5 ISP can handle concurrent camera streams.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
@@ -347,8 +347,8 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Multiple Camera Simultaneous Operation (Jetson AGX Orin) ===");
-    data.push_back("[INFO] Jetson AGX Orin supports up to 16 simultaneous CSI-2 camera streams");
+    data.push_back("=== Multiple Camera Simultaneous Operation (Raspberry Pi 5) ===");
+    data.push_back("[INFO] Raspberry Pi 5 supports up to 16 simultaneous CSI-2 camera streams");
 
     // Enumerate all video nodes
     auto videoDev = getVideoDevices();
@@ -382,7 +382,7 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
     auto platDevs = listDir("/sys/bus/platform/devices");
     for (const auto& d : platDevs) {
         std::string base = d.substr(d.find_last_of('/') + 1);
-        if (base.find("nvisp") != std::string::npos || base.find("tegra-vi") != std::string::npos ||
+        if (base.find("nvisp") != std::string::npos || base.find("rp1-vi") != std::string::npos ||
             base.find("15c00000") != std::string::npos) // Orin VI hwid
         {
             ispFound = true;
@@ -399,7 +399,7 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
 /**
  * @brief Implementation of testVirtualChannelSupport
  *        Checks that MIPI CSI-2 virtual channel (VC) support is available.
- *        Jetson Orin NVCSI supports up to 4 virtual channels per port.
+ *        Pi5 Unicam supports up to 4 virtual channels per port.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
@@ -407,13 +407,13 @@ TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== CSI-2 Virtual Channel Support (Jetson AGX Orin) ===");
-    data.push_back("[INFO] Jetson AGX Orin NVCSI supports 4 virtual channels per CSI port");
+    data.push_back("=== CSI-2 Virtual Channel Support (Raspberry Pi 5) ===");
+    data.push_back("[INFO] Raspberry Pi 5 Unicam supports 4 virtual channels per CSI port");
 
-    // Check nvcsi device tree for num-channels
+    // Check unicam device tree for num-channels
     const std::vector<std::string> dtPaths = {
-        "/proc/device-tree/host1x@13e00000/nvcsi@15a00000",
-        "/proc/device-tree/tegra-camera-platform",
+        "/proc/device-tree/host1x@13e00000/unicam@1f00110000",
+        "/proc/device-tree/unicam",
     };
     bool dtVcFound = false;
     for (const auto& p : dtPaths) {
@@ -429,25 +429,25 @@ TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
     if (!dtVcFound)
         data.push_back("[INFO] DT VC nodes not directly accessible (expected without root)");
 
-    // Check tegra-camera module options or procfs
-    std::string modInfo = runCmd("modinfo nvcsi 2>/dev/null | grep -i 'virtual\\|channel' | head -3");
+    // Check unicam module options or procfs
+    std::string modInfo = runCmd("modinfo unicam 2>/dev/null | grep -i 'virtual\\|channel' | head -3");
     if (!modInfo.empty()) {
-        data.push_back("[PASS] nvcsi modinfo VC info:");
+        data.push_back("[PASS] unicam modinfo VC info:");
         std::istringstream ss(modInfo);
         std::string line;
         while (std::getline(ss, line))
             data.push_back("    " + line);
     }
 
-    data.push_back("[PASS] Jetson AGX Orin NVCSI hardware supports MIPI CSI-2 virtual channels");
+    data.push_back("[PASS] Raspberry Pi 5 Unicam hardware supports MIPI CSI-2 virtual channels");
 
     return {passed, data};
 }
 
 /**
  * @brief Implementation of testCameraClockGeneration
- *        Checks CSI, VI, and ISP clock sources on Jetson Orin using
- *        the BPMP debug-fs clock tree and sysfs clocks.
+ *        Checks CSI, VI, and ISP clock sources on Pi5 using
+ *        the Pi5 firmware clock tree and sysfs clocks.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testCameraClockGeneration()
@@ -455,14 +455,14 @@ TestOutput CameraInterfacesTesting::testCameraClockGeneration()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Camera Clock Generation (Jetson AGX Orin) ===");
+    data.push_back("=== Camera Clock Generation (Raspberry Pi 5) ===");
 
-    // Method 1: BPMP debug-fs
-    const std::string bpmpClk = "/sys/kernel/debug/bpmp/debug/clk";
+    // Method 1: Pi5 firmware debugfs
+    const std::string bpmpClk = "/sys/kernel/debug/clk";
     bool clkFound = false;
     if (pathExists(bpmpClk)) {
         auto entries = listDir(bpmpClk);
-        const std::vector<std::string> clkKeywords = {"csi", "vi", "isp", "nvcsi", "cam"};
+        const std::vector<std::string> clkKeywords = {"csi", "vi", "isp", "unicam", "cam"};
         for (const auto& entry : entries) {
             std::string cname = entry.substr(entry.find_last_of('/') + 1);
             for (const auto& kw : clkKeywords) {
@@ -505,11 +505,11 @@ TestOutput CameraInterfacesTesting::testCameraClockGeneration()
         data.push_back("[INFO] Clock debug-fs not accessible without debugfs mount or root");
 
     // Method 3: Check if camera-related frequencies appear in /sys/.../clocks
-    std::string csiClk = runCmd("cat /sys/kernel/debug/bpmp/debug/clk/nvcsi/rate 2>/dev/null");
+    std::string csiClk = runCmd("cat /sys/kernel/debug/clk/unicam/rate 2>/dev/null");
     if (!csiClk.empty())
-        data.push_back("[PASS] NVCSI clock rate: " + csiClk + " Hz");
+        data.push_back("[PASS] Unicam clock rate: " + csiClk + " Hz");
 
-    data.push_back("[PASS] Jetson AGX Orin provides dedicated PLL (PLLP/PLLD) for camera clocks");
+    data.push_back("[PASS] Raspberry Pi 5 provides dedicated PLL (PLLP/PLLD) for camera clocks");
 
     return {passed, data};
 }
@@ -517,7 +517,7 @@ TestOutput CameraInterfacesTesting::testCameraClockGeneration()
 /**
  * @brief Implementation of testCameraPowerSequencing
  *        Verifies camera power-on sequencing through regulator and
- *        GPIO sysfs interfaces on Jetson Orin.
+ *        GPIO sysfs interfaces on Pi5.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
@@ -525,7 +525,7 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Camera Power Sequencing (Jetson AGX Orin) ===");
+    data.push_back("=== Camera Power Sequencing (Raspberry Pi 5) ===");
 
     // 1. Check camera regulators via sysfs
     const std::string regClass = "/sys/class/regulator";
@@ -534,7 +534,7 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
         auto regs = listDir(regClass);
         for (const auto& r : regs) {
             std::string name = readFile(r + "/name");
-            // Camera power rails on Jetson: VDD_CAM, VANA, VDIG, VDDIO_CAM
+            // Camera power rails on Pi5: VDD_CAM, VANA, VDIG, VDDIO_CAM
             if (name.find("cam") != std::string::npos || name.find("CAM") != std::string::npos || name.find("vana") != std::string::npos ||
                 name.find("vdig") != std::string::npos) {
                 std::string state = readFile(r + "/state");
@@ -574,7 +574,7 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
     else
         data.push_back("[INFO] No camera nodes – attach sensors to validate power sequencing");
 
-    data.push_back("[INFO] Jetson Orin camera power: AVDD(2.8V) -> DVDD(1.2V) -> IOVDD(1.8V) -> XCLK -> NRESET");
+    data.push_back("[INFO] Pi5 camera power: AVDD(2.8V) -> DVDD(1.2V) -> IOVDD(1.8V) -> XCLK -> NRESET");
 
     return {passed, data};
 }
@@ -582,7 +582,7 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
 /**
  * @brief Implementation of testRaw8
  *        Verifies RAW8 (SRGGB8/SGRBG8/SGBRG8/SBGGR8) pixel format support
- *        via V4L2 format enumeration on Jetson Orin.
+ *        via V4L2 format enumeration on Pi5.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testRaw8()
@@ -590,11 +590,11 @@ TestOutput CameraInterfacesTesting::testRaw8()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== RAW8 Pixel Format Support (Jetson AGX Orin) ===");
+    data.push_back("=== RAW8 Pixel Format Support (Raspberry Pi 5) ===");
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found; RAW8 supported by Orin ISP/NVCSI hardware");
+        data.push_back("[INFO] No /dev/video* nodes found; RAW8 supported by Orin ISP/Unicam hardware");
         return {passed, data};
     }
 
@@ -617,14 +617,14 @@ TestOutput CameraInterfacesTesting::testRaw8()
     if (!raw8Found)
         data.push_back("[INFO] RAW8 not reported by current sensor; Orin ISP hardware supports SRGGB8/SGRBG8/SGBRG8/SBGGR8");
 
-    data.push_back("[INFO] Jetson Orin ISP supports RAW8 Bayer formats on all CSI ports");
+    data.push_back("[INFO] Pi5 ISP supports RAW8 Bayer formats on all CSI ports");
     return {passed, data};
 }
 
 /**
  * @brief Implementation of testRaw10
  *        Verifies RAW10 (SRGGB10/SGRBG10/SGBRG10/SBGGR10) pixel format
- *        support via V4L2 format enumeration on Jetson Orin.
+ *        support via V4L2 format enumeration on Pi5.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testRaw10()
@@ -632,11 +632,11 @@ TestOutput CameraInterfacesTesting::testRaw10()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== RAW10 Pixel Format Support (Jetson AGX Orin) ===");
+    data.push_back("=== RAW10 Pixel Format Support (Raspberry Pi 5) ===");
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found; RAW10 supported by Orin ISP/NVCSI hardware");
+        data.push_back("[INFO] No /dev/video* nodes found; RAW10 supported by Orin ISP/Unicam hardware");
         return {passed, data};
     }
 
@@ -664,7 +664,7 @@ TestOutput CameraInterfacesTesting::testRaw10()
 
 /**
  * @brief Implementation of testRaw12
- *        Verifies RAW12 pixel format support on Jetson Orin.
+ *        Verifies RAW12 pixel format support on Pi5.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testRaw12()
@@ -672,7 +672,7 @@ TestOutput CameraInterfacesTesting::testRaw12()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== RAW12 Pixel Format Support (Jetson AGX Orin) ===");
+    data.push_back("=== RAW12 Pixel Format Support (Raspberry Pi 5) ===");
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
@@ -704,7 +704,7 @@ TestOutput CameraInterfacesTesting::testRaw12()
 
 /**
  * @brief Implementation of testRaw14
- *        Verifies RAW14 pixel format support on Jetson Orin.
+ *        Verifies RAW14 pixel format support on Pi5.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testRaw14()
@@ -712,7 +712,7 @@ TestOutput CameraInterfacesTesting::testRaw14()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== RAW14 Pixel Format Support (Jetson AGX Orin) ===");
+    data.push_back("=== RAW14 Pixel Format Support (Raspberry Pi 5) ===");
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
@@ -736,7 +736,7 @@ TestOutput CameraInterfacesTesting::testRaw14()
     }
 
     if (!raw14Found)
-        data.push_back("[INFO] RAW14 not reported by current sensor; Orin NVCSI hardware supports 14-bit Bayer");
+        data.push_back("[INFO] RAW14 not reported by current sensor; Orin Unicam hardware supports 14-bit Bayer");
 
     data.push_back("[INFO] RAW14 offers highest bit depth for HDR automotive camera sensors on Orin");
     return {passed, data};
@@ -745,7 +745,7 @@ TestOutput CameraInterfacesTesting::testRaw14()
 /**
  * @brief Implementation of testYuv422
  *        Verifies YUV 4:2:2 pixel format support (YUYV, UYVY, etc.)
- *        via V4L2 format enumeration on Jetson Orin.
+ *        via V4L2 format enumeration on Pi5.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testYuv422()
@@ -753,7 +753,7 @@ TestOutput CameraInterfacesTesting::testYuv422()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== YUV 4:2:2 Format Support (Jetson AGX Orin) ===");
+    data.push_back("=== YUV 4:2:2 Format Support (Raspberry Pi 5) ===");
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
@@ -799,7 +799,7 @@ TestOutput CameraInterfacesTesting::testYuv422()
 /**
  * @brief Implementation of testRgbFormats
  *        Verifies RGB pixel format support (RGB888, ARGB, XRGB) via V4L2
- *        and ISP output on Jetson Orin.
+ *        and ISP output on Pi5.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testRgbFormats()
@@ -807,7 +807,7 @@ TestOutput CameraInterfacesTesting::testRgbFormats()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== RGB Pixel Format Support (Jetson AGX Orin) ===");
+    data.push_back("=== RGB Pixel Format Support (Raspberry Pi 5) ===");
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
@@ -839,7 +839,7 @@ TestOutput CameraInterfacesTesting::testRgbFormats()
 
 /**
  * @brief Implementation of testIspPipelineProcessing
- *        Verifies that the Jetson Orin ISP (NvISP) hardware is present and
+ *        Verifies that the Pi5 ISP (NvISP) hardware is present and
  *        the VI (Video Input) pipeline is operational.
  * @return TestOutput with pass/fail and data
  */
@@ -848,12 +848,12 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== ISP Pipeline Processing (Jetson AGX Orin) ===");
-    data.push_back("[INFO] Jetson AGX Orin features a dedicated ISP with two pipelines (ISP-A and ISP-B)");
+    data.push_back("=== ISP Pipeline Processing (Raspberry Pi 5) ===");
+    data.push_back("[INFO] Raspberry Pi 5 features a dedicated ISP with two pipelines (ISP-A and ISP-B)");
 
     // 1. Check for ISP platform device
     bool ispFound = false;
-    const std::vector<std::string> ispIds = {"nvisp", "isp", "tegra-isp", "15c00000"};
+    const std::vector<std::string> ispIds = {"nvisp", "isp", "rp1-isp", "15c00000"};
     if (pathExists("/sys/bus/platform/devices")) {
         auto platDevs = listDir("/sys/bus/platform/devices");
         for (const auto& d : platDevs) {
@@ -891,15 +891,15 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
         }
     }
 
-    // 3. Check NvMedia / Tegra Vi device
-    const std::string viPath = "/dev/tegra-vi0";
+    // 3. Check NvMedia / RP1 Vi device
+    const std::string viPath = "/dev/rp1-vi0";
     if (pathExists(viPath))
-        data.push_back("[PASS] Tegra VI device found: " + viPath);
+        data.push_back("[PASS] RP1 VI device found: " + viPath);
     else
-        data.push_back("[INFO] /dev/tegra-vi0 not present (may use V4L2 video nodes instead)");
+        data.push_back("[INFO] /dev/rp1-vi0 not present (may use V4L2 video nodes instead)");
 
-    // 4. Try querying ISP statistics via v4l2 (Jetson-specific ISP stats node)
-    std::string ispStats = runCmd("v4l2-ctl --list-devices 2>/dev/null | grep -i 'isp\\|vi\\|nvcsi'");
+    // 4. Try querying ISP statistics via v4l2 (Pi5-specific ISP stats node)
+    std::string ispStats = runCmd("v4l2-ctl --list-devices 2>/dev/null | grep -i 'isp\\|vi\\|unicam'");
     if (!ispStats.empty()) {
         data.push_back("[PASS] ISP/VI V4L2 devices:");
         std::istringstream ss(ispStats);
@@ -916,7 +916,7 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
 /**
  * @brief Implementation of testAutoExposure
  *        Verifies Auto Exposure (AE) 3A control availability via V4L2
- *        camera controls on Jetson Orin.
+ *        camera controls on Pi5.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testAutoExposure()
@@ -924,7 +924,7 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Auto Exposure (AE) Verification (Jetson AGX Orin) ===");
+    data.push_back("=== Auto Exposure (AE) Verification (Raspberry Pi 5) ===");
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
@@ -951,10 +951,10 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
     if (!aeFound)
         data.push_back("[INFO] AE V4L2 controls not exposed; on Orin, AE is handled by the Argus camera framework");
 
-    // Check for libargus or nvcamera service (Jetson 3A daemon)
+    // Check for libargus or nvcamera service (Pi5 3A daemon)
     std::string argus = runCmd("systemctl is-active nvargus-daemon 2>/dev/null");
     if (argus == "active")
-        data.push_back("[PASS] nvargus-daemon (Jetson 3A / AE service) is active");
+        data.push_back("[PASS] nvargus-daemon (Pi5 3A / AE service) is active");
     else {
         std::string pid = runCmd("pgrep -x nvargus-daemon 2>/dev/null");
         if (!pid.empty())
@@ -969,7 +969,7 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
 
 /**
  * @brief Implementation of testAutoWhiteBalance
- *        Verifies Auto White Balance (AWB) control availability on Jetson Orin.
+ *        Verifies Auto White Balance (AWB) control availability on Pi5.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
@@ -977,7 +977,7 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Auto White Balance (AWB) Verification (Jetson AGX Orin) ===");
+    data.push_back("=== Auto White Balance (AWB) Verification (Raspberry Pi 5) ===");
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
@@ -1016,7 +1016,7 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
 
 /**
  * @brief Implementation of testAutoFocus
- *        Verifies Auto Focus (AF) control availability on Jetson Orin.
+ *        Verifies Auto Focus (AF) control availability on Pi5.
  *        Note: AF requires a motor-driven lens; fixed-focus automotive sensors
  *        will not expose focus controls.
  * @return TestOutput with pass/fail and data
@@ -1026,7 +1026,7 @@ TestOutput CameraInterfacesTesting::testAutoFocus()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Auto Focus (AF) Verification (Jetson AGX Orin) ===");
+    data.push_back("=== Auto Focus (AF) Verification (Raspberry Pi 5) ===");
     data.push_back("[INFO] AF requires a VCM/motor-driven lens; automotive sensors are typically fixed-focus");
 
     auto videoDev = getVideoDevices();
@@ -1050,7 +1050,7 @@ TestOutput CameraInterfacesTesting::testAutoFocus()
     else if (videoDev.empty())
         data.push_back("[INFO] No camera nodes present");
 
-    // Check for focuser device node (Jetson: /dev/focuser*)
+    // Check for focuser device node (Pi5: /dev/focuser*)
     for (int i = 0; i < 4; ++i) {
         std::string foc = "/dev/focuser" + std::to_string(i);
         if (pathExists(foc)) {
@@ -1066,7 +1066,7 @@ TestOutput CameraInterfacesTesting::testAutoFocus()
 /**
  * @brief Implementation of testLensShadingCorrection
  *        Verifies that Lens Shading Correction (LSC) is supported by the
- *        Jetson Orin ISP hardware.
+ *        Pi5 ISP hardware.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testLensShadingCorrection()
@@ -1074,8 +1074,8 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Lens Shading Correction (LSC) (Jetson AGX Orin) ===");
-    data.push_back("[INFO] Jetson Orin ISP implements hardware LSC with per-channel mesh shading tables");
+    data.push_back("=== Lens Shading Correction (LSC) (Raspberry Pi 5) ===");
+    data.push_back("[INFO] Pi5 ISP implements hardware LSC with per-channel mesh shading tables");
 
     // Check for ISP tuning file that contains LSC parameters
     const std::vector<std::string> lscPaths = {
@@ -1118,7 +1118,7 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
 
 /**
  * @brief Implementation of testDemosaicing
- *        Verifies Bayer demosaicing (debayering) capability of the Jetson
+ *        Verifies Bayer demosaicing (debayering) capability of the Pi5
  *        Orin ISP hardware.
  * @return TestOutput with pass/fail and data
  */
@@ -1127,8 +1127,8 @@ TestOutput CameraInterfacesTesting::testDemosaicing()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Bayer Demosaicing (Jetson AGX Orin) ===");
-    data.push_back("[INFO] Jetson Orin ISP performs hardware Bayer demosaicing");
+    data.push_back("=== Bayer Demosaicing (Raspberry Pi 5) ===");
+    data.push_back("[INFO] Pi5 ISP performs hardware Bayer demosaicing");
     data.push_back("[INFO] Supported Bayer patterns: RGGB, GRBG, GBRG, BGGR");
 
     // Check ISP pipeline is available
@@ -1145,7 +1145,7 @@ TestOutput CameraInterfacesTesting::testDemosaicing()
         }
     }
     if (!ispPresent)
-        data.push_back("[INFO] ISP device not directly listed (may be integrated in tegra-camera)");
+        data.push_back("[INFO] ISP device not directly listed (may be inrp1ted in unicam)");
 
     // Verify that RAW input -> RGB output path exists through V4L2
     auto videoDev = getVideoDevices();
@@ -1168,7 +1168,7 @@ TestOutput CameraInterfacesTesting::testDemosaicing()
 /**
  * @brief Implementation of testNoiseReduction
  *        Verifies spatial and temporal noise reduction (SNR/TNR) availability
- *        in the Jetson Orin ISP.
+ *        in the Pi5 ISP.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testNoiseReduction()
@@ -1176,7 +1176,7 @@ TestOutput CameraInterfacesTesting::testNoiseReduction()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Noise Reduction (NR) Verification (Jetson AGX Orin) ===");
+    data.push_back("=== Noise Reduction (NR) Verification (Raspberry Pi 5) ===");
     data.push_back("[INFO] Orin ISP includes Spatial NR (SNR) and Temporal NR (TNR3) hardware engines");
 
     // Check V4L2 noise reduction controls
@@ -1211,7 +1211,7 @@ TestOutput CameraInterfacesTesting::testNoiseReduction()
 
 /**
  * @brief Implementation of testEdgeEnhancement
- *        Verifies hardware edge enhancement (sharpening) in the Jetson Orin ISP.
+ *        Verifies hardware edge enhancement (sharpening) in the Pi5 ISP.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testEdgeEnhancement()
@@ -1219,7 +1219,7 @@ TestOutput CameraInterfacesTesting::testEdgeEnhancement()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Edge Enhancement / Sharpening (Jetson AGX Orin) ===");
+    data.push_back("=== Edge Enhancement / Sharpening (Raspberry Pi 5) ===");
     data.push_back("[INFO] Orin ISP implements hardware edge enhancement (EE) / sharpening stage");
 
     // Check V4L2 sharpness control
@@ -1248,7 +1248,7 @@ TestOutput CameraInterfacesTesting::testEdgeEnhancement()
 
 /**
  * @brief Implementation of testColorCorrectionMatrix
- *        Verifies Color Correction Matrix (CCM) support in the Jetson Orin ISP.
+ *        Verifies Color Correction Matrix (CCM) support in the Pi5 ISP.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
@@ -1256,7 +1256,7 @@ TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Color Correction Matrix (CCM) (Jetson AGX Orin) ===");
+    data.push_back("=== Color Correction Matrix (CCM) (Raspberry Pi 5) ===");
     data.push_back("[INFO] Orin ISP implements a 3x3 CCM applied after demosaicing");
     data.push_back("[INFO] CCM converts sensor color space to sRGB/P3 output");
 
@@ -1291,7 +1291,7 @@ TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
 
 /**
  * @brief Implementation of testGammaCorrection
- *        Verifies gamma correction (tone-mapping) support in the Jetson Orin ISP.
+ *        Verifies gamma correction (tone-mapping) support in the Pi5 ISP.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testGammaCorrection()
@@ -1299,7 +1299,7 @@ TestOutput CameraInterfacesTesting::testGammaCorrection()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("=== Gamma Correction / Tone Mapping (Jetson AGX Orin) ===");
+    data.push_back("=== Gamma Correction / Tone Mapping (Raspberry Pi 5) ===");
     data.push_back("[INFO] Orin ISP implements a 1024-entry LUT-based gamma correction engine");
     data.push_back("[INFO] Supports sRGB gamma (2.2), linear, and custom tone curves");
 

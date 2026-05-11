@@ -2,10 +2,10 @@
  * @file gpio_lib.cpp
  * @brief Implementation file for GpioTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 
 #include "gpio_lib.h"
+#include "../platform_rpi5.h"
 
 /**
  * @brief Constructor for GpioTesting

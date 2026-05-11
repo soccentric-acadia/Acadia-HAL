@@ -3,8 +3,7 @@
  * @file audio_interfaces.h
  * @brief Header file for AudioInterfaces class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef AUDIOINTERFACES_H
 #define AUDIOINTERFACES_H
 #include "lib_base.h"

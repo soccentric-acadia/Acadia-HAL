@@ -3,8 +3,7 @@
  * @file vision_accelerator_lib.h
  * @brief Header file for VisionAcceleratorTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef VISIONACCELERATORTESTING_H
 #define VISIONACCELERATORTESTING_H
 #include "lib_base.h"

@@ -3,8 +3,7 @@
  * @file display_interfaces.h
  * @brief Header file for DisplayInterfaces class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef DISPLAYINTERFACES_H
 #define DISPLAYINTERFACES_H
 #include "lib_base.h"

@@ -2,8 +2,7 @@
  * @file gpu_lib.h
  * @brief Header file for GpuTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef GPUTESTING_H
 #define GPUTESTING_H
 

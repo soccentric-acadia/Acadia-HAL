@@ -3,8 +3,7 @@
  * @file watchdog_and_reset_lib.h
  * @brief Header file for WatchdogAndResetTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef WATCHDOGANDRESETTESTING_H
 #define WATCHDOGANDRESETTESTING_H
 #include "lib_base.h"

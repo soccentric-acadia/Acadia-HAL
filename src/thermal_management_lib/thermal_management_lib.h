@@ -3,8 +3,7 @@
  * @file thermal_management_lib.h
  * @brief Header file for ThermalManagementTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef THERMALMANAGEMENTTESTING_H
 #define THERMALMANAGEMENTTESTING_H
 #include "lib_base.h"

@@ -3,8 +3,7 @@
  * @file external_connector_lib.h
  * @brief Header file for ExternalConnectorTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef EXTERNALCONNECTORTESTING_H
 #define EXTERNALCONNECTORTESTING_H
 #include "lib_base.h"

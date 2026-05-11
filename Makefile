@@ -8,7 +8,7 @@
 # Build directories (separate to avoid CMake cache conflicts)
 NATIVE_BUILD_DIR := build/native
 CROSS_BUILD_DIR := build/cross
-DOCKER_IMAGE := jetson-builder
+DOCKER_IMAGE := acadia
 DOCKER_CROSS_BUILD_DIR := /workspace/build/cross
 
 # Host architecture as shown by file(1) (e.g. x86-64, aarch64)
@@ -106,7 +106,7 @@ list:
 # -t: allocate a pseudo-TTY so Ctrl-C (SIGINT) is forwarded to the container
 # --init: use tini as PID 1 to properly propagate signals to child processes (e.g. ninja)
 # ccache volume: persist compilation cache across docker runs
-DOCKER_RUN := docker run --rm -t --init --platform linux/arm64 -v $(PWD):/workspace -v ccache-acu:/home/jetson/.ccache $(DOCKER_IMAGE) bash -c
+DOCKER_RUN := docker run --rm -t --init --platform linux/arm64 -v $(PWD):/workspace -v ccache-acu:/home/rpi/.ccache $(DOCKER_IMAGE) bash -c
 
 docker-install:
 	@if ! command -v docker > /dev/null 2>&1; then \
@@ -117,7 +117,7 @@ docker-install:
 	fi
 
 docker-image: docker-install
-	@if ! docker images | grep -q $(DOCKER_IMAGE); then \
+	@if ! docker image inspect $(DOCKER_IMAGE) >/dev/null 2>&1; then \
 		echo "Building Docker image $(DOCKER_IMAGE)..."; \
 		make -C docker build; \
 	else \
@@ -130,7 +130,7 @@ docker-configure: docker-image
 
 docker-build: docker-image
 	@echo "Building project with Docker/Ninja..."
-	$(DOCKER_RUN) "if [ ! -f $(DOCKER_CROSS_BUILD_DIR)/build.ninja ]; then mkdir -p $(DOCKER_CROSS_BUILD_DIR) && cd $(DOCKER_CROSS_BUILD_DIR) && cmake -GNinja /workspace; fi && cd $(DOCKER_CROSS_BUILD_DIR) && ninja"
+	$(DOCKER_RUN) "if [ ! -f $(DOCKER_CROSS_BUILD_DIR)/build.ninja ]; then mkdir -p $(DOCKER_CROSS_BUILD_DIR) && cd $(DOCKER_CROSS_BUILD_DIR) && cmake -GNinja /workspace; fi && cd $(DOCKER_CROSS_BUILD_DIR) && ninja -j2"
 
 docker-clean: docker-image
 	@echo "Cleaning Docker build directory..."
@@ -138,7 +138,7 @@ docker-clean: docker-image
 
 docker-shell: docker-image
 	@echo "Starting Docker shell for development..."
-	docker run -it --rm --platform linux/arm64 -v $(PWD):/workspace -v ccache-acu:/home/jetson/.ccache $(DOCKER_IMAGE) bash
+	docker run -it --rm --platform linux/arm64 -v $(PWD):/workspace -v ccache-acu:/home/rpi/.ccache $(DOCKER_IMAGE) bash
 
 # =============================================================================
 # Deploy & Run (on target device)

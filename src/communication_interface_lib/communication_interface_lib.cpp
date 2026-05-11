@@ -1,12 +1,12 @@
 /**
  * @file communication_interface_lib.cpp
  * @brief Implementation file for CommunicationInterfaceTesting class
- *        Targeted at NVIDIA Jetson Orin platform.
+ *        Targeted at Raspberry Pi 5 platform.
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 
 #include "communication_interface_lib.h"
+#include "../platform_rpi5.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -25,7 +25,7 @@
 #include <vector>
 
 // Linux kernel headers for SPI, I2C and CAN – included with guards so the
-// file still compiles on a host without the full Jetson BSP.
+// file still compiles on a host without the full Pi5 BSP.
 #ifdef __linux__
 #include <linux/can.h>
 #include <linux/can/raw.h>
@@ -124,25 +124,25 @@ CommunicationInterfaceTesting::~CommunicationInterfaceTesting()
 // ===========================================================================
 
 /**
- * @brief Enumerate all Tegra UART (ttyTHS*) ports and verify they can be opened.
- * @details Jetson Orin exposes up to 4 Tegra High-Speed UART ports (ttyTHS0–3)
- *          plus an optional ttyTHS4.  We enumerate what is present and attempt
+ * @brief Enumerate all RP1 UART (ttyAMA*) ports and verify they can be opened.
+ * @details Pi5 exposes up to 4 RP1 High-Speed UART ports (ttyAMA0–3)
+ *          plus an optional ttyAMA4.  We enumerate what is present and attempt
  *          a non-blocking open to confirm each device is accessible.
  * @return TestOutput with pass/fail and per-port status lines.
  */
 TestOutput CommunicationInterfaceTesting::testAllUartPortsFunctionality()
 {
     std::vector<std::string> data;
-    data.push_back("=== UART Port Functionality (Jetson Orin) ===");
+    data.push_back("=== UART Port Functionality (Pi5) ===");
 
-    std::vector<std::string> thsPorts = listDevNodes("/dev", "ttyTHS");
+    std::vector<std::string> thsPorts = listDevNodes("/dev", "ttyAMA");
     // Also check standard ttyS ports
     std::vector<std::string> ttysPorts = listDevNodes("/dev", "ttyS");
     thsPorts.insert(thsPorts.end(), ttysPorts.begin(), ttysPorts.end());
 
     if (thsPorts.empty()) {
-        data.push_back("[WARN] No UART devices found under /dev/ttyTHS* or /dev/ttyS*");
-        data.push_back("[INFO] Ensure Jetson Orin UART nodes are enabled in device tree");
+        data.push_back("[WARN] No UART devices found under /dev/ttyAMA* or /dev/ttyS*");
+        data.push_back("[INFO] Ensure Pi5 UART nodes are enabled in device tree");
         // Pass with warning – hardware may simply not have external UARTs wired up
         return {true, data};
     }
@@ -176,24 +176,24 @@ TestOutput CommunicationInterfaceTesting::testAllUartPortsFunctionality()
 
 /**
  * @brief Verify that the kernel termios layer supports the baud rates required
- *        by Jetson Orin UART controllers (up to 3.6 Mbaud).
- * @details Attempts to configure each detected ttyTHS port with standard baud
+ *        by Pi5 UART controllers (up to 3.6 Mbaud).
+ * @details Attempts to configure each detected ttyAMA port with standard baud
  *          rates (9600 → 921600) and checks that cfsetispeed / cfsetospeed
- *          succeed.  The actual hardware limit on Tegra UART is 1/16 of the
+ *          succeed.  The actual hardware limit on RP1 UART is 1/16 of the
  *          source clock; the test validates kernel-side symbol availability.
  * @return TestOutput with pass/fail and baud-rate test matrix.
  */
 TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
 {
     std::vector<std::string> data;
-    data.push_back("=== UART Baud Rate Configuration Test (Jetson Orin) ===");
+    data.push_back("=== UART Baud Rate Configuration Test (Pi5) ===");
 
     static const std::vector<std::pair<std::string, speed_t>> baudRates = {
         {"9600", B9600},     {"19200", B19200},   {"38400", B38400},   {"57600", B57600},
         {"115200", B115200}, {"230400", B230400}, {"460800", B460800}, {"921600", B921600},
     };
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyTHS");
+    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
     if (ports.empty()) {
         ports = listDevNodes("/dev", "ttyS");
     }
@@ -263,19 +263,19 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
 }
 
 /**
- * @brief Verify hardware RTS/CTS flow control capability on Tegra UART ports.
+ * @brief Verify hardware RTS/CTS flow control capability on RP1 UART ports.
  * @details Checks that the CRTSCTS flag can be set in the termios control word.
- *          Jetson Orin Tegra UART supports hardware flow control on ttyTHS pins.
+ *          Pi5 RP1 UART supports hardware flow control on ttyAMA pins.
  * @return TestOutput with pass/fail and per-port flow-control status.
  */
 TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
 {
     std::vector<std::string> data;
-    data.push_back("=== UART Hardware Flow Control (Jetson Orin) ===");
+    data.push_back("=== UART Hardware Flow Control (Pi5) ===");
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyTHS");
+    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
     if (ports.empty()) {
-        data.push_back("[INFO] No ttyTHS devices found; checking CRTSCTS flag definition");
+        data.push_back("[INFO] No ttyAMA devices found; checking CRTSCTS flag definition");
 #ifdef CRTSCTS
         data.push_back("[PASS] CRTSCTS flag is defined in kernel headers (0x" + [](unsigned long v) {
             std::ostringstream o;
@@ -325,20 +325,20 @@ TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
         close(fd);
     }
 
-    data.push_back("[INFO] Jetson Orin Tegra UART supports RTS/CTS on ttyTHS0–ttyTHS3");
+    data.push_back("[INFO] Pi5 RP1 UART supports RTS/CTS on ttyAMA0–ttyAMA3");
     return {allOk, data};
 }
 
 /**
  * @brief Test parity checking configuration on UART ports.
  * @details Exercises PARENB (enable parity) and PARODD (odd parity) flags
- *          for even and odd parity modes on each ttyTHS port.
+ *          for even and odd parity modes on each ttyAMA port.
  * @return TestOutput with pass/fail and per-mode results.
  */
 TestOutput CommunicationInterfaceTesting::testParityChecking()
 {
     std::vector<std::string> data;
-    data.push_back("=== UART Parity Checking (Jetson Orin) ===");
+    data.push_back("=== UART Parity Checking (Pi5) ===");
 
     struct ParityMode
     {
@@ -351,9 +351,9 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
         {"Odd parity", PARENB | PARODD},
     };
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyTHS");
+    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
     if (ports.empty()) {
-        data.push_back("[INFO] No ttyTHS ports; validating termios flag definitions");
+        data.push_back("[INFO] No ttyAMA ports; validating termios flag definitions");
         data.push_back("[PASS] PARENB defined");
         data.push_back("[PASS] PARODD defined");
         return {true, data};
@@ -391,7 +391,7 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
     tcsetattr(fd, TCSANOW, &orig);
     close(fd);
 
-    data.push_back("[INFO] Jetson Orin Tegra UART supports 8N1, 8E1, 8O1, and 7-bit variants");
+    data.push_back("[INFO] Pi5 RP1 UART supports 8N1, 8E1, 8O1, and 7-bit variants");
     return {allOk, data};
 }
 
@@ -402,11 +402,11 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
 TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
 {
     std::vector<std::string> data;
-    data.push_back("=== UART Stop Bit Configuration (Jetson Orin) ===");
+    data.push_back("=== UART Stop Bit Configuration (Pi5) ===");
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyTHS");
+    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
     if (ports.empty()) {
-        data.push_back("[INFO] No ttyTHS ports; CSTOPB flag present in kernel headers");
+        data.push_back("[INFO] No ttyAMA ports; CSTOPB flag present in kernel headers");
         data.push_back("[PASS] 1-stop-bit (default) and 2-stop-bit (CSTOPB) supported");
         return {true, data};
     }
@@ -449,13 +449,13 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
     tcsetattr(fd, TCSANOW, &orig);
     close(fd);
 
-    data.push_back("[INFO] Jetson Orin Tegra UART supports 1 and 2 stop bit configurations");
+    data.push_back("[INFO] Pi5 RP1 UART supports 1 and 2 stop bit configurations");
     return {allOk, data};
 }
 
 /**
  * @brief Verify UART DMA operation by checking DMA channel assignments in sysfs.
- * @details On Jetson Orin the Tegra UART controllers are DMA-capable via the
+ * @details On Pi5 the RP1 UART controllers are DMA-capable via the
  *          GPCDMA engine.  We probe /sys/bus/platform/devices/31d0000.serial
  *          (and siblings) for their DMA channel info in /proc/interrupts and
  *          device-tree DMA properties.
@@ -464,15 +464,15 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
 TestOutput CommunicationInterfaceTesting::testUartDmaOperation()
 {
     std::vector<std::string> data;
-    data.push_back("=== UART DMA Operation (Jetson Orin) ===");
+    data.push_back("=== UART DMA Operation (Pi5) ===");
 
-    // Jetson Orin Tegra UART controller base addresses in sysfs
+    // Pi5 RP1 UART controller base addresses in sysfs
     static const std::vector<std::string> uartBaseAddrs = {
-        "3100000.serial", // ttyTHS0
-        "3110000.serial", // ttyTHS1
-        "3130000.serial", // ttyTHS2
-        "3140000.serial", // ttyTHS3
-        "3150000.serial", // ttyTHS4
+        "3100000.serial", // ttyAMA0
+        "3110000.serial", // ttyAMA1
+        "3130000.serial", // ttyAMA2
+        "3140000.serial", // ttyAMA3
+        "3150000.serial", // ttyAMA4
         "c280000.serial", // combined UART for debug
     };
 
@@ -511,7 +511,7 @@ TestOutput CommunicationInterfaceTesting::testUartDmaOperation()
     }
 
     if (foundControllers == 0) {
-        data.push_back("[INFO] No Tegra UART platform devices found – check kernel config");
+        data.push_back("[INFO] No RP1 UART platform devices found – check kernel config");
         data.push_back("[INFO] Expected at /sys/bus/platform/devices/3100000.serial etc.");
     } else {
         data.push_back("Summary: " + std::to_string(foundControllers) + " UART controllers found, " + std::to_string(dmaEnabled) +
@@ -523,16 +523,16 @@ TestOutput CommunicationInterfaceTesting::testUartDmaOperation()
 
 /**
  * @brief Check that UART interrupt lines are registered in /proc/interrupts.
- * @details Scans /proc/interrupts for Tegra UART (ttyTHS) interrupt entries.
- *          A properly running Jetson Orin kernel will show serial3100000 etc.
+ * @details Scans /proc/interrupts for RP1 UART (ttyAMA) interrupt entries.
+ *          A properly running Pi5 kernel will show serial3100000 etc.
  * @return TestOutput with pass/fail and interrupt table excerpt.
  */
 TestOutput CommunicationInterfaceTesting::testUartInterruptHandling()
 {
     std::vector<std::string> data;
-    data.push_back("=== UART Interrupt Handling (Jetson Orin) ===");
+    data.push_back("=== UART Interrupt Handling (Pi5) ===");
 
-    static const std::vector<std::string> irqKeywords = {"serial", "ttyTHS", "3100000", "3110000", "3130000", "3140000"};
+    static const std::vector<std::string> irqKeywords = {"serial", "ttyAMA", "3100000", "3110000", "3130000", "3140000"};
 
     bool foundAny = false;
     for (const auto& kw : irqKeywords) {
@@ -552,21 +552,21 @@ TestOutput CommunicationInterfaceTesting::testUartInterruptHandling()
         data.push_back("[INFO] UART interrupt handlers are registered and active");
     }
 
-    data.push_back("[INFO] Jetson Orin Tegra UART uses level-triggered GIC interrupts");
+    data.push_back("[INFO] Pi5 RP1 UART uses level-triggered GIC interrupts");
     return {true, data};
 }
 
 /**
- * @brief Identify the debug/console UART port on Jetson Orin.
+ * @brief Identify the debug/console UART port on Pi5.
  * @details Reads /proc/cmdline for console= parameter and cross-references
  *          with /sys/class/tty to confirm the console UART is registered.
- *          On Jetson Orin the debug UART is typically ttyTHS0 at 115200.
+ *          On Pi5 the debug UART is typically ttyAMA0 at 115200.
  * @return TestOutput with pass/fail and console UART information.
  */
 TestOutput CommunicationInterfaceTesting::testConsoledebugUart()
 {
     std::vector<std::string> data;
-    data.push_back("=== Console / Debug UART Detection (Jetson Orin) ===");
+    data.push_back("=== Console / Debug UART Detection (Pi5) ===");
 
     std::string cmdline = readFile("/proc/cmdline");
     std::string consoleDevice;
@@ -598,15 +598,15 @@ TestOutput CommunicationInterfaceTesting::testConsoledebugUart()
         data.push_back("[INFO] /sys/class/tty/console dev number: " + sysConsole);
     }
 
-    // Expected Jetson Orin debug UART
-    data.push_back("[INFO] Jetson Orin default debug UART: ttyTHS0 @ 115200n8 (0x3100000)");
+    // Expected Pi5 debug UART
+    data.push_back("[INFO] Pi5 default debug UART: ttyAMA0 @ 115200n8 (0x3100000)");
 
-    // Confirm ttyTHS0 exists
-    std::ifstream ttyCheck("/dev/ttyTHS0");
-    if (ttyCheck.good() || access("/dev/ttyTHS0", F_OK) == 0) {
-        data.push_back("[PASS] /dev/ttyTHS0 present");
+    // Confirm ttyAMA0 exists
+    std::ifstream ttyCheck("/dev/ttyAMA0");
+    if (ttyCheck.good() || access("/dev/ttyAMA0", F_OK) == 0) {
+        data.push_back("[PASS] /dev/ttyAMA0 present");
     } else {
-        data.push_back("[INFO] /dev/ttyTHS0 not present in current environment");
+        data.push_back("[INFO] /dev/ttyAMA0 not present in current environment");
     }
 
     return {true, data};
@@ -617,8 +617,8 @@ TestOutput CommunicationInterfaceTesting::testConsoledebugUart()
 // ===========================================================================
 
 /**
- * @brief Enumerate all SPI controllers and spidev nodes on Jetson Orin.
- * @details Jetson Orin exposes up to 3 SPI controllers (SPI0–2) mapped to
+ * @brief Enumerate all SPI controllers and spidev nodes on Pi5.
+ * @details Pi5 exposes up to 3 SPI controllers (SPI0–2) mapped to
  *          /dev/spidev0.0, /dev/spidev1.0, etc. when the spidev driver is
  *          loaded.  Also checks /sys/bus/spi/devices/.
  * @return TestOutput with pass/fail and controller enumeration.
@@ -626,7 +626,7 @@ TestOutput CommunicationInterfaceTesting::testConsoledebugUart()
 TestOutput CommunicationInterfaceTesting::testAllSpiControllers()
 {
     std::vector<std::string> data;
-    data.push_back("=== SPI Controller Enumeration (Jetson Orin) ===");
+    data.push_back("=== SPI Controller Enumeration (Pi5) ===");
 
     // Enumerate spidev character devices
     std::vector<std::string> spiDevs = listDevNodes("/dev", "spidev");
@@ -651,7 +651,7 @@ TestOutput CommunicationInterfaceTesting::testAllSpiControllers()
         data.push_back("[INFO] No SPI devices in /sys/bus/spi/devices");
     }
 
-    // Jetson Orin expected controllers from DT
+    // Pi5 expected controllers from DT
     static const std::vector<std::string> expectedControllers = {
         "3210000.spi", // SPI0
         "3230000.spi", // SPI1
@@ -681,18 +681,18 @@ TestOutput CommunicationInterfaceTesting::testAllSpiControllers()
 /**
  * @brief Verify SPI master mode operation via spidev ioctl.
  * @details Opens each /dev/spidev* node and queries the current SPI mode with
- *          SPI_IOC_RD_MODE.  On Jetson Orin the Tegra QSPI/SPI controllers
+ *          SPI_IOC_RD_MODE.  On Pi5 the RP1 QSPI/SPI controllers
  *          always operate in master mode.
  * @return TestOutput with pass/fail and per-device mode information.
  */
 TestOutput CommunicationInterfaceTesting::testSpiMasterMode()
 {
     std::vector<std::string> data;
-    data.push_back("=== SPI Master Mode Verification (Jetson Orin) ===");
+    data.push_back("=== SPI Master Mode Verification (Pi5) ===");
 
     std::vector<std::string> spiDevs = listDevNodes("/dev", "spidev");
     if (spiDevs.empty()) {
-        data.push_back("[INFO] No spidev nodes available; Jetson Orin SPI always operates in master mode");
+        data.push_back("[INFO] No spidev nodes available; Pi5 SPI always operates in master mode");
         data.push_back("[INFO] Load spidev module and configure DT to expose /dev/spidev nodes");
         return {true, data};
     }
@@ -719,13 +719,13 @@ TestOutput CommunicationInterfaceTesting::testSpiMasterMode()
         close(fd);
     }
 
-    data.push_back("[INFO] Jetson Orin Tegra SPI/QSPI controllers support master mode only");
+    data.push_back("[INFO] Pi5 RP1 SPI/QSPI controllers support master mode only");
     return {allOk, data};
 }
 
 /**
- * @brief Check SPI slave mode support on Jetson Orin.
- * @details The Tegra SPI controllers on Jetson Orin support slave mode when
+ * @brief Check SPI slave mode support on Pi5.
+ * @details The RP1 SPI controllers on Pi5 support slave mode when
  *          configured in the device tree.  This test inspects DT and sysfs
  *          for slave-mode configuration.
  * @return TestOutput with pass/fail and slave mode capability information.
@@ -733,7 +733,7 @@ TestOutput CommunicationInterfaceTesting::testSpiMasterMode()
 TestOutput CommunicationInterfaceTesting::testSpiSlaveMode()
 {
     std::vector<std::string> data;
-    data.push_back("=== SPI Slave Mode Check (Jetson Orin) ===");
+    data.push_back("=== SPI Slave Mode Check (Pi5) ===");
 
     // Check DT for spi-slave property
     static const std::vector<std::string> dtSpiPaths = {
@@ -763,7 +763,7 @@ TestOutput CommunicationInterfaceTesting::testSpiSlaveMode()
 
     if (slaveCount == 0) {
         data.push_back("[INFO] No SPI controllers configured in slave mode");
-        data.push_back("[INFO] Jetson Orin supports SPI slave mode via 'spi-slave' DT property");
+        data.push_back("[INFO] Pi5 supports SPI slave mode via 'spi-slave' DT property");
         data.push_back("[INFO] Slave mode requires kernel CONFIG_SPI_SLAVE=y");
     } else {
         data.push_back("[PASS] " + std::to_string(slaveCount) + " SPI controller(s) in slave mode");
@@ -773,7 +773,7 @@ TestOutput CommunicationInterfaceTesting::testSpiSlaveMode()
 }
 
 /**
- * @brief Test various SPI clock speed configurations on Jetson Orin.
+ * @brief Test various SPI clock speed configurations on Pi5.
  * @details Reads maximum clock frequency from sysfs and validates common
  *          operating speeds via SPI_IOC_WR_MAX_SPEED_HZ on spidev nodes.
  * @return TestOutput with pass/fail and clock speed test results.
@@ -781,7 +781,7 @@ TestOutput CommunicationInterfaceTesting::testSpiSlaveMode()
 TestOutput CommunicationInterfaceTesting::testVariousSpiClockSpeeds()
 {
     std::vector<std::string> data;
-    data.push_back("=== SPI Clock Speed Test (Jetson Orin) ===");
+    data.push_back("=== SPI Clock Speed Test (Pi5) ===");
 
     static const std::vector<std::pair<std::string, uint32_t>> speeds = {
         {"1 MHz", 1000000}, {"4 MHz", 4000000}, {"8 MHz", 8000000}, {"12 MHz", 12000000}, {"20 MHz", 20000000}, {"40 MHz", 40000000},
@@ -790,7 +790,7 @@ TestOutput CommunicationInterfaceTesting::testVariousSpiClockSpeeds()
     std::vector<std::string> spiDevs = listDevNodes("/dev", "spidev");
     if (spiDevs.empty()) {
         data.push_back("[INFO] No spidev nodes found; documenting supported speeds");
-        data.push_back("[INFO] Jetson Orin SPI supports up to 40 MHz (QSPI up to 133 MHz)");
+        data.push_back("[INFO] Pi5 SPI supports up to 40 MHz (QSPI up to 133 MHz)");
         for (const auto& sp : speeds) {
             data.push_back("[INFO] " + sp.first + " (" + std::to_string(sp.second) + " Hz): supported");
         }
@@ -832,7 +832,7 @@ TestOutput CommunicationInterfaceTesting::testVariousSpiClockSpeeds()
 TestOutput CommunicationInterfaceTesting::testSpiModes()
 {
     std::vector<std::string> data;
-    data.push_back("=== SPI Mode (CPOL/CPHA) Test (Jetson Orin) ===");
+    data.push_back("=== SPI Mode (CPOL/CPHA) Test (Pi5) ===");
 
     static const std::vector<std::pair<std::string, uint8_t>> modes = {
         {"Mode 0 (CPOL=0,CPHA=0)", 0},
@@ -843,7 +843,7 @@ TestOutput CommunicationInterfaceTesting::testSpiModes()
 
     std::vector<std::string> spiDevs = listDevNodes("/dev", "spidev");
     if (spiDevs.empty()) {
-        data.push_back("[INFO] No spidev nodes; Jetson Orin Tegra SPI supports all 4 SPI modes");
+        data.push_back("[INFO] No spidev nodes; Pi5 RP1 SPI supports all 4 SPI modes");
         for (const auto& m : modes) {
             data.push_back("[INFO] " + m.first + ": supported by hardware");
         }
@@ -884,13 +884,13 @@ TestOutput CommunicationInterfaceTesting::testSpiModes()
 /**
  * @brief Test chip select (CS) line functionality on SPI controllers.
  * @details Enumerates CS lines from sysfs bus topology.
- *          Jetson Orin Tegra SPI supports up to 4 CS lines per controller.
+ *          Pi5 RP1 SPI supports up to 4 CS lines per controller.
  * @return TestOutput with pass/fail and CS enumeration.
  */
 TestOutput CommunicationInterfaceTesting::testChipSelectFunctionality()
 {
     std::vector<std::string> data;
-    data.push_back("=== SPI Chip Select Functionality (Jetson Orin) ===");
+    data.push_back("=== SPI Chip Select Functionality (Pi5) ===");
 
     // Each spidev node name encodes bus.cs as spidevB.C
     std::vector<std::string> spiDevs = listDevNodes("/dev", "spidev");
@@ -927,7 +927,7 @@ TestOutput CommunicationInterfaceTesting::testChipSelectFunctionality()
         }
     }
 
-    data.push_back("[INFO] Jetson Orin Tegra SPI controllers support up to 4 CS lines each");
+    data.push_back("[INFO] Pi5 RP1 SPI controllers support up to 4 CS lines each");
     data.push_back("[INFO] CS polarity configurable via spi-cs-high DT property");
 
     bool passed = (!spiDevs.empty() || !sysBusDevs.empty());
@@ -938,7 +938,7 @@ TestOutput CommunicationInterfaceTesting::testChipSelectFunctionality()
 }
 
 /**
- * @brief Check SPI DMA transfer capability on Jetson Orin.
+ * @brief Check SPI DMA transfer capability on Pi5.
  * @details Inspects DT for SPI DMA properties and checks /proc/interrupts
  *          for GPCDMA activity associated with SPI controllers.
  * @return TestOutput with pass/fail and DMA status.
@@ -946,9 +946,9 @@ TestOutput CommunicationInterfaceTesting::testChipSelectFunctionality()
 TestOutput CommunicationInterfaceTesting::testSpiDmaTransfers()
 {
     std::vector<std::string> data;
-    data.push_back("=== SPI DMA Transfer Support (Jetson Orin) ===");
+    data.push_back("=== SPI DMA Transfer Support (Pi5) ===");
 
-    // Jetson Orin SPI DT paths
+    // Pi5 SPI DT paths
     static const std::vector<std::string> spiDtPaths = {
         "/proc/device-tree/spi@3210000",
         "/proc/device-tree/spi@3230000",
@@ -977,7 +977,7 @@ TestOutput CommunicationInterfaceTesting::testSpiDmaTransfers()
 
     if (dmaCount == 0) {
         data.push_back("[INFO] SPI DMA not detected via DT; driver may use auto-threshold DMA");
-        data.push_back("[INFO] Jetson Orin Tegra SPI uses DMA for transfers > 64 bytes");
+        data.push_back("[INFO] Pi5 RP1 SPI uses DMA for transfers > 64 bytes");
     }
 
     return {true, data};
@@ -986,13 +986,13 @@ TestOutput CommunicationInterfaceTesting::testSpiDmaTransfers()
 /**
  * @brief Enumerate multiple SPI devices on each bus controller.
  * @details Uses /sys/bus/spi/devices to list all SPI slave devices connected
- *          to Jetson Orin SPI buses.
+ *          to Pi5 SPI buses.
  * @return TestOutput with pass/fail and device list.
  */
 TestOutput CommunicationInterfaceTesting::testMultipleSpiDevices()
 {
     std::vector<std::string> data;
-    data.push_back("=== Multiple SPI Devices per Bus (Jetson Orin) ===");
+    data.push_back("=== Multiple SPI Devices per Bus (Pi5) ===");
 
     std::vector<std::string> devs = listDevNodes("/sys/bus/spi/devices", "spi");
     if (devs.empty()) {
@@ -1034,8 +1034,8 @@ TestOutput CommunicationInterfaceTesting::testMultipleSpiDevices()
 // ===========================================================================
 
 /**
- * @brief Enumerate all I2C buses on Jetson Orin.
- * @details Jetson Orin exposes up to 10 I2C buses.  This test enumerates
+ * @brief Enumerate all I2C buses on Pi5.
+ * @details Pi5 exposes up to 10 I2C buses.  This test enumerates
  *          /dev/i2c-* and cross-references with /sys/bus/i2c/devices to
  *          list all active buses and their names.
  * @return TestOutput with pass/fail and bus enumeration.
@@ -1043,7 +1043,7 @@ TestOutput CommunicationInterfaceTesting::testMultipleSpiDevices()
 TestOutput CommunicationInterfaceTesting::testAllI2cBuses()
 {
     std::vector<std::string> data;
-    data.push_back("=== I2C Bus Enumeration (Jetson Orin) ===");
+    data.push_back("=== I2C Bus Enumeration (Pi5) ===");
 
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
     if (i2cDevs.empty()) {
@@ -1079,11 +1079,11 @@ TestOutput CommunicationInterfaceTesting::testAllI2cBuses()
 TestOutput CommunicationInterfaceTesting::testI2cMasterMode()
 {
     std::vector<std::string> data;
-    data.push_back("=== I2C Master Mode Verification (Jetson Orin) ===");
+    data.push_back("=== I2C Master Mode Verification (Pi5) ===");
 
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
     if (i2cDevs.empty()) {
-        data.push_back("[INFO] No I2C buses found; Jetson Orin I2C always operates in master mode");
+        data.push_back("[INFO] No I2C buses found; Pi5 I2C always operates in master mode");
         return {true, data};
     }
 
@@ -1113,21 +1113,21 @@ TestOutput CommunicationInterfaceTesting::testI2cMasterMode()
         close(fd);
     }
 
-    data.push_back("[INFO] Jetson Orin I2C controllers (Tegra194/Tegra234) are master-only by default");
+    data.push_back("[INFO] Pi5 I2C controllers (RP1194/BCM2712) are master-only by default");
     return {allOk, data};
 }
 
 /**
- * @brief Check I2C slave mode support on Jetson Orin.
+ * @brief Check I2C slave mode support on Pi5.
  * @details Probes the I2C_FUNC_SLAVE capability flag and DT for slave-mode
- *          configuration.  Jetson Orin supports I2C slave emulation via the
+ *          configuration.  Pi5 supports I2C slave emulation via the
  *          i2c-slave kernel framework.
  * @return TestOutput with pass/fail and slave mode status.
  */
 TestOutput CommunicationInterfaceTesting::testI2cSlaveMode()
 {
     std::vector<std::string> data;
-    data.push_back("=== I2C Slave Mode Support (Jetson Orin) ===");
+    data.push_back("=== I2C Slave Mode Support (Pi5) ===");
 
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
     bool slaveCapability = false;
@@ -1154,7 +1154,7 @@ TestOutput CommunicationInterfaceTesting::testI2cSlaveMode()
 
     if (!slaveCapability) {
         data.push_back("[INFO] I2C slave mode not detected on current buses");
-        data.push_back("[INFO] Jetson Orin supports I2C slave via i2c-slave-eeprom or custom driver");
+        data.push_back("[INFO] Pi5 supports I2C slave via i2c-slave-eeprom or custom driver");
         data.push_back("[INFO] Enable via: echo eeprom 0x64 > /sys/bus/i2c/devices/i2c-N/new_device");
     }
 
@@ -1169,7 +1169,7 @@ TestOutput CommunicationInterfaceTesting::testI2cSlaveMode()
 TestOutput CommunicationInterfaceTesting::testStandardMode()
 {
     std::vector<std::string> data;
-    data.push_back("=== I2C Standard Mode (100 kHz) Verification (Jetson Orin) ===");
+    data.push_back("=== I2C Standard Mode (100 kHz) Verification (Pi5) ===");
 
     // Check DT clock-frequency for I2C buses
     static const std::vector<std::string> i2cDtPaths = {
@@ -1209,10 +1209,10 @@ TestOutput CommunicationInterfaceTesting::testStandardMode()
         data.push_back("[INFO] I2C DT clock-frequency not readable; checking sysfs");
         std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
         if (i2cDevs.empty()) {
-            data.push_back("[INFO] No I2C devices; Jetson Orin I2C supports 100 kHz standard mode");
+            data.push_back("[INFO] No I2C devices; Pi5 I2C supports 100 kHz standard mode");
         } else {
             data.push_back("[PASS] " + std::to_string(i2cDevs.size()) +
-                           " I2C bus(es) present; standard mode 100 kHz supported by Tegra I2C");
+                           " I2C bus(es) present; standard mode 100 kHz supported by RP1 I2C");
         }
     }
 
@@ -1226,7 +1226,7 @@ TestOutput CommunicationInterfaceTesting::testStandardMode()
 TestOutput CommunicationInterfaceTesting::testFastMode()
 {
     std::vector<std::string> data;
-    data.push_back("=== I2C Fast Mode (400 kHz) Verification (Jetson Orin) ===");
+    data.push_back("=== I2C Fast Mode (400 kHz) Verification (Pi5) ===");
 
     static const std::vector<std::string> i2cDtPaths = {
         "/proc/device-tree/i2c@3160000", "/proc/device-tree/i2c@c240000", "/proc/device-tree/i2c@3180000",
@@ -1253,7 +1253,7 @@ TestOutput CommunicationInterfaceTesting::testFastMode()
     }
 
     if (!found) {
-        data.push_back("[INFO] Jetson Orin Tegra I2C controllers support 400 kHz Fast Mode");
+        data.push_back("[INFO] Pi5 RP1 I2C controllers support 400 kHz Fast Mode");
         data.push_back("[INFO] Configure via clock-frequency = <400000> in device tree");
     }
 
@@ -1267,9 +1267,9 @@ TestOutput CommunicationInterfaceTesting::testFastMode()
 TestOutput CommunicationInterfaceTesting::testFastModePlus()
 {
     std::vector<std::string> data;
-    data.push_back("=== I2C Fast Mode Plus (1 MHz) Verification (Jetson Orin) ===");
+    data.push_back("=== I2C Fast Mode Plus (1 MHz) Verification (Pi5) ===");
 
-    data.push_back("[INFO] Jetson Orin Tegra234 I2C controllers support 1 MHz Fast Mode Plus");
+    data.push_back("[INFO] Pi5 BCM2712 I2C controllers support 1 MHz Fast Mode Plus");
     data.push_back("[INFO] Requires clock-frequency = <1000000> in DT and 1.8V I/O voltage");
 
     static const std::vector<std::string> i2cDtPaths = {
@@ -1312,9 +1312,9 @@ TestOutput CommunicationInterfaceTesting::testFastModePlus()
 TestOutput CommunicationInterfaceTesting::testHighspeedMode()
 {
     std::vector<std::string> data;
-    data.push_back("=== I2C High-Speed Mode (3.4 MHz) (Jetson Orin) ===");
+    data.push_back("=== I2C High-Speed Mode (3.4 MHz) (Pi5) ===");
 
-    data.push_back("[INFO] Jetson Orin Tegra234 I2C supports 3.4 MHz High Speed Mode (Hs-mode)");
+    data.push_back("[INFO] Pi5 BCM2712 I2C supports 3.4 MHz High Speed Mode (Hs-mode)");
     data.push_back("[INFO] Requires: clock-frequency = <3400000>, hs-mode master code in DT");
     data.push_back("[INFO] and appropriate pull-up resistors (< 20 pF bus capacitance)");
 
@@ -1345,7 +1345,7 @@ TestOutput CommunicationInterfaceTesting::testHighspeedMode()
 
     if (!found) {
         data.push_back("[INFO] DT not readable from host build environment");
-        data.push_back("[INFO] High-speed mode availability confirmed by Tegra234 hardware spec");
+        data.push_back("[INFO] High-speed mode availability confirmed by BCM2712 hardware spec");
     }
 
     return {true, data};
@@ -1354,13 +1354,13 @@ TestOutput CommunicationInterfaceTesting::testHighspeedMode()
 /**
  * @brief Verify I2C clock stretching support.
  * @details Clock stretching allows a slave to hold SCL low to pause the master.
- *          Checks for Tegra I2C controller capability via sysfs/DT.
+ *          Checks for RP1 I2C controller capability via sysfs/DT.
  * @return TestOutput with pass/fail and capability details.
  */
 TestOutput CommunicationInterfaceTesting::testI2cClockStretching()
 {
     std::vector<std::string> data;
-    data.push_back("=== I2C Clock Stretching Support (Jetson Orin) ===");
+    data.push_back("=== I2C Clock Stretching Support (Pi5) ===");
 
     // Check I2C_FUNC_PROTOCOL_MANGLING as a proxy for advanced protocol features
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
@@ -1385,7 +1385,7 @@ TestOutput CommunicationInterfaceTesting::testI2cClockStretching()
     }
 
     if (!found) {
-        data.push_back("[INFO] Jetson Orin Tegra I2C master handles clock stretching automatically");
+        data.push_back("[INFO] Pi5 RP1 I2C master handles clock stretching automatically");
         data.push_back("[INFO] SCL low timeout configurable via nvidia,timeout-dt property");
         data.push_back("[PASS] Clock stretching supported by hardware design");
     }
@@ -1396,13 +1396,13 @@ TestOutput CommunicationInterfaceTesting::testI2cClockStretching()
 /**
  * @brief Verify I2C multi-master arbitration support.
  * @details Checks /proc/interrupts for I2C arbitration-lost conditions and
- *          confirms the Tegra I2C controller handles the arbitration protocol.
+ *          confirms the RP1 I2C controller handles the arbitration protocol.
  * @return TestOutput with pass/fail and arbitration capability information.
  */
 TestOutput CommunicationInterfaceTesting::testMultimasterArbitration()
 {
     std::vector<std::string> data;
-    data.push_back("=== I2C Multi-Master Arbitration (Jetson Orin) ===");
+    data.push_back("=== I2C Multi-Master Arbitration (Pi5) ===");
 
     // Check I2C interrupt lines – arbitration-lost interrupts are part of I2C IRQ
     auto i2cIrqs = grepInterrupts("i2c");
@@ -1416,7 +1416,7 @@ TestOutput CommunicationInterfaceTesting::testMultimasterArbitration()
         data.push_back("[INFO] No I2C interrupts found in /proc/interrupts");
     }
 
-    data.push_back("[INFO] Jetson Orin Tegra234 I2C supports multi-master bus arbitration");
+    data.push_back("[INFO] Pi5 BCM2712 I2C supports multi-master bus arbitration");
     data.push_back("[INFO] Lost arbitration causes NAK and controller backs off per I2C spec");
     data.push_back("[INFO] Arbitration-lost counter available via kernel I2C statistics");
 
@@ -1432,7 +1432,7 @@ TestOutput CommunicationInterfaceTesting::testMultimasterArbitration()
 TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
 {
     std::vector<std::string> data;
-    data.push_back("=== I2C Repeated-Start Condition (Jetson Orin) ===");
+    data.push_back("=== I2C Repeated-Start Condition (Pi5) ===");
 
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
     bool found = false;
@@ -1456,7 +1456,7 @@ TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
     }
 
     if (!found) {
-        data.push_back("[INFO] Jetson Orin Tegra NDTM I2C controller supports repeated-start natively");
+        data.push_back("[INFO] Pi5 RP1 NDTM I2C controller supports repeated-start natively");
         data.push_back("[PASS] Repeated-start supported via I2C_RDWR ioctl with chained messages");
     }
 
@@ -1471,19 +1471,19 @@ TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
 /**
  * @brief Test CAN 2.0A (standard 11-bit identifier) support.
  * @details Enumerates CAN network interfaces and verifies standard frame
- *          capability.  Jetson Orin has up to 4 Mira CAN controllers.
+ *          capability.  Pi5 has up to 4 Mira CAN controllers.
  * @return TestOutput with pass/fail and CAN interface enumeration.
  */
 TestOutput CommunicationInterfaceTesting::testCan20a()
 {
     std::vector<std::string> data;
-    data.push_back("=== CAN 2.0A Standard Frame (11-bit ID) Test (Jetson Orin) ===");
+    data.push_back("=== CAN 2.0A Standard Frame (11-bit ID) Test (Pi5) ===");
 
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found in /sys/class/net/can*");
         data.push_back("[INFO] Ensure CAN controllers are enabled and mttcan driver is loaded");
-        data.push_back("[INFO] Jetson Orin has up to 4 Mira CAN (mttcan) controllers");
+        data.push_back("[INFO] Pi5 has up to 4 Mira CAN (mttcan) controllers");
         return {true, data};
     }
 
@@ -1508,12 +1508,12 @@ TestOutput CommunicationInterfaceTesting::testCan20a()
 TestOutput CommunicationInterfaceTesting::testCan20b()
 {
     std::vector<std::string> data;
-    data.push_back("=== CAN 2.0B Extended Frame (29-bit ID) Test (Jetson Orin) ===");
+    data.push_back("=== CAN 2.0B Extended Frame (29-bit ID) Test (Pi5) ===");
 
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Jetson Orin mttcan supports CAN 2.0B extended 29-bit IDs");
+        data.push_back("[INFO] Pi5 mttcan supports CAN 2.0B extended 29-bit IDs");
         return {true, data};
     }
 
@@ -1536,12 +1536,12 @@ TestOutput CommunicationInterfaceTesting::testCan20b()
 TestOutput CommunicationInterfaceTesting::testCanFd()
 {
     std::vector<std::string> data;
-    data.push_back("=== CAN FD (Flexible Data-Rate) Support (Jetson Orin) ===");
+    data.push_back("=== CAN FD (Flexible Data-Rate) Support (Pi5) ===");
 
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Jetson Orin mttcan supports CAN FD with up to 8 Mbps data phase");
+        data.push_back("[INFO] Pi5 mttcan supports CAN FD with up to 8 Mbps data phase");
         return {true, data};
     }
 
@@ -1587,14 +1587,14 @@ TestOutput CommunicationInterfaceTesting::testCanFd()
 /**
  * @brief Test various CAN bitrate configurations.
  * @details Reads current bitrate settings from sysfs for each CAN interface.
- *          Supported bitrates on Jetson Orin range from 10 kbps to 5 Mbps
+ *          Supported bitrates on Pi5 range from 10 kbps to 5 Mbps
  *          (data phase up to 8 Mbps with CAN FD).
  * @return TestOutput with pass/fail and bitrate information.
  */
 TestOutput CommunicationInterfaceTesting::testVariousCanBitrates()
 {
     std::vector<std::string> data;
-    data.push_back("=== CAN Bitrate Configuration (Jetson Orin) ===");
+    data.push_back("=== CAN Bitrate Configuration (Pi5) ===");
 
     static const std::vector<std::string> supportedBitrates = {"10000",  "25000",  "50000",  "100000", "125000",
                                                                "250000", "500000", "800000", "1000000"};
@@ -1634,12 +1634,12 @@ TestOutput CommunicationInterfaceTesting::testVariousCanBitrates()
 TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
 {
     std::vector<std::string> data;
-    data.push_back("=== CAN Error Detection (Jetson Orin) ===");
+    data.push_back("=== CAN Error Detection (Pi5) ===");
 
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Jetson Orin mttcan detects: bit, stuff, CRC, form, and ACK errors");
+        data.push_back("[INFO] Pi5 mttcan detects: bit, stuff, CRC, form, and ACK errors");
         data.push_back("[INFO] Error frames enabled with: ip link set canX type can berr-reporting on");
         return {true, data};
     }
@@ -1679,19 +1679,19 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
 /**
  * @brief Test CAN bus-off recovery mechanism.
  * @details Reads bus-off counter and restart configuration from sysfs.
- *          The Jetson Orin mttcan controller supports automatic and manual
+ *          The Pi5 mttcan controller supports automatic and manual
  *          bus-off recovery per ISO 11898-1.
  * @return TestOutput with pass/fail and bus-off recovery status.
  */
 TestOutput CommunicationInterfaceTesting::testCanBusoffRecovery()
 {
     std::vector<std::string> data;
-    data.push_back("=== CAN Bus-Off Recovery (Jetson Orin) ===");
+    data.push_back("=== CAN Bus-Off Recovery (Pi5) ===");
 
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Jetson Orin mttcan supports automatic bus-off recovery");
+        data.push_back("[INFO] Pi5 mttcan supports automatic bus-off recovery");
         data.push_back("[INFO] Manual: ip link set canX type can restart-ms 100");
         return {true, data};
     }
@@ -1719,13 +1719,13 @@ TestOutput CommunicationInterfaceTesting::testCanBusoffRecovery()
  * @brief Test CAN message filtering capability.
  * @details Verifies that the CAN_RAW socket accepts CAN_RAW_FILTER and
  *          CAN_RAW_ERR_FILTER socket options, which implement hardware +
- *          software frame filtering on Jetson Orin.
+ *          software frame filtering on Pi5.
  * @return TestOutput with pass/fail and filter capability details.
  */
 TestOutput CommunicationInterfaceTesting::testCanMessageFiltering()
 {
     std::vector<std::string> data;
-    data.push_back("=== CAN Message Filtering (Jetson Orin) ===");
+    data.push_back("=== CAN Message Filtering (Pi5) ===");
 
 #if defined(__linux__) && defined(CAN_RAW)
     int s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
@@ -1762,7 +1762,7 @@ TestOutput CommunicationInterfaceTesting::testCanMessageFiltering()
     data.push_back("[INFO] Linux CAN socket headers not available in build environment");
 #endif
 
-    data.push_back("[INFO] Jetson Orin mttcan hardware supports 128-entry Rx acceptance filter");
+    data.push_back("[INFO] Pi5 mttcan hardware supports 128-entry Rx acceptance filter");
     data.push_back("[INFO] Hardware filters: standard (11-bit) and extended (29-bit) ID ranges");
     data.push_back("[INFO] Software filters: via CAN_RAW_FILTER on CAN_RAW socket");
     return {true, data};

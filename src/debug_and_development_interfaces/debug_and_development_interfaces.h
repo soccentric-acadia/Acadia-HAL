@@ -3,8 +3,7 @@
  * @file debug_and_development_interfaces.h
  * @brief Header file for DebugAndDevelopmentInterfaces class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef DEBUGANDDEVELOPMENTINTERFACES_H
 #define DEBUGANDDEVELOPMENTINTERFACES_H
 #include "lib_base.h"

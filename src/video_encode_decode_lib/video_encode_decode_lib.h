@@ -3,8 +3,7 @@
  * @file video_encode_decode_lib.h
  * @brief Header file for VideoEncodeDecodeTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef VIDEOENCODEDECODETESTING_H
 #define VIDEOENCODEDECODETESTING_H
 #include "lib_base.h"

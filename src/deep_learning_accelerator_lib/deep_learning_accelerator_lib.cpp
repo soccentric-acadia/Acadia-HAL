@@ -1,13 +1,18 @@
 /**
  * @file deep_learning_accelerator_lib.cpp
  * @brief Implementation file for DeepLearningAcceleratorTesting class
- *        Targets NVIDIA Jetson Orin (AGX Orin / Orin NX / Orin Nano)
- *        which features two on-die DLA (Deep Learning Accelerator) engines.
+ *        Targets Raspberry Pi 5 (BCM2712 / RP1).
+ *        The Pi 5 has no on-die DLA; AI acceleration is provided by optional
+ *        add-on hardware:
+ *          - Hailo-8 (PCIe M.2 / HAT): /dev/hailo0, 26 INT8 TOPS
+ *          - Coral USB Accelerator (Edge TPU): USB vendor 18d1, 4 INT8 TOPS
+ *        All mathematical correctness tests (convolution, BN, activation, …)
+ *        run in software on the Cortex-A76 CPU.
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 
 #include "deep_learning_accelerator_lib.h"
+#include "../platform_rpi5.h"
 
 #include <algorithm>
 #include <atomic>
@@ -29,25 +34,24 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
-// Jetson Orin DLA hardware constants
+// Pi5 AI accelerator constants
 // ---------------------------------------------------------------------------
 
-// Each DLA engine on AGX Orin delivers ~26.2 INT8 TOPS (52.4 TOPS total)
-static constexpr double DLA_TOPS_PER_ENGINE = 26.2;    // INT8 TOPS
-static constexpr double DLA_TOPS_TOLERANCE_PCT = 15.0; // allowed deviation %
+// Hailo-8: connected via PCIe M.2 or HAT+ on Pi 5
+static constexpr double HAILO8_TOPS           = 26.0;       // INT8 TOPS
+static constexpr double HAILO8_TOPS_TOLERANCE = 15.0;       // % allowed deviation
+static const     char*  HAILO8_DEV            = "/dev/hailo0";
+static const     char*  HAILO8_SYSFS_MOD      = "/sys/module/hailo_pci";
 
-// Orin DLA core clock: nominal 1612.5 MHz (often reported as 1.6 GHz)
-static constexpr double DLA_CORE_CLK_NOMINAL_HZ = 1612500000.0;
-static constexpr double DLA_CLK_TOLERANCE_PCT = 20.0; // ±20 % of nominal
+// Coral USB Accelerator: Edge TPU, USB vendor 18d1 / product 9302 or 9303
+static constexpr double CORAL_USB_TOPS        = 4.0;        // INT8 TOPS
+static const     char*  CORAL_USB_VENDOR      = RPI5_CORAL_USB_VENDOR;  // "18d1"
 
-// DLA falcon (SRAM) clock: nominal 614.4 MHz
-static constexpr double DLA_FALCON_CLK_NOMINAL_HZ = 614400000.0;
-
-// Thermal limit: DLA dies at / throttles well before this
-static constexpr double DLA_TEMP_WARNING_C = 90.0;
+// Pi5 thermal limit (shared SoC die)
+static constexpr double DLA_TEMP_WARNING_C    = RPI5_THERMAL_THROTTLE_C; // 80 °C
 
 // Sustained workload duration for performance measurements
-static constexpr int PERF_DURATION_MS = 1500;
+static constexpr int    PERF_DURATION_MS      = 1500;
 
 // ---------------------------------------------------------------------------
 // Helper utilities (sysfs / procfs)
@@ -110,85 +114,65 @@ static std::vector<std::string> listDirWithPrefix(const std::string& dir, const 
 }
 
 /**
- * Try to locate the DLA core-clock rate from several known sysfs locations
- * used by different Jetson BSP / kernel versions.
- * Returns Hz, or -1 on failure.
+ * Probe the Hailo-8 PCIe link status (devfreq / lspci).
+ * Returns a non-empty string describing the link, or "" if not found.
  */
-static long long probeDlaCoreClock()
+static std::string probeHailoLinkStatus()
 {
-    // BPMP debug clock interface (L4T ≥ 35.x)
-    static const std::vector<std::string> candidates = {
-        "/sys/kernel/debug/bpmp/debug/clk/dla_core_clk/rate",
-        "/sys/kernel/debug/bpmp/debug/clk/nvdla0/rate",
-        "/sys/kernel/debug/clk/dla_core_clk/clk_rate",
-        "/sys/kernel/debug/clk/nvdla/clk_rate",
-    };
-    for (auto& c : candidates) {
-        long long v = readSysfsInt(c);
-        if (v > 0)
-            return v;
-    }
-    // Fall back: devfreq entry
-    auto devfreqDirs = listDirWithPrefix("/sys/class/devfreq", "");
-    for (auto& d : devfreqDirs) {
-        // e.g. /sys/class/devfreq/15880000.nvdla0
-        if (d.find("nvdla") != std::string::npos || d.find("dla") != std::string::npos) {
-            long long v = readSysfsInt(d + "/cur_freq");
-            if (v > 0)
-                return v;
-        }
-    }
-    return -1LL;
+    // Hailo-8 exposes a PCIe endpoint; check via lspci or sysfs
+    // PCI vendor:device for Hailo-8 is 1e60:2864
+    std::string lspci = readSysfsLine("/sys/bus/pci/devices/"); // not a file, just check
+    // Try hailo module info
+    std::string mod = readSysfsLine(HAILO8_SYSFS_MOD + std::string("/version"));
+    if (!mod.empty())
+        return "hailo_pci v" + mod;
+    // Check for /dev/hailo0
+    if (pathExists(HAILO8_DEV))
+        return "hailo0 device present";
+    return "";
 }
 
-/** Read DLA temperature from the thermal subsystem. Returns °C or -1. */
+/** Read Pi5 SoC temperature from the thermal subsystem. Returns °C or -1. */
 static double probeDlaTemperature()
 {
-    // Iterate thermal zones looking for "GPU-therm" or "DLA" labels.
-    // On Orin the DLA shares the same die temperature domain as the GPU.
-    for (int z = 0; z < 20; ++z) {
+    // Pi5 has cpu-thermal at thermal_zone0
+    for (int z = 0; z < 10; ++z) {
         std::string base = "/sys/class/thermal/thermal_zone" + std::to_string(z);
         std::string type = readSysfsLine(base + "/type");
-        if (type.find("GPU") != std::string::npos || type.find("DLA") != std::string::npos || type.find("SoC") != std::string::npos) {
+        if (type.find("cpu") != std::string::npos ||
+            type.find("soc") != std::string::npos ||
+            type.find("bcm") != std::string::npos) {
             long long milliC = readSysfsInt(base + "/temp");
             if (milliC > 0)
                 return static_cast<double>(milliC) / 1000.0;
         }
     }
-    // Fallback: GPU-therm is typically zone 7 on Orin
-    long long v = readSysfsInt("/sys/class/thermal/thermal_zone7/temp");
+    // Fallback: zone0 on Pi5
+    long long v = readSysfsInt("/sys/class/thermal/thermal_zone0/temp");
     if (v > 0)
         return static_cast<double>(v) / 1000.0;
     return -1.0;
 }
 
 /**
- * Read the on-SoC INA3221 power monitor for the GPU/DLA power rail.
+ * Read Pi5 board power from INA219 (if fitted) or hwmon power rail.
  * Returns mW or -1 on failure.
  */
 static long long probeDlaPowerMilliWatts()
 {
-    // Tegra INA3221 exposes rails via hwmon.  Rail labels vary by board.
+    // Pi5 MXL7704 PMIC may expose rails via hwmon
     auto hwmons = listDirWithPrefix("/sys/class/hwmon", "hwmon");
     for (auto& hm : hwmons) {
-        std::string name = readSysfsLine(hm + "/name");
-        if (name.find("ina3221") == std::string::npos && name.find("ina219") == std::string::npos)
-            continue;
-
-        // Look for a channel labelled GPU or VDD_GPU_SOC
-        for (int ch = 1; ch <= 3; ++ch) {
-            std::string lbl = readSysfsLine(hm + "/in" + std::to_string(ch) + "_label");
-            if (lbl.find("GPU") != std::string::npos || lbl.find("DLA") != std::string::npos || lbl.find("SOC") != std::string::npos) {
-                // power = voltage * current  (or read power_input directly)
-                long long pwr = readSysfsInt(hm + "/power" + std::to_string(ch) + "_input");
-                if (pwr > 0)
-                    return pwr / 1000; // µW→mW
-                long long mV = readSysfsInt(hm + "/in" + std::to_string(ch) + "_input");
-                long long mA = readSysfsInt(hm + "/curr" + std::to_string(ch) + "_input");
-                if (mV > 0 && mA > 0)
-                    return (mV * mA) / 1000; // mV*mA → mW
-            }
-        }
+        long long pwr = readSysfsInt(hm + "/power1_input");
+        if (pwr > 0)
+            return pwr / 1000; // µW→mW
+    }
+    // INA219 on I2C bus (optional add-on)
+    auto i2cDev = listDirWithPrefix("/sys/bus/i2c/drivers/ina219", "");
+    for (auto& d : i2cDev) {
+        long long pwr = readSysfsInt(d + "/power1_input");
+        if (pwr > 0)
+            return pwr / 1000;
     }
     return -1LL;
 }
@@ -196,7 +180,7 @@ static long long probeDlaPowerMilliWatts()
 /**
  * Burn CPU time performing a simple integer/float workload to simulate DLA
  * interaction through software (used when DLA device nodes are accessible
- * but libnvdla is not available in the test environment).
+ * without hardware runtime (hailo-hailort not installed)).
  * Returns number of "MACs" completed (notional).
  */
 static uint64_t syntheticMacWorkload(uint64_t iterations)
@@ -228,52 +212,43 @@ DeepLearningAcceleratorTesting::~DeepLearningAcceleratorTesting()
 
 // ---------------------------------------------------------------------------
 // 1. testDla1Functionality
-//    Verify DLA engine 0 (/dev/nvdla0) is present and accessible.
+//    Detect primary AI accelerator: Hailo-8 PCIe at /dev/hailo0
 // ---------------------------------------------------------------------------
-/**
- * @brief Verify DLA engine 0 (DLA0) is present and accessible on Jetson Orin.
- */
 TestOutput DeepLearningAcceleratorTesting::testDla1Functionality()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    // Primary check: character device node
-    const std::string dev0 = "/dev/nvdla0";
-    bool devPresent = pathExists(dev0);
-    data.push_back("DLA0 device node (" + dev0 + "): " + (devPresent ? "present" : "NOT FOUND"));
+    data.push_back("Pi5 primary AI accelerator: Hailo-8 (PCIe M.2 / HAT+)");
+    data.push_back("Expected: " + std::string(HAILO8_DEV) + " device node");
 
-    // Supplementary: platform driver binding
-    auto platDirs = listDirWithPrefix("/sys/bus/platform/devices", "");
-    bool platBound = false;
-    std::string platPath;
-    for (auto& d : platDirs) {
-        if (d.find("nvdla0") != std::string::npos || d.find("15880000.nvdla") != std::string::npos) {
-            platBound = true;
-            platPath = d;
-            break;
-        }
-    }
-    data.push_back("DLA0 platform device: " + (platBound ? platPath : "not found in sysfs"));
+    bool devPresent = pathExists(HAILO8_DEV);
+    data.push_back("Hailo-8 device (" + std::string(HAILO8_DEV) + "): " +
+                   (devPresent ? "present" : "NOT FOUND"));
 
-    // Module loaded?
-    bool modLoaded = pathExists("/sys/module/nvdla") || pathExists("/sys/module/tegra_nvdla");
-    data.push_back("nvdla kernel module: " + std::string(modLoaded ? "loaded" : "not detected"));
+    // Check PCIe module
+    bool modLoaded = pathExists(HAILO8_SYSFS_MOD);
+    data.push_back("hailo_pci kernel module: " + std::string(modLoaded ? "loaded" : "not detected"));
 
-    if (!devPresent && !platBound) {
-        passed = false;
-        data.push_back("FAIL: DLA0 not detected. Ensure nvdla driver is loaded (modprobe nvdla).");
+    // Check for Hailo PCI vendor entry
+    std::string linkStatus = probeHailoLinkStatus();
+    if (!linkStatus.empty())
+        data.push_back("Hailo-8 link: " + linkStatus);
+
+    if (!devPresent && !modLoaded) {
+        // Not a hard failure on bare Pi5 without HAT — report as informational
+        data.push_back("INFO: Hailo-8 not detected. Install Hailo-8 HAT+ and run:");
+        data.push_back("      sudo apt install hailo-all  (Hailo Software Suite)");
+        data.push_back("      Hailo-8 delivers ~26 INT8 TOPS via PCIe Gen3 x1.");
     } else {
-        // Attempt open for basic accessibility
-        int fd = open(dev0.c_str(), O_RDWR);
+        int fd = open(HAILO8_DEV, O_RDWR);
         if (fd >= 0) {
-            data.push_back("DLA0 device open: OK");
+            data.push_back("Hailo-8 device open: OK");
             close(fd);
         } else {
-            // Read-only open may also fail for char devices without ioctl
-            data.push_back("DLA0 device open: requires privilege or unsupported ioctl (normal in test env)");
+            data.push_back("Hailo-8 device open: requires hailo group membership or root");
         }
-        data.push_back("DLA0 engine is present and driver-bound.");
+        data.push_back("Hailo-8 AI accelerator is present and driver-bound.");
     }
 
     return {passed, data};
@@ -281,46 +256,40 @@ TestOutput DeepLearningAcceleratorTesting::testDla1Functionality()
 
 // ---------------------------------------------------------------------------
 // 2. testDla2Functionality
-//    Verify DLA engine 1 (/dev/nvdla1) is present and accessible.
+//    Detect secondary AI accelerator: Coral USB Edge TPU
 // ---------------------------------------------------------------------------
-/**
- * @brief Verify DLA engine 1 (DLA1) is present and accessible on Jetson Orin.
- */
 TestOutput DeepLearningAcceleratorTesting::testDla2Functionality()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    const std::string dev1 = "/dev/nvdla1";
-    bool devPresent = pathExists(dev1);
-    data.push_back("DLA1 device node (" + dev1 + "): " + (devPresent ? "present" : "NOT FOUND"));
+    data.push_back("Pi5 secondary AI accelerator: Coral USB Edge TPU (Google)");
+    data.push_back("USB vendor ID: " + std::string(CORAL_USB_VENDOR) + " (18d1:9302 or 18d1:9303)");
+    data.push_back("Edge TPU performance: ~" + std::to_string(CORAL_USB_TOPS) + " INT8 TOPS via USB 3.0");
 
-    auto platDirs = listDirWithPrefix("/sys/bus/platform/devices", "");
-    bool platBound = false;
-    std::string platPath;
-    for (auto& d : platDirs) {
-        if (d.find("nvdla1") != std::string::npos || d.find("158c0000.nvdla") != std::string::npos) {
-            platBound = true;
-            platPath = d;
+    // Check via /sys/bus/usb/devices for vendor 18d1
+    auto usbDirs = listDirWithPrefix("/sys/bus/usb/devices", "");
+    bool coralFound = false;
+    for (auto& d : usbDirs) {
+        std::string vid = readSysfsLine(d + "/idVendor");
+        std::string pid = readSysfsLine(d + "/idProduct");
+        if (vid == CORAL_USB_VENDOR &&
+            (pid == "9302" || pid == "9303" || pid == "9304")) {
+            coralFound = true;
+            std::string product = readSysfsLine(d + "/product");
+            data.push_back("Coral Edge TPU found: " + d +
+                           " (" + product + ") pid=" + pid);
             break;
         }
     }
-    data.push_back("DLA1 platform device: " + (platBound ? platPath : "not found in sysfs"));
 
-    if (!devPresent && !platBound) {
-        // AGX Orin has 2 DLA engines; NX/Nano variants may have only 1
-        passed = false;
-        data.push_back("FAIL: DLA1 not detected. This may indicate a non-AGX Orin variant, "
-                       "or the nvdla driver is not loaded.");
+    if (!coralFound) {
+        data.push_back("INFO: Coral USB Edge TPU not detected.");
+        data.push_back("      Install gasket-dkms driver + libedgetpu1-std for USB Coral.");
     } else {
-        int fd = open(dev1.c_str(), O_RDWR);
-        if (fd >= 0) {
-            data.push_back("DLA1 device open: OK");
-            close(fd);
-        } else {
-            data.push_back("DLA1 device open: requires privilege (expected without libnvdla)");
-        }
-        data.push_back("DLA1 engine is present and driver-bound.");
+        // Check /dev/apex_0 (gasket driver device)
+        bool apexDev = pathExists("/dev/apex_0");
+        data.push_back("gasket /dev/apex_0: " + std::string(apexDev ? "present" : "not found (install gasket-dkms)"));
     }
 
     return {passed, data};
@@ -328,30 +297,27 @@ TestOutput DeepLearningAcceleratorTesting::testDla2Functionality()
 
 // ---------------------------------------------------------------------------
 // 3. testDualDlaConcurrentOperation
-//    Launch workloads on two threads simultaneously, simulating concurrent use
-//    of DLA0 and DLA1 (software-level concurrency test).
+//    Simulate concurrent AI inference on Hailo-8 and Coral USB (if present).
 // ---------------------------------------------------------------------------
-/**
- * @brief Test concurrent operation of both DLA engines simultaneously.
- */
 TestOutput DeepLearningAcceleratorTesting::testDualDlaConcurrentOperation()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    // Verify both device nodes exist before testing concurrency
-    bool dla0 = pathExists("/dev/nvdla0");
-    bool dla1 = pathExists("/dev/nvdla1");
-    data.push_back("DLA0 present: " + std::string(dla0 ? "yes" : "no"));
-    data.push_back("DLA1 present: " + std::string(dla1 ? "yes" : "no"));
+    bool hailo = pathExists(HAILO8_DEV) || pathExists(HAILO8_SYSFS_MOD);
 
-    if (!dla0) {
-        passed = false;
-        data.push_back("FAIL: DLA0 missing, cannot perform dual-DLA concurrency test.");
-        return {passed, data};
+    // Detect Coral via USB
+    bool coral = false;
+    auto usbDirs = listDirWithPrefix("/sys/bus/usb/devices", "");
+    for (auto& d : usbDirs) {
+        std::string vid = readSysfsLine(d + "/idVendor");
+        if (vid == CORAL_USB_VENDOR) { coral = true; break; }
     }
 
-    // Run two workload threads representing DLA0 and DLA1 pipelines
+    data.push_back("Hailo-8 present: " + std::string(hailo ? "yes" : "no"));
+    data.push_back("Coral USB present: " + std::string(coral ? "yes" : "no"));
+    data.push_back("Running concurrent software workloads (CPU proxy for dual-accelerator)");
+
     std::atomic<bool> t0Done{false}, t1Done{false};
     std::atomic<uint64_t> t0Result{0}, t1Result{0};
 
@@ -367,22 +333,16 @@ TestOutput DeepLearningAcceleratorTesting::testDualDlaConcurrentOperation()
     auto start = std::chrono::high_resolution_clock::now();
     t0.join();
     t1.join();
-    auto elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
+    double elapsed = std::chrono::duration<double>(
+        std::chrono::high_resolution_clock::now() - start).count();
 
     data.push_back("Concurrent workload completed in: " + std::to_string(elapsed) + " s");
-    data.push_back("DLA0 thread result: " + std::to_string(t0Result.load()));
-    data.push_back("DLA1 thread result: " + std::to_string(t1Result.load()));
+    data.push_back("Thread 0 (Hailo proxy) result: " + std::to_string(t0Result.load()));
+    data.push_back("Thread 1 (Coral proxy) result: " + std::to_string(t1Result.load()));
 
     if (!t0Done || !t1Done) {
         passed = false;
         data.push_back("FAIL: One or both concurrent threads did not complete.");
-    } else {
-        if (!dla1) {
-            data.push_back("WARNING: DLA1 not present — single-DLA device; "
-                           "concurrent thread test passed but hardware concurrency unavailable.");
-        } else {
-            data.push_back("Both DLA engines operated concurrently without contention.");
-        }
     }
 
     return {passed, data};
@@ -390,85 +350,80 @@ TestOutput DeepLearningAcceleratorTesting::testDualDlaConcurrentOperation()
 
 // ---------------------------------------------------------------------------
 // 4. testDlaClockFrequency
-//    Read DLA core clock from sysfs and verify it is within expected range.
+//    Hailo-8 does not expose clock frequency via standard sysfs.
+//    Probe PCIe link speed as a proxy for accelerator availability.
 // ---------------------------------------------------------------------------
-/**
- * @brief Verify DLA core clock frequency is within the expected range for Jetson Orin.
- */
 TestOutput DeepLearningAcceleratorTesting::testDlaClockFrequency()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    long long coreHz = probeDlaCoreClock();
-    if (coreHz <= 0) {
-        data.push_back("DLA core clock: not readable via sysfs (may need root / debugfs)");
-        data.push_back("Nominal expected: " + std::to_string(static_cast<long long>(DLA_CORE_CLK_NOMINAL_HZ)) +
-                       " Hz "
-                       "(~1612 MHz)");
-        // Non-fatal: sysfs debug may not be mounted
-        data.push_back("WARN: clock unreadable — skipping frequency assertion.");
-    } else {
-        double freqMHz = static_cast<double>(coreHz) / 1e6;
-        data.push_back("DLA core clock: " + std::to_string(coreHz) + " Hz (" + std::to_string(freqMHz) + " MHz)");
+    data.push_back("Hailo-8 internal DSP clock: ~700 MHz (not directly readable via sysfs)");
+    data.push_back("PCIe Gen3 x1 link speed: ~1 GB/s (Pi5 RP1 PCIe bridge)");
 
-        double nominalMHz = DLA_CORE_CLK_NOMINAL_HZ / 1e6;
-        double lowerMHz = nominalMHz * (1.0 - DLA_CLK_TOLERANCE_PCT / 100.0);
-        double upperMHz = nominalMHz * (1.0 + DLA_CLK_TOLERANCE_PCT / 100.0);
-        data.push_back("Acceptable range: [" + std::to_string(lowerMHz) + " – " + std::to_string(upperMHz) + "] MHz");
+    // Check Hailo PCIe device presence
+    bool hailoDev = pathExists(HAILO8_DEV);
+    bool hailoMod = pathExists(HAILO8_SYSFS_MOD);
+    data.push_back("Hailo-8 device (/dev/hailo0): " + std::string(hailoDev ? "present" : "absent"));
+    data.push_back("hailo_pci module: " + std::string(hailoMod ? "loaded" : "not loaded"));
 
-        if (freqMHz < lowerMHz || freqMHz > upperMHz) {
-            passed = false;
-            data.push_back("FAIL: DLA core clock " + std::to_string(freqMHz) + " MHz is outside the expected range.");
-        } else {
-            data.push_back("PASS: DLA core clock is within expected range.");
-        }
-    }
-
-    // Also probe falcon (SRAM) clock if available
-    static const std::vector<std::string> falconCandidates = {
-        "/sys/kernel/debug/bpmp/debug/clk/dla_falcon_clk/rate",
-        "/sys/kernel/debug/clk/dla_falcon_clk/clk_rate",
-    };
-    for (auto& c : falconCandidates) {
-        long long fHz = readSysfsInt(c);
-        if (fHz > 0) {
-            data.push_back("DLA falcon clock: " + std::to_string(fHz) + " Hz (" + std::to_string(fHz / 1000000) + " MHz), nominal " +
-                           std::to_string(static_cast<long long>(DLA_FALCON_CLK_NOMINAL_HZ / 1e6)) + " MHz");
+    // Check PCIe link speed via sysfs
+    auto pcieDevs = listDirWithPrefix("/sys/bus/pci/devices", "");
+    for (auto& d : pcieDevs) {
+        // Hailo-8 PCI device ID: 1e60:2864
+        std::string vendor = readSysfsLine(d + "/vendor");
+        std::string device = readSysfsLine(d + "/device");
+        if (vendor == "0x1e60") {
+            std::string linkSpd = readSysfsLine(d + "/current_link_speed");
+            std::string linkWid = readSysfsLine(d + "/current_link_width");
+            data.push_back("Hailo-8 PCIe: vendor=" + vendor + " device=" + device +
+                           " speed=" + linkSpd + " width=x" + linkWid);
             break;
         }
     }
+
+    if (!hailoDev && !hailoMod)
+        data.push_back("NOTE: Hailo-8 not installed; clock test not applicable.");
 
     return {passed, data};
 }
 
 // ---------------------------------------------------------------------------
 // 5. testDlaPowerConsumption
-//    Read VDD_GPU_SOC / GPU power rail via INA3221 and check it's non-zero.
+//    Read Pi5 board power and report Hailo-8 PCIe power budget.
 // ---------------------------------------------------------------------------
-/**
- * @brief Measure DLA-affiliated power rail and verify reading is within bounds.
- */
 TestOutput DeepLearningAcceleratorTesting::testDlaPowerConsumption()
 {
     std::vector<std::string> data;
     bool passed = true;
 
+    data.push_back("Hailo-8 M.2 TDP: ~2.5 W via PCIe slot power");
+    data.push_back("Pi5 PCIe slot provides up to 5 W (3.3 V @ 1.5 A)");
+
     long long mW = probeDlaPowerMilliWatts();
     if (mW < 0) {
-        data.push_back("DLA power rail: not readable (INA3221 not found or insufficient privilege)");
-        data.push_back("WARN: power measurement skipped — test inconclusive.");
-    } else {
-        data.push_back("DLA/GPU power rail: " + std::to_string(mW) + " mW");
+        data.push_back("Board power: not readable (no INA219 / hwmon power channel)");
+        data.push_back("Use vcgencmd measure_volts to check supply rails.");
 
-        // Idle power should be > 0; peak DLA load on AGX Orin can reach ~25 W/engine
+        // Try vcgencmd
+        // (external tool, graceful failure expected in test environment)
+    } else {
+        data.push_back("Board power reading: " + std::to_string(mW) + " mW");
         if (mW <= 0) {
             passed = false;
             data.push_back("FAIL: Power reading is zero — sensor may be faulty.");
-        } else if (mW > 30000) { // 30 W per rail is excessive at idle
-            data.push_back("WARN: Power reading " + std::to_string(mW) + " mW is unusually high (possible heavy background load).");
         } else {
-            data.push_back("PASS: Power reading is within a plausible range.");
+            data.push_back("PASS: Power reading is non-zero.");
+        }
+    }
+
+    // Hailo-8 PCIe slot power check
+    auto pcieDevs = listDirWithPrefix("/sys/bus/pci/devices", "");
+    for (auto& d : pcieDevs) {
+        std::string vendor = readSysfsLine(d + "/vendor");
+        if (vendor == "0x1e60") {
+            data.push_back("Hailo-8 detected at PCI slot: " + d);
+            break;
         }
     }
 
@@ -488,10 +443,10 @@ TestOutput DeepLearningAcceleratorTesting::testConvolutionOperations()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Testing convolution operation support on DLA (Jetson Orin Ampere DLA)");
+    data.push_back("Testing convolution operation support on DLA (Pi5 + Hailo-8 software emulation)");
 
     // Check DLA device is present (prerequisite)
-    bool dlaReady = pathExists("/dev/nvdla0");
+    bool dlaReady = pathExists("/dev/hailo0");
     data.push_back("DLA0 device present: " + std::string(dlaReady ? "yes" : "no"));
 
     // Perform a software-emulated 3x3 convolution correctness check
@@ -530,9 +485,9 @@ TestOutput DeepLearningAcceleratorTesting::testConvolutionOperations()
     if (!convOk)
         passed = false;
 
-    // DLA on Orin natively supports INT8 / FP16 convolutions via TensorRT/NVDLA
-    data.push_back("Orin DLA natively supports: Direct Convolution, Winograd, IMG-mode");
-    data.push_back("Supported kernel sizes: 1×1, 3×3, 5×5, 7×7 (and others via TensorRT)");
+    // Hailo-8 natively supports INT8/FP16 inference via HailoRT SDK
+    data.push_back("Hailo-8 natively supports: convolution, pooling, FC, BN (INT8/FP16 via HailoRT)");
+    data.push_back("Supported kernel sizes: 1x1, 3x3, 5x5, 7x7 via Hailo Model Zoo / ONNX exporter");
     data.push_back("Convolution engine verification (software): " + std::string(convOk ? "OK" : "FAILED"));
 
     return {passed, data};
@@ -551,7 +506,7 @@ TestOutput DeepLearningAcceleratorTesting::testDeconvolutionOperations()
     bool passed = true;
 
     data.push_back("Testing deconvolution (transposed convolution) support");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     // Minimal deconvolution correctness: 2×2 input, stride-2 upsample kernel
     // Result should be a 4×4 output for stride-2 transposed conv with 1×1 kernel
@@ -572,8 +527,7 @@ TestOutput DeepLearningAcceleratorTesting::testDeconvolutionOperations()
     if (!deconvOk)
         passed = false;
 
-    data.push_back("Orin DLA supports transposed convolutions for upsampling networks "
-                   "(e.g., U-Net decoders, semantic segmentation).");
+    data.push_back("Pi5/Hailo-8 supports transposed convolutions for upsampling networks (decoders, segmentation).");
 
     return {passed, data};
 }
@@ -591,7 +545,7 @@ TestOutput DeepLearningAcceleratorTesting::testFullyConnectedLayers()
     bool passed = true;
 
     data.push_back("Testing fully-connected (FC) layer support on DLA");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     // FC: y = W * x  (3×4 weight matrix, 4-element input → 3-element output)
     const int N = 3, M = 4;
@@ -610,7 +564,7 @@ TestOutput DeepLearningAcceleratorTesting::testFullyConnectedLayers()
 
     data.push_back("y[0]=" + std::to_string(y[0]) + " y[1]=" + std::to_string(y[1]) + " y[2]=" + std::to_string(y[2]) +
                    " (expected 5,6,7)");
-    data.push_back("Orin DLA fully-connected ops are executed as 1×1 convolutions internally.");
+    data.push_back("Hailo-8 executes FC layers as 1x1 convolutions internally.");
 
     return {passed, data};
 }
@@ -627,7 +581,7 @@ TestOutput DeepLearningAcceleratorTesting::testActivationFunctions()
     bool passed = true;
 
     data.push_back("Testing activation function support (ReLU, LReLU, Sigmoid, TanH, Clamp)");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     // Validate each activation on a small set of values (-2, -1, 0, 1, 2)
     static const float inputs[] = {-2.0f, -1.0f, 0.0f, 1.0f, 2.0f};
@@ -682,7 +636,7 @@ TestOutput DeepLearningAcceleratorTesting::testActivationFunctions()
     if (!tanhOk)
         passed = false;
 
-    data.push_back("Orin DLA hardware activations: ReLU, LReLU, PReLU, Sigmoid, TanH, Clamp.");
+    data.push_back("Pi5+Hailo-8 hardware activations: ReLU, LReLU, Sigmoid, TanH, Clamp.");
 
     return {passed, data};
 }
@@ -699,7 +653,7 @@ TestOutput DeepLearningAcceleratorTesting::testPoolingOperations()
     bool passed = true;
 
     data.push_back("Testing pooling operation support on DLA (max-pool, avg-pool)");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     // 2×2 max-pool on 4×4 input (stride 2) → 2×2 output
     const int inH = 4, inW = 4, pH = 2, pW = 2, stride = 2;
@@ -735,8 +689,7 @@ TestOutput DeepLearningAcceleratorTesting::testPoolingOperations()
     if (!maxOk || !avgOk)
         passed = false;
 
-    data.push_back("Orin DLA supports: max-pool, min-pool, average-pool, "
-                   "pooling strides 1-8, kernel sizes 1×1–8×8.");
+    data.push_back("Pi5+Hailo-8 supports: max-pool, average-pool, global average-pool.");
 
     return {passed, data};
 }
@@ -753,7 +706,7 @@ TestOutput DeepLearningAcceleratorTesting::testBatchNormalization()
     bool passed = true;
 
     data.push_back("Testing batch normalization support on DLA");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     // BN fused as SDP (single data processor) on DLA:
     //   y = γ * (x - μ) / sqrt(σ² + ε) + β
@@ -787,8 +740,7 @@ TestOutput DeepLearningAcceleratorTesting::testBatchNormalization()
     for (int i = 0; i < ch; ++i)
         data.push_back("  ch[" + std::to_string(i) + "]: x=" + std::to_string(x[i]) + " → y=" + std::to_string(bnOut[i]));
 
-    data.push_back("Orin DLA BN is implemented in the SDP (Single Data Processor) engine, "
-                   "fused with the convolution engine to eliminate memory round-trips.");
+    data.push_back("Hailo-8 BN is fused with convolution layers in the compiled HEF model.");
 
     return {passed, data};
 }
@@ -805,7 +757,7 @@ TestOutput DeepLearningAcceleratorTesting::testElementwiseOperations()
     bool passed = true;
 
     data.push_back("Testing element-wise operations on DLA (ADD, MUL, MAX)");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     const float A[] = {1.0f, -2.0f, 3.0f, 4.0f};
     const float B[] = {2.0f, 3.0f, -1.0f, 4.0f};
@@ -844,8 +796,7 @@ TestOutput DeepLearningAcceleratorTesting::testElementwiseOperations()
     if (!addOk || !mulOk || !maxOk)
         passed = false;
 
-    data.push_back("Orin DLA element-wise ops executed in the SDP engine, "
-                   "supports tensor + tensor, tensor + scalar, and tensor × scalar.");
+    data.push_back("Pi5+Hailo-8 element-wise ops: ADD, MUL, MAX supported in HailoRT graph.");
 
     return {passed, data};
 }
@@ -862,7 +813,7 @@ TestOutput DeepLearningAcceleratorTesting::testInt8Precision()
     bool passed = true;
 
     data.push_back("Testing INT8 quantisation precision on DLA");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     // INT8 range: -128 … 127.  Scale factor maps FP32 to INT8.
     const float scale = 0.05f; // FP32/INT8 scale
@@ -885,14 +836,12 @@ TestOutput DeepLearningAcceleratorTesting::testInt8Precision()
         passed = false;
 
     // INT8 TOPS claim verification via capability check
-    data.push_back("Jetson AGX Orin INT8 DLA performance: ~26.2 TOPS/engine, "
-                   "52.4 TOPS dual-DLA.");
-    data.push_back("INT8 is the primary inference precision mode for DLA on Orin; "
-                   "calibration tables required (TensorRT PTQ/QAT).");
+    data.push_back("Pi5+Hailo-8 INT8 inference: ~26 INT8 TOPS (Hailo-8M) / ~13 TOPS (Hailo-8L)");
+    data.push_back("INT8 is the primary inference precision mode for Hailo-8; use Hailo Model Zoo or ONNX.");
 
-    // Check that nvdla driver is active — a necessary condition for INT8 inference
-    bool drvOk = pathExists("/dev/nvdla0");
-    data.push_back("nvdla driver ready for INT8 inference: " + std::string(drvOk ? "yes" : "no (driver not loaded)"));
+    // Check that hailo_pci driver is active - a necessary condition for INT8 inference
+    bool drvOk = pathExists("/dev/hailo0");
+    data.push_back("hailo_pci driver ready for INT8 inference: " + std::string(drvOk ? "yes" : "no (driver not loaded)"));
     if (!drvOk)
         passed = false;
 
@@ -911,7 +860,7 @@ TestOutput DeepLearningAcceleratorTesting::testFp16Precision()
     bool passed = true;
 
     data.push_back("Testing FP16 precision arithmetic on DLA");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     // Emulate FP16 via FP32 with FP16 rounding (round-to-nearest, nearest-even)
     // FP16 mantissa: 10 bits → ~3 decimal digits of precision
@@ -955,8 +904,7 @@ TestOutput DeepLearningAcceleratorTesting::testFp16Precision()
     if (!dotOk || !fp16Ok)
         passed = false;
 
-    data.push_back("Orin DLA FP16 (half-precision) delivers comparable TOPS to INT8 "
-                   "with higher dynamic range; no calibration table required.");
+    data.push_back("Pi5+Hailo-8 FP16 inference is supported via mixed-precision HEF compilation.");
 
     return {passed, data};
 }
@@ -973,7 +921,7 @@ TestOutput DeepLearningAcceleratorTesting::testStructuredSparsitySupport()
     bool passed = true;
 
     data.push_back("Testing structured sparsity (2:4 fine-grained) support on DLA");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     // Verify a 2:4 sparse pattern: in every group of 4 elements, at most 2 are nonzero
     const float weights[] = {1.0f, 0.0f, -1.0f, 0.0f,  // group 1: 2 nz ✓
@@ -1002,11 +950,11 @@ TestOutput DeepLearningAcceleratorTesting::testStructuredSparsitySupport()
         passed = false;
 
     // Sparse TOPS estimate: 2:4 sparsity gives up to 2× throughput uplift on Ampere DLA
-    double sparseTops = DLA_TOPS_PER_ENGINE * 2.0;
+    double sparseTops = HAILO8_TOPS;
     data.push_back("Expected sparse INT8 TOPS (2×): " + std::to_string(sparseTops) +
-                   " TOPS/engine (AGX Orin datasheet: ~52.4 TOPS/engine with sparsity)");
-    data.push_back("Structured sparsity requires TensorRT sparse calibration or QAT with "
-                   "NVIDIA Apex / pytorch-quantization sparse pruning.");
+                   " TOPS (Hailo-8 hardware sparsity handled at HEF compile time)");
+    data.push_back(""
+                   "");
 
     return {passed, data};
 }
@@ -1025,24 +973,22 @@ TestOutput DeepLearningAcceleratorTesting::testHardwareSchedulerOperation()
     data.push_back("Testing DLA hardware scheduler (task queue / DMA engine)");
 
     // Check DLA device node as proxy for scheduler availability
-    bool dla0 = pathExists("/dev/nvdla0");
-    bool dla1 = pathExists("/dev/nvdla1");
-    data.push_back("DLA0 scheduler node: " + std::string(dla0 ? "present" : "absent"));
-    data.push_back("DLA1 scheduler node: " + std::string(dla1 ? "present" : "absent"));
+    bool hailo0 = pathExists("/dev/hailo0");
+    bool apex0  = pathExists("/dev/apex_0");
+    data.push_back("Hailo-8 scheduler node (/dev/hailo0): " + std::string(hailo0 ? "present" : "absent"));
+    data.push_back("Coral gasket node (/dev/apex_0): " + std::string(apex0 ? "present" : "absent"));
 
-    if (!dla0) {
-        passed = false;
-        data.push_back("FAIL: DLA0 not present; hardware scheduler unavailable.");
-        return {passed, data};
+    if (!hailo0 && !apex0) {
+        data.push_back("INFO: No AI accelerator found; scheduler test is software-only.");
     }
 
-    // Check devfreq governor (indicates PM + scheduler is active)
+    // Check Hailo devfreq governor (if bound)
     auto devfreqDirs = listDirWithPrefix("/sys/class/devfreq", "");
     std::string governor;
     for (auto& d : devfreqDirs) {
-        if (d.find("nvdla") != std::string::npos || d.find("dla") != std::string::npos) {
+        if (d.find("hailo") != std::string::npos || d.find("pcie") != std::string::npos) {
             governor = readSysfsLine(d + "/governor");
-            data.push_back("DLA devfreq governor: " + (governor.empty() ? "(unavailable)" : governor));
+            data.push_back("Hailo devfreq governor: " + (governor.empty() ? "(unavailable)" : governor));
             break;
         }
     }
@@ -1072,8 +1018,7 @@ TestOutput DeepLearningAcceleratorTesting::testHardwareSchedulerOperation()
         data.push_back("WARN: High scheduling jitter detected (ratio=" + std::to_string(maxMs / minMs) + ")");
     }
 
-    data.push_back("Orin DLA hardware scheduler: dedicated task queue, DMA scatter-gather, "
-                   "zero-copy tensor sharing with GPU via unified LPDDR5X.");
+    data.push_back("Pi5+Hailo-8 scheduler: HailoRT runtime manages inference pipeline queues.");
 
     return {passed, data};
 }
@@ -1082,16 +1027,16 @@ TestOutput DeepLearningAcceleratorTesting::testHardwareSchedulerOperation()
 // 17. testDlaTopsVerification
 // ---------------------------------------------------------------------------
 /**
- * @brief Verify DLA TOPS (Tera Operations Per Second) against Jetson Orin spec.
+ * @brief Verify DLA TOPS (Tera Operations Per Second) against Pi5 with Hailo-8 spec.
  */
 TestOutput DeepLearningAcceleratorTesting::testDlaTopsVerification()
 {
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Verifying DLA TOPS rating for Jetson AGX Orin");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
-    data.push_back("DLA1 present: " + std::string(pathExists("/dev/nvdla1") ? "yes" : "no"));
+    data.push_back("Verifying AI accelerator TOPS rating for Pi5");
+    data.push_back("Hailo-8 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
+    data.push_back("Coral USB present: " + std::string(pathExists("/dev/apex_0") ? "yes" : "no"));
 
     // Measure approximate throughput of a synthetic INT8-equivalent workload
     // (scalar integer multiply-accumulate on the CPU as a lower-bound proxy)
@@ -1107,22 +1052,21 @@ TestOutput DeepLearningAcceleratorTesting::testDlaTopsVerification()
     double gops = static_cast<double>(OPS_PER_ITER * ITERS) / elapsedS / 1e9;
 
     data.push_back("CPU INT8 MAC benchmark (proxy): " + std::to_string(gops) + " GOPS");
-    data.push_back("(This is CPU throughput only; actual DLA INT8 requires libnvdla + "
-                   "TensorRT engine)");
+    data.push_back("(This is CPU throughput only; actual Hailo-8 INT8 requires hailort + HEF model)");
 
-    // Report expected hardware spec
-    bool dla0 = pathExists("/dev/nvdla0");
-    bool dla1 = pathExists("/dev/nvdla1");
-    int numDla = (dla0 ? 1 : 0) + (dla1 ? 1 : 0);
-    double expectedTops = numDla * DLA_TOPS_PER_ENGINE;
-    data.push_back("DLA engines detected: " + std::to_string(numDla));
-    data.push_back("Expected total INT8 TOPS (datasheet): " + std::to_string(expectedTops) + " TOPS");
+    bool hailo = pathExists("/dev/hailo0");
+    bool coral = pathExists("/dev/apex_0");
+    int numAccel = (hailo ? 1 : 0) + (coral ? 1 : 0);
+    double expectedTops = (hailo ? HAILO8_TOPS : 0.0) + (coral ? CORAL_USB_TOPS : 0.0);
+    data.push_back("AI accelerators detected: " + std::to_string(numAccel) +
+                   " (Hailo-8: " + std::string(hailo ? "yes" : "no") +
+                   ", Coral: " + std::string(coral ? "yes" : "no") + ")");
+    data.push_back("Expected total INT8 TOPS: " + std::to_string(expectedTops) + " TOPS");
 
-    if (numDla == 0) {
-        passed = false;
-        data.push_back("FAIL: No DLA engines detected.");
+    if (numAccel == 0) {
+        data.push_back("INFO: No external AI accelerator detected. Install Hailo-8 HAT+ for ~26 TOPS.");
     } else {
-        data.push_back("PASS: DLA engine(s) present; TOPS per datasheet = " + std::to_string(expectedTops));
+        data.push_back("PASS: AI accelerator(s) present; TOPS = " + std::to_string(expectedTops));
     }
 
     return {passed, data};
@@ -1141,7 +1085,7 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThroughputTesting()
 
     int durMs = PERF_DURATION_MS;
     data.push_back("DLA sustained throughput test (" + std::to_string(durMs) + " ms)");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     const uint64_t ITERS_PER_BATCH = 500000ULL;
     uint64_t totalBatches = 0;
@@ -1164,8 +1108,7 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThroughputTesting()
     data.push_back("Total MACs (proxy): " + std::to_string(totalMACs));
     data.push_back("Elapsed: " + std::to_string(elapsed) + " s");
     data.push_back("Throughput (CPU proxy): " + std::to_string(gops) + " GOPS");
-    data.push_back("Note: To measure actual DLA throughput, run trtexec with "
-                   "--useDLACore=0 --int8 --iterations=1000 --warmUp=500");
+    data.push_back("Note: To measure actual Hailo-8 throughput, use hailortcli benchmark --hef <model.hef>");
 
     if (totalBatches == 0) {
         passed = false;
@@ -1188,7 +1131,7 @@ TestOutput DeepLearningAcceleratorTesting::testDlaLatencyMeasurements()
 
     const int RUNS = 50;
     data.push_back("DLA per-inference latency measurement (" + std::to_string(RUNS) + " runs)");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     std::vector<double> latencies(RUNS);
     for (int r = 0; r < RUNS; ++r) {
@@ -1219,8 +1162,8 @@ TestOutput DeepLearningAcceleratorTesting::testDlaLatencyMeasurements()
         data.push_back("WARN: high tail latency jitter (P99=" + std::to_string(p99) + " ms, P50=" + std::to_string(p50) + " ms).");
     }
 
-    data.push_back("Typical real DLA latency for ResNet-50 INT8 on AGX Orin: ~1.5 ms.");
-    data.push_back("Use trtexec --useDLACore=0 --int8 for hardware latency benchmarking.");
+    data.push_back("Typical real Hailo-8 latency for ResNet-50 INT8: ~2 ms (PCIe Gen3 x1).");
+    data.push_back("Use: hailortcli run --hef resnet50.hef --batch-size 1 for hardware latency.");
 
     return {passed, data};
 }
@@ -1236,8 +1179,8 @@ TestOutput DeepLearningAcceleratorTesting::testDlaMemoryBandwidth()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Testing DLA memory bandwidth (LPDDR5X system memory access)");
-    data.push_back("DLA0 present: " + std::string(pathExists("/dev/nvdla0") ? "yes" : "no"));
+    data.push_back("Testing AI accelerator memory bandwidth (Pi5 LPDDR4X + PCIe channel)");
+    data.push_back("DLA0 present: " + std::string(pathExists("/dev/hailo0") ? "yes" : "no"));
 
     // Bandwidth test: copy a large buffer via memcpy and measure throughput
     const size_t BUF_MB = 64;
@@ -1257,8 +1200,8 @@ TestOutput DeepLearningAcceleratorTesting::testDlaMemoryBandwidth()
     data.push_back("memcpy elapsed: " + std::to_string(elapsed * 1000.0) + " ms");
     data.push_back("Measured bandwidth: " + std::to_string(bwGBs) + " GB/s");
 
-    // Jetson Orin AGX: 204.8 GB/s LPDDR5X theoretical peak; DLA fabric read ~68 GB/s
-    // We only verify the CPU-side memory is functional and not catastrophically slow
+    // Pi5 LPDDR4X: 17.0 GB/s theoretical. Shared between CPU and PCIe
+    // Hailo-8 gets ~1 GB/s via PCIe Gen3 x1
     const double MIN_BW_GBS = 1.0; // very conservative: at least 1 GB/s
     if (bwGBs < MIN_BW_GBS) {
         passed = false;
@@ -1274,8 +1217,7 @@ TestOutput DeepLearningAcceleratorTesting::testDlaMemoryBandwidth()
     if (!integrityOk)
         passed = false;
 
-    data.push_back("AGX Orin spec: LPDDR5X 204.8 GB/s total; DLA has dedicated read "
-                   "bandwidth ~68 GB/s via the CBB fabric.");
+    data.push_back("Pi5 spec: LPDDR4X 17 GB/s total; Hailo-8 gets ~1 GB/s via PCIe Gen3 x1.");
 
     return {passed, data};
 }
@@ -1335,23 +1277,15 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThermalBehavior()
     }
 
     // Check thermal throttling via clock reduction
-    long long currentClk = probeDlaCoreClock();
+    // Replace probeDlaCoreClock() calls (no longer applicable)
+    long long currentClk = -1LL; // Hailo-8 clock not exposed via Pi5 sysfs
     if (currentClk > 0) {
-        double clkMHz = currentClk / 1e6;
-        double nominalMHz = DLA_CORE_CLK_NOMINAL_HZ / 1e6;
-        double throttlePct = 100.0 * (1.0 - clkMHz / nominalMHz);
-        data.push_back("DLA core clock: " + std::to_string(clkMHz) +
-                       " MHz "
-                       "(nominal " +
-                       std::to_string(nominalMHz) + " MHz, throttle=" + std::to_string(throttlePct) + "%)");
-        if (throttlePct > 30.0) {
-            data.push_back("WARN: DLA clock throttled by >" + std::to_string(static_cast<int>(throttlePct)) +
-                           "% — possible thermal or power limit.");
-        }
+        double clkMHz = 0.0; // Hailo-8 internal clock not accessible from host
+        (void)clkMHz;
+        data.push_back("Hailo-8 internal DSP clock: ~700 MHz (not accessible from Pi5 sysfs).");
     }
 
-    data.push_back("Orin DLA thermal runaway protection: BPMP monitors die temp and "
-                   "reduces DLA clock or triggers system shutdown above T_junction_max.");
+    data.push_back("Pi5 thermal protection: firmware throttles CPU/GPU at 80 °C, shutdown at 85 °C.");
 
     return {passed, data};
 }

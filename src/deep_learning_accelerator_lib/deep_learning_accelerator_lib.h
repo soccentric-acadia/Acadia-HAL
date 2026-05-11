@@ -3,8 +3,7 @@
  * @file deep_learning_accelerator_lib.h
  * @brief Header file for DeepLearningAcceleratorTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef DEEPLEARNINGACCELERATORTESTING_H
 #define DEEPLEARNINGACCELERATORTESTING_H
 #include "lib_base.h"

@@ -3,8 +3,7 @@
  * @file reliability_lib.h
  * @brief Header file for ReliabilityTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef RELIABILITYTESTING_H
 #define RELIABILITYTESTING_H
 #include "lib_base.h"

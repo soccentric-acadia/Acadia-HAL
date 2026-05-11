@@ -3,8 +3,7 @@
  * @file gnss_lib.h
  * @brief Header file for GnssTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef GNSSTESTING_H
 #define GNSSTESTING_H
 #include "lib_base.h"

@@ -3,8 +3,7 @@
  * @file ethernet_switch_lib.h
  * @brief Header file for EthernetSwitchTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef ETHERNETSWITCHTESTING_H
 #define ETHERNETSWITCHTESTING_H
 #include "lib_base.h"

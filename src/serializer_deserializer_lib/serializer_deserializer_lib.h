@@ -3,8 +3,7 @@
  * @file serializer_deserializer_lib.h
  * @brief Header file for SerializerDeserializerTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef SERIALIZERDESERIALIZERTESTING_H
 #define SERIALIZERDESERIALIZERTESTING_H
 #include "lib_base.h"

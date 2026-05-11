@@ -1,12 +1,12 @@
 /**
  * @file clock_and_timing_lib.cpp
  * @brief Implementation file for ClockAndTimingTesting class
- *        Targets NVIDIA Jetson Orin platform.
+ *        Targets Raspberry Pi 5 platform.
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 
 #include "clock_and_timing_lib.h"
+#include "../platform_rpi5.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -174,7 +174,7 @@ TestOutput ClockAndTimingTesting::testSystemClockAccuracy()
 
     // --- 3. NTP / time-sync status (best-effort) ---
     {
-        // Jetson Orin / Ubuntu: check systemd-timesyncd synchronized flag
+        // Pi5 / Ubuntu: check systemd-timesyncd synchronized flag
         const std::string syncPath = "/run/systemd/timesync/synchronized";
         if (pathExists(syncPath)) {
             data.push_back("NTP sync flag present: " + syncPath);
@@ -201,10 +201,10 @@ TestOutput ClockAndTimingTesting::testSystemClockAccuracy()
 /**
  * @brief Implementation of testPcieReferenceClock
  *
- * On Jetson Orin the PCIe reference clock is sourced from the SoC PLL and
+ * On Pi5 the PCIe reference clock is sourced from the BCM2712 PLL and
  * is nominally 100 MHz (spread-spectrum variants ±0.5%).
  *
- * Strategy (Jetson Orin):
+ * Strategy (Raspberry Pi 5):
  *  1. Look for the PCIe reference clock in /sys/kernel/debug/clk/.
  *     Known clock names on Orin: "pcie_ref", "pcie_ref_clk", "pcie0_ref".
  *  2. Verify the clock is enabled (enable-count > 0).
@@ -273,7 +273,7 @@ TestOutput ClockAndTimingTesting::testPcieReferenceClock()
 /**
  * @brief Implementation of testUsbReferenceClock
  *
- * Jetson Orin uses an XUSB controller sourced from a 19.2 MHz or 20 MHz
+ * Pi5 xHCI controller uses a 100 MHz reference clock from RP1
  * reference divided internally to generate USB 2.0 (48 MHz) and USB 3.x
  * (250 MHz) clocks.
  *
@@ -340,7 +340,7 @@ TestOutput ClockAndTimingTesting::testUsbReferenceClock()
 /**
  * @brief Implementation of testEthernetReferenceClock
  *
- * Jetson Orin exposes a 10GbE (MGBE) controller and a GbE (EQOS) controller.
+ * Pi5 exposes a 10GbE (MGBE) controller and a GbE (EQOS) controller.
  * Both rely on internal PLLs derived from the system oscillator.
  *
  * Tests:
@@ -409,11 +409,11 @@ TestOutput ClockAndTimingTesting::testEthernetReferenceClock()
 /**
  * @brief Implementation of testCameraClockOutput
  *
- * Jetson Orin drives camera sensors via MIPI CSI-2.  The VI / ISP subsystem
- * uses a set of clocks (vi_clk, nvcsi_clk, extperiph1_clk, etc.).
+ * Pi5 drives camera sensors via MIPI CSI-2 Unicam on RP1
+ * uses a set of clocks (csi_clk, unicam_clk, extperiph1_clk, etc.).
  *
  * Tests:
- *  1. Look for nvcsi / vi / extperiph clock entries in debugfs.
+ *  1. Look for unicam / csi / extperiph clock entries in debugfs.
  *  2. Verify the V4L2 / camera platform devices are present in sysfs.
  */
 TestOutput ClockAndTimingTesting::testCameraClockOutput()
@@ -423,8 +423,8 @@ TestOutput ClockAndTimingTesting::testCameraClockOutput()
 
     // 1. Debug clock entries for CSI / VI
     const std::vector<std::string> clkCandidates = {
-        "nvcsi_clk",      "vi_clk", "vi_tsc_clk", "extperiph1_clk", "extperiph2_clk", "extperiph3_clk",
-        "extperiph4_clk", "nvcsi",  "vi",         "isp_clk"};
+        "csi_clk",        "unicam_clk", "unicam_tsc_clk", "extperiph1_clk", "extperiph2_clk", "extperiph3_clk",
+        "extperiph4_clk", "unicam", "csi",       "isp_clk"};
 
     bool anyClk = false;
     for (const auto& name : clkCandidates) {
@@ -461,7 +461,7 @@ TestOutput ClockAndTimingTesting::testCameraClockOutput()
 /**
  * @brief Implementation of testAudioClock
  *
- * Jetson Orin uses the Audio Processing Engine (APE) / ADSP.  I2S / DSPK
+ * Pi5 uses RP1 I2S for audio
  * clocks are derived from the PLLA PLL (nominally 56.448 MHz or 73.728 MHz
  * depending on audio sample rate family).
  *
@@ -517,20 +517,20 @@ TestOutput ClockAndTimingTesting::testAudioClock()
 /**
  * @brief Implementation of testPllLockStatus
  *
- * On Jetson Orin the primary PLLs are: PLLP, PLLC, PLLC4, PLLA, PLLU, PLLE,
+ * On Pi5 the primary PLLs are: PLLSYS, PLLCOREORE, PLLUSBphiSBphi,
  * PLLREFE.  A locked PLL will have clk_rate > 0 in debugfs and ideally an
  * enable_count > 0 when consumers are active.
  *
  * Tests:
  *  1. For each known PLL name, read rate and enable_count.
- *  2. PLLP is the system reference PLL and must be running.
- *  3. Report all PLLs found; fail only if PLLP is absent/zero.
+ *  2. PLLSYS is the system reference PLL and must be running.
+ *  3. Report all PLLs found; fail only if PLLSYS is absent/zero.
  */
 TestOutput ClockAndTimingTesting::testPllLockStatus()
 {
     std::vector<std::string> data;
 
-    // Ordered list: first entry (PLLP) is mandatory
+    // Ordered list: first entry (PLLSYS) is mandatory
     struct PllEntry
     {
         std::string name;
@@ -538,7 +538,7 @@ TestOutput ClockAndTimingTesting::testPllLockStatus()
     };
     const std::vector<PllEntry> plls = {
         {"pllp", true},  {"pllp_out0", false}, {"pllc", false},    {"pllc4", false},    {"plla", false},      {"plla_out0", false},
-        {"pllu", false}, {"plle", false},      {"pllrefe", false}, {"pllnvcsi", false}, {"pllc_out1", false},
+        {"pllu", false}, {"plle", false},      {"pllrefe", false}, {"pllcsi", false}, {"pllc_out1", false},
     };
 
     bool pllpFound = false;
@@ -569,15 +569,15 @@ TestOutput ClockAndTimingTesting::testPllLockStatus()
     }
 
     if (!pllpFound) {
-        // Fallback – verify PLLP via system uptime (PLLP must be running for the board to boot)
-        data.push_back("INFO: PLLP not visible in debugfs; "
-                       "verifying system is running (implicit PLLP lock)");
+        // Fallback – verify PLLSYS via system uptime (PLLSYS must be running for the board to boot)
+        data.push_back("INFO: PLLSYS not visible in debugfs; "
+                       "verifying system is running (implicit PLLSYS lock)");
         std::string uptime;
         if (readSysFile("/proc/uptime", uptime)) {
-            data.push_back("System uptime: " + uptime + " s (PLLP implicitly locked)");
+            data.push_back("System uptime: " + uptime + " s (PLLSYS implicitly locked)");
             pllpFound = true;
         } else {
-            data.push_back("FAIL: Cannot confirm PLLP lock");
+            data.push_back("FAIL: Cannot confirm PLLSYS lock");
             allRequiredOk = false;
         }
     }

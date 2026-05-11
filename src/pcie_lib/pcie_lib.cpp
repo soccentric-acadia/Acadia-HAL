@@ -2,10 +2,10 @@
  * @file pcie_lib.cpp
  * @brief Implementation file for PcieTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 
 #include "pcie_lib.h"
+#include "../platform_rpi5.h"
 #include <algorithm>
 #include <cerrno>
 #include <chrono>
@@ -112,7 +112,7 @@ TestOutput PcieTesting::testPcieLinkSpeed()
                 generation = "Gen3 (8.0 GT/s)";
                 gen3_count++;
             } else if (current_link_speed.find("16.0") != std::string::npos || current_link_speed.find("16 GT") != std::string::npos) {
-                generation = "Gen4 (16.0 GT/s)";
+                generation = "Gen3 (16.0 GT/s)";
                 gen4_count++;
             } else if (current_link_speed.find("32.0") != std::string::npos || current_link_speed.find("32 GT") != std::string::npos) {
                 generation = "Gen5 (32.0 GT/s)";
@@ -139,7 +139,7 @@ TestOutput PcieTesting::testPcieLinkSpeed()
     if (gen5_count > 0)
         data.push_back("Gen5 devices: " + std::to_string(gen5_count));
     if (gen4_count > 0)
-        data.push_back("Gen4 devices: " + std::to_string(gen4_count));
+        data.push_back("Gen3 devices: " + std::to_string(gen4_count));
     if (gen3_count > 0)
         data.push_back("Gen3 devices: " + std::to_string(gen3_count));
     if (gen2_count > 0)
@@ -159,7 +159,7 @@ TestOutput PcieTesting::testPcieLinkWidth()
     std::vector<std::string> devices = getPcieDevices();
     std::vector<std::string> data;
     bool allValid = true;
-    int x1_count = 0, x2_count = 0, x4_count = 0, x8_count = 0, x16_count = 0, x32_count = 0;
+    int x1_count = 0, x2_count = 0, x4_count = 0, x8_count = 0, x1_wider_count = 0, x32_count = 0;
 
     if (devices.empty()) {
         return {false, {"No PCIe devices found"}};
@@ -203,7 +203,7 @@ TestOutput PcieTesting::testPcieLinkWidth()
                 else if (currentWidth == 8)
                     x8_count++;
                 else if (currentWidth == 16)
-                    x16_count++;
+                    x1_wider_count++;
                 else if (currentWidth >= 32)
                     x32_count++;
             }
@@ -220,8 +220,8 @@ TestOutput PcieTesting::testPcieLinkWidth()
     data.push_back("=== Width Distribution ===");
     if (x32_count > 0)
         data.push_back("x32 lanes: " + std::to_string(x32_count));
-    if (x16_count > 0)
-        data.push_back("x16 lanes: " + std::to_string(x16_count));
+    if (x1_wider_count > 0)
+        data.push_back("x16 lanes: " + std::to_string(x1_wider_count));
     if (x8_count > 0)
         data.push_back("x8 lanes: " + std::to_string(x8_count));
     if (x4_count > 0)
@@ -236,7 +236,7 @@ TestOutput PcieTesting::testPcieLinkWidth()
 
 /**
  * @brief Implementation of testPcieLaneReversal
- * @details Checks lane polarity and width negotiation on Jetson Orin PCIe controllers.
+ * @details Checks lane polarity and width negotiation on Pi1 PCIe controller.
  *          Reads DT controller nodes for lane-map configuration and validates all
  *          advertised lanes are active on each enumerated PCIe device.
  * @return TestOutput with pass/fail and data
@@ -244,10 +244,10 @@ TestOutput PcieTesting::testPcieLinkWidth()
 TestOutput PcieTesting::testPcieLaneReversal()
 {
     std::vector<std::string> data;
-    data.push_back("=== PCIe Lane Reversal Check (Jetson Orin) ===");
+    data.push_back("=== PCIe Lane Reversal Check (Pi5) ===");
 
-    // Jetson Orin PCIe controller DT base addresses
-    static const std::vector<std::string> orionControllers = {"pcie@14100000", "pcie@14120000", "pcie@14140000", "pcie@14160000",
+    // Pi5 PCIe controller DT base addresses
+    static const std::vector<std::string> orionControllers = {"pcie@1f00000000",
                                                               "pcie@141a0000"};
 
     int foundControllers = 0;
@@ -311,16 +311,16 @@ TestOutput PcieTesting::testPcieLaneReversal()
 /**
  * @brief Implementation of testPcieHotplugSupport
  * @details Scans /sys/bus/pci/slots for OS-managed hotplug slots and inspects
- *          PCI bridge class devices for hotplug capability on Jetson Orin.
- *          Jetson Orin uses a fixed embedded topology; hotplug GPIO control is
+ *          PCI bridge class devices for hotplug capability on Pi5.
+ *          Pi5 uses a fixed embedded topology; hotplug GPIO control is
  *          platform-specific.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPcieHotplugSupport()
 {
     std::vector<std::string> data;
-    data.push_back("=== PCIe Hotplug Support (Jetson Orin) ===");
-    data.push_back("[INFO] Jetson Orin uses fixed-endpoint PCIe topology; hotplug handled via GPIO");
+    data.push_back("=== PCIe Hotplug Support (Pi5) ===");
+    data.push_back("[INFO] Pi5 uses fixed-endpoint PCIe topology; hotplug handled via GPIO");
 
     // Enumerate kernel-managed hotplug slots
     int slotCount = 0;
@@ -367,7 +367,7 @@ TestOutput PcieTesting::testPcieHotplugSupport()
     }
 
     if (slotCount == 0 && hotplugBridges == 0) {
-        data.push_back("[INFO] No OS-managed hotplug slots (expected on Jetson Orin embedded PCIe)");
+        data.push_back("[INFO] No OS-managed hotplug slots (expected on Pi5 embedded PCIe)");
         data.push_back("[INFO] Physical hotplug is handled by platform firmware/GPIO");
     } else {
         data.push_back("Found " + std::to_string(slotCount) + " slot(s), " + std::to_string(hotplugBridges) + " hotplug-capable bridge(s)");
@@ -379,7 +379,7 @@ TestOutput PcieTesting::testPcieHotplugSupport()
 /**
  * @brief Implementation of testPcieReadBandwidth
  * @details Reports theoretical peak read bandwidth per device based on negotiated
- *          link speed and width (PCIe Gen4 x8 = ~16 GB/s on Jetson Orin).
+ *          link speed and width (PCIe Gen3 x1 = ~1 GB/s on Pi5).
  *          Also measures sysfs config-space read latency as an access sanity check.
  * @return TestOutput with pass/fail and data
  */
@@ -393,8 +393,8 @@ TestOutput PcieTesting::testPcieReadBandwidth()
         return {false, {"No PCIe devices found"}};
     }
 
-    data.push_back("=== PCIe Read Bandwidth (Jetson Orin) ===");
-    data.push_back("[INFO] Jetson Orin AGX Orin supports PCIe Gen4: x8=~16 GB/s, x4=~8 GB/s, x1=~2 GB/s");
+    data.push_back("=== PCIe Read Bandwidth (Pi5) ===");
+    data.push_back("[INFO] Pi5 supports PCIe Gen3 x1 = ~1 GB/s (single lane via RP1)");
 
     // Theoretical bandwidth: BW(GB/s) = GTps * efficiency * lanes / 8
     auto theoreticalBW = [](const std::string& speed, int width) -> double {
@@ -462,7 +462,7 @@ TestOutput PcieTesting::testPcieReadBandwidth()
  * @brief Implementation of testPcieWriteBandwidth
  * @details Reports theoretical peak write bandwidth per device and performs a
  *          practical sequential-write throughput measurement to /dev/shm as a
- *          memory-subsystem sanity check on Jetson Orin.
+ *          memory-subsystem sanity check on Pi5.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testPcieWriteBandwidth()
@@ -475,8 +475,8 @@ TestOutput PcieTesting::testPcieWriteBandwidth()
         return {false, {"No PCIe devices found"}};
     }
 
-    data.push_back("=== PCIe Write Bandwidth (Jetson Orin) ===");
-    data.push_back("[INFO] Jetson Orin AGX Orin supports PCIe Gen4: x8=~16 GB/s, x4=~8 GB/s, x1=~2 GB/s");
+    data.push_back("=== PCIe Write Bandwidth (Pi5) ===");
+    data.push_back("[INFO] Pi5 supports PCIe Gen3 x1 = ~1 GB/s (single lane via RP1)");
 
     auto theoreticalBW = [](const std::string& speed, int width) -> double {
         double gtps = 0.0;
@@ -556,7 +556,7 @@ TestOutput PcieTesting::testPcieWriteBandwidth()
 
 /**
  * @brief Implementation of testPcieLatency
- * @details Measures PCIe config-space access latency on Jetson Orin by timing
+ * @details Measures PCIe config-space access latency on Pi5 by timing
  *          repeated sysfs vendor-register reads (500 samples per device).
  *          Reports min/avg/max latency and flags devices with anomalous latency.
  * @return TestOutput with pass/fail and data
@@ -570,7 +570,7 @@ TestOutput PcieTesting::testPcieLatency()
         return {false, {"No PCIe devices found"}};
     }
 
-    data.push_back("=== PCIe Config-Space Access Latency (Jetson Orin) ===");
+    data.push_back("=== PCIe Config-Space Access Latency (Pi5) ===");
     data.push_back("[INFO] Sampling sysfs vendor register read (500 samples per device)");
 
     bool anyMeasured = false;
@@ -629,7 +629,7 @@ TestOutput PcieTesting::testPcieLatency()
  * @brief Implementation of testPcieErrorHandling
  * @details Reads AER (Advanced Error Reporting) sysfs counters for correctable,
  *          non-fatal, and fatal PCIe errors on each device.  Falls back to a
- *          dmesg scan when AER sysfs is unavailable.  Jetson Orin PCIe Gen4
+ *          dmesg scan when AER sysfs is unavailable.  Pi5 PCIe Gen3
  *          controllers support AER when CONFIG_PCIEAER=y.
  * @return TestOutput with pass/fail and data
  */
@@ -643,7 +643,7 @@ TestOutput PcieTesting::testPcieErrorHandling()
         return {false, {"No PCIe devices found"}};
     }
 
-    data.push_back("=== PCIe AER Error Handling (Jetson Orin) ===");
+    data.push_back("=== PCIe AER Error Handling (Pi5) ===");
     data.push_back("[INFO] Checking AER correctable / non-fatal / fatal counters");
 
     int checkedDevices = 0;
@@ -721,7 +721,7 @@ TestOutput PcieTesting::testPcieErrorHandling()
 /**
  * @brief Implementation of testPciePowerManagement
  * @details Reads PCI power_state, d3cold_allowed, and runtime PM status for each
- *          PCIe device.  Jetson Orin PCIe controllers support L0s/L1/L1.1/L1.2
+ *          PCIe device.  Pi1 PCIe controller support L0s/L1/L1.1/L1.2
  *          ASPM link power states in addition to D-state device power management.
  * @return TestOutput with pass/fail and data
  */
@@ -735,8 +735,8 @@ TestOutput PcieTesting::testPciePowerManagement()
         return {false, {"No PCIe devices found"}};
     }
 
-    data.push_back("=== PCIe Power Management (Jetson Orin) ===");
-    data.push_back("[INFO] Jetson Orin supports PCIe Gen4 ASPM L0s/L1/L1.1/L1.2 and D0/D3hot/D3cold");
+    data.push_back("=== PCIe Power Management (Pi5) ===");
+    data.push_back("[INFO] Pi5 supports PCIe Gen3 ASPM L0s/L1/L1.1/L1.2 and D0/D3hot/D3cold");
 
     int d0Count = 0, suspendCount = 0, unknownCount = 0;
 
@@ -777,11 +777,11 @@ TestOutput PcieTesting::testPciePowerManagement()
         }
     }
 
-    // Check Tegra PCIe debug FS if available
-    std::string tegraInfo = executeCommand("cat /sys/kernel/debug/tegra_pciefw/info 2>/dev/null | head -10");
-    if (!tegraInfo.empty()) {
-        data.push_back("=== Tegra PCIe Firmware Status ===");
-        std::istringstream iss(tegraInfo);
+    // Check RP1 PCIe debug FS if available
+    std::string rp1Info = executeCommand("cat /sys/kernel/debug/rp1_pciefw/info 2>/dev/null | head -10");
+    if (!rp1Info.empty()) {
+        data.push_back("=== RP1 PCIe Firmware Status ===");
+        std::istringstream iss(rp1Info);
         std::string line;
         while (std::getline(iss, line))
             if (!line.empty())
@@ -803,7 +803,7 @@ TestOutput PcieTesting::testPciePowerManagement()
  * @brief Implementation of testSecondaryPcieLinkTraining
  * @details Filters PCIe devices resident on secondary buses (bus number > 0)
  *          and verifies each has a trained link.  Also captures the lspci tree
- *          to show the full Jetson Orin PCIe topology.
+ *          to show the full Pi5 PCIe topology.
  * @return TestOutput with pass/fail and data
  */
 TestOutput PcieTesting::testSecondaryPcieLinkTraining()
@@ -814,7 +814,7 @@ TestOutput PcieTesting::testSecondaryPcieLinkTraining()
     int trainedCount = 0;
     int totalSecondary = 0;
 
-    data.push_back("=== Secondary PCIe Link Training (Jetson Orin) ===");
+    data.push_back("=== Secondary PCIe Link Training (Pi5) ===");
     data.push_back("[INFO] Orin has up to 5 independent PCIe root port controllers");
 
     for (const auto& device : devices) {
@@ -869,7 +869,7 @@ TestOutput PcieTesting::testSecondaryPcieLinkTraining()
 /**
  * @brief Implementation of testPcieX4Bandwidth
  * @details Enumerates all PCIe devices running at x4 or wider lane width and
- *          reports theoretical bandwidth.  Jetson Orin AGX supports PCIe Gen4 x4
+ *          reports theoretical bandwidth.  Pi5 AGX supports PCIe Gen3 x4
  *          on one controller providing ~8 GB/s.
  * @return TestOutput with pass/fail and data
  */
@@ -879,8 +879,8 @@ TestOutput PcieTesting::testPcieX4Bandwidth()
     std::vector<std::string> data;
     bool found = false;
 
-    data.push_back("=== PCIe x4 Bandwidth (Jetson Orin) ===");
-    data.push_back("[INFO] Jetson Orin Gen4 x4: ~8 GB/s theoretical (128b/130b encoding)");
+    data.push_back("=== PCIe x1 Bandwidth (Pi5) ===");
+    data.push_back("[INFO] Pi5 Gen3 x4: ~8 GB/s theoretical (128b/130b encoding)");
 
     for (const auto& device : devices) {
         std::string devName = device.substr(device.find_last_of('/') + 1);
@@ -900,7 +900,7 @@ TestOutput PcieTesting::testPcieX4Bandwidth()
             std::string gen = "Unknown";
             if (speedStr.find("16.0") != std::string::npos || speedStr.find("16 GT") != std::string::npos) {
                 gtps = 16.0;
-                gen = "Gen4";
+                gen = "Gen3";
             } else if (speedStr.find("8.0") != std::string::npos || speedStr.find("8 GT") != std::string::npos) {
                 gtps = 8.0;
                 gen = "Gen3";
@@ -952,7 +952,7 @@ TestOutput PcieTesting::testPcieX4LaneFunctionality()
     bool overallPass = true;
     bool anyX4 = false;
 
-    data.push_back("=== PCIe x4 Lane Functionality (Jetson Orin) ===");
+    data.push_back("=== PCIe x1 Lane Functionality (Pi5) ===");
     data.push_back("[INFO] Verifying all x4 PCIe lanes are functional and at max speed");
 
     for (const auto& device : devices) {
@@ -1012,7 +1012,7 @@ TestOutput PcieTesting::testPcieX4LaneFunctionality()
 
 /**
  * @brief Implementation of testConcurrentPcieX8AndX4Operation
- * @details Verifies that Jetson Orin's independent PCIe root port controllers
+ * @details Verifies that Pi5's independent PCIe root port controllers
  *          can operate simultaneously.  Enumerates all active x1/x4/x8 devices
  *          and checks the kernel log for PCIe errors during concurrent operation.
  * @return TestOutput with pass/fail and data
@@ -1022,10 +1022,10 @@ TestOutput PcieTesting::testConcurrentPcieX8AndX4Operation()
     std::vector<std::string> devices = getPcieDevices();
     std::vector<std::string> data;
 
-    data.push_back("=== Concurrent PCIe x8 + x4 Operation (Jetson Orin) ===");
-    data.push_back("[INFO] Jetson Orin has independent root port controllers - concurrency is by design");
+    data.push_back("=== Concurrent PCIe x1 + x4 Operation (Pi5) ===");
+    data.push_back("[INFO] Pi5 has independent root port controllers - concurrency is by design");
 
-    std::vector<std::string> x8devs, x4devs, x1devs;
+    std::vector<std::string> x1devs_wide, x4devs, x1devs;
 
     for (const auto& device : devices) {
         std::string wStr = readSysfsFile(device + "/current_link_width");
@@ -1037,7 +1037,7 @@ TestOutput PcieTesting::testConcurrentPcieX8AndX4Operation()
             std::string s = readSysfsFile(device + "/current_link_speed");
             std::string entry = n + " (" + s + " x" + wStr + ")";
             if (w >= 8)
-                x8devs.push_back(entry);
+                x1devs_wide.push_back(entry);
             else if (w >= 4)
                 x4devs.push_back(entry);
             else
@@ -1056,12 +1056,12 @@ TestOutput PcieTesting::testConcurrentPcieX8AndX4Operation()
             data.push_back("[INFO] No " + label + " devices connected");
         }
     };
-    report(x8devs, "x8 (or wider)");
+    report(x1devs_wide, "x1");
     report(x4devs, "x4");
     report(x1devs, "x1");
 
-    int totalActive = static_cast<int>(x8devs.size() + x4devs.size() + x1devs.size());
-    if (!x8devs.empty() && !x4devs.empty())
+    int totalActive = static_cast<int>(x1devs_wide.size() + x4devs.size() + x1devs.size());
+    if (!x1devs_wide.empty() && !x4devs.empty())
         data.push_back("[PASS] Concurrent x8 + x4 operation confirmed");
     else if (totalActive >= 2)
         data.push_back("[INFO] Multiple PCIe devices active - concurrent controller operation verified");
@@ -1197,7 +1197,7 @@ TestOutput PcieTesting::testMultiplePcieDeviceEnumeration()
 /**
  * @brief Implementation of testPcieSwitchCompatibility
  * @details Scans sysfs for PCI bridge devices (class 0x0604) which represent
- *          PCIe switch upstream/downstream ports and root-complex integrated
+ *          PCIe switch upstream/downstream ports and root-complex inrp1ted
  *          bridges.  Known PCIe switch vendor IDs are flagged.  Also captures
  *          lspci output to enumerate bridge devices by description.
  * @return TestOutput with pass/fail and data
@@ -1209,7 +1209,7 @@ TestOutput PcieTesting::testPcieSwitchCompatibility()
     int bridgeCount = 0;
     int switchCount = 0;
 
-    data.push_back("=== PCIe Switch/Bridge Compatibility (Jetson Orin) ===");
+    data.push_back("=== PCIe Switch/Bridge Compatibility (Pi5) ===");
 
     // Known 3rd-party PCIe switch vendor IDs (hex, lower-case)
     static const std::vector<std::string> switchVendors = {
@@ -1275,7 +1275,7 @@ TestOutput PcieTesting::testPcieSwitchCompatibility()
                    " identified 3rd-party PCIe switch chip(s)");
 
     if (bridgeCount == 0) {
-        data.push_back("[INFO] No PCI bridges detected - Jetson Orin using direct endpoint connections");
+        data.push_back("[INFO] No PCI bridges detected - Pi5 using direct endpoint connections");
         data.push_back("[INFO] This is the expected embedded configuration");
     } else {
         data.push_back("[PASS] PCI bridge(s) enumerated and accessible");

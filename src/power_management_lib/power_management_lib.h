@@ -3,8 +3,7 @@
  * @file power_management_lib.h
  * @brief Header file for PowerManagementTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef POWERMANAGEMENTTESTING_H
 #define POWERMANAGEMENTTESTING_H
 #include "lib_base.h"

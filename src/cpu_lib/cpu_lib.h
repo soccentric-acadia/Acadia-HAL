@@ -2,8 +2,7 @@
  * @file cpu_lib.h
  * @brief Header file for CpuTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef CPUTESTING_H
 #define CPUTESTING_H
 

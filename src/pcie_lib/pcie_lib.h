@@ -2,8 +2,7 @@
  * @file pcie_lib.h
  * @brief Header file for PcieTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef PCIETESTING_H
 #define PCIETESTING_H
 #include "lib_base.h"

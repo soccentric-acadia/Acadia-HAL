@@ -3,8 +3,7 @@
  * @file security_features_lib.h
  * @brief Header file for SecurityFeaturesTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef SECURITYFEATURESTESTING_H
 #define SECURITYFEATURESTESTING_H
 #include "lib_base.h"

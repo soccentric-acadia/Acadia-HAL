@@ -2,8 +2,7 @@
  * @file software_interface_lib.h
  * @brief Header file for SoftwareInterfaceTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef SOFTWAREINTERFACETESTING_H
 #define SOFTWAREINTERFACETESTING_H
 

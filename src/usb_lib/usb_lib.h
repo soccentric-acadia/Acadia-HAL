@@ -3,8 +3,7 @@
  * @file usb_lib.h
  * @brief Header file for UsbTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef USBTESTING_H
 #define USBTESTING_H
 #include "lib_base.h"

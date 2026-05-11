@@ -3,8 +3,7 @@
  * @file ethernet_lib.h
  * @brief Header file for EthernetTesting class
  * @author sandesh ghimire
- * @copyright (C) Lucid Motors
- */
+ * @copyright (C) Soccentric LLC */
 #ifndef ETHERNETTESTING_H
 #define ETHERNETTESTING_H
 #include "lib_base.h"
