@@ -84,6 +84,13 @@ else()
     message("Doxygen need to be installed to generate the doxygen documentation")
 endif()
 
+# Add proto layer (Protobuf + gRPC generated sources and hal_protos library)
+# This is guarded so the existing build continues to work even if
+# Protobuf is not installed on the current host.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/protos/CMakeLists.txt")
+    add_subdirectory(protos)
+endif()
+
 # Add src directory
 add_subdirectory(src)
 
