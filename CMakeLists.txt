@@ -99,6 +99,10 @@ target_link_libraries(acu_full_test Threads::Threads)
 add_library(acu_full_test_shared SHARED ${SRC_SOURCES})
 target_include_directories(acu_full_test_shared PUBLIC src)
 target_link_libraries(acu_full_test_shared Threads::Threads)
+set_target_properties(acu_full_test_shared PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+)
 
 # Install rules for aggregate libraries and headers
 install(TARGETS acu_full_test
