@@ -42,9 +42,20 @@ else()
     message(STATUS "[hal_protos] gRPC via pkg-config")
     set(HAL_GRPC_LIBRARIES ${GRPCPP_LIBRARIES})
     find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin
-        HINTS /usr/bin /usr/local/bin
-        REQUIRED
+        HINTS
+            /usr/local/bin
+            /usr/bin
+            /usr/lib/grpc
+            /usr/lib/aarch64-linux-gnu
+            /usr/lib/x86_64-linux-gnu
+            ${GRPCPP_PREFIX}/bin
         DOC "Path to the grpc_cpp_plugin protoc plugin")
+    if(NOT GRPC_CPP_PLUGIN)
+        message(FATAL_ERROR
+            "[hal_protos] grpc_cpp_plugin not found.\n"
+            "Rebuild the Docker image (the Dockerfile now builds the plugin from source), "
+            "or set -DGRPC_CPP_PLUGIN=/path/to/grpc_cpp_plugin on the cmake command line.")
+    endif()
 endif()
 
 message(STATUS "[hal_protos] grpc_cpp_plugin: ${GRPC_CPP_PLUGIN}")

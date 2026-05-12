@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     libprotobuf-dev \
     libprotoc-dev \
     libgrpc++-dev \
+    libgrpc-dev \
     libsqlite3-dev \
     binutils \
     pkg-config \
@@ -24,6 +25,37 @@ RUN apt-get update && apt-get install -y \
     libboost-system-dev \
     libboost-date-time-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Build grpc_cpp_plugin from source files.
+# The plugin only needs libprotoc (already installed above).
+# We download ALL headers from src/compiler/ (protobuf_plugin.h transitively
+# includes every language generator helper at v1.30.2).
+RUN apt-get update && apt-get install -y wget && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /tmp/grpc_plugin_root/src/compiler && \
+    cd /tmp/grpc_plugin_root/src/compiler && \
+    BASE="https://raw.githubusercontent.com/grpc/grpc/v1.30.2/src/compiler" && \
+    for f in \
+        config.h config_protobuf.h generator_helpers.h schema_interface.h \
+        protobuf_plugin.h \
+        cpp_generator.h cpp_generator.cc cpp_generator_helpers.h \
+        cpp_plugin.h cpp_plugin.cc \
+        csharp_generator.h csharp_generator_helpers.h \
+        node_generator.h node_generator_helpers.h \
+        objective_c_generator.h objective_c_generator_helpers.h \
+        php_generator.h php_generator_helpers.h \
+        python_generator.h python_generator_helpers.h python_private_generator.h \
+        ruby_generator.h ruby_generator_helpers-inl.h \
+        ruby_generator_map-inl.h ruby_generator_string-inl.h; do \
+        wget -q "${BASE}/${f}" || { echo "FAIL: ${f}"; exit 1; }; \
+    done && \
+    cd /tmp/grpc_plugin_root && \
+    g++ -std=c++14 -O2 -o /usr/local/bin/grpc_cpp_plugin \
+        src/compiler/cpp_plugin.cc \
+        src/compiler/cpp_generator.cc \
+        -I. -lprotoc -lprotobuf && \
+    rm -rf /tmp/grpc_plugin_root && \
+    echo "[Dockerfile] grpc_cpp_plugin installed at $(which grpc_cpp_plugin)"
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y build-essential cmake git sudo ccache file \
