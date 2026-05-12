@@ -1,0 +1,4 @@
+add_executable(test_sense_hat main.cpp)
+target_link_libraries(test_sense_hat sense_hat_lib)
+target_include_directories(test_sense_hat PRIVATE ${CMAKE_SOURCE_DIR}/src)
+add_test(NAME test_sense_hat COMMAND test_sense_hat)

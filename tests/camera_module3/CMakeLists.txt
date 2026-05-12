@@ -1,0 +1,4 @@
+add_executable(test_camera_module3 main.cpp)
+target_link_libraries(test_camera_module3 camera_module3_lib)
+target_include_directories(test_camera_module3 PRIVATE ${CMAKE_SOURCE_DIR}/src)
+add_test(NAME test_camera_module3 COMMAND test_camera_module3)
