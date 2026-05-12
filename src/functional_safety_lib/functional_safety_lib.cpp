@@ -1,28 +1,5 @@
 /**
  * @file functional_safety_lib.cpp
- * @brief Implementation file for FunctionalSafetyTesting class
- * @author sandesh ghimire
- * @copyright (C) Soccentric LLC */
-
-#include "functional_safety_lib.h"
-#include "../platform_rpi5.h"
-
-/**
- * @brief Constructor for FunctionalSafetyTesting
- */
-FunctionalSafetyTesting::FunctionalSafetyTesting()
-{
-}
-
-/**
- * @brief Destructor for FunctionalSafetyTesting
- */
-FunctionalSafetyTesting::~FunctionalSafetyTesting()
-{
-}
-
-/**
- * @file functional_safety_lib.cpp
  * @brief Functional safety tests for Raspberry Pi 5 (BCM2712).
  *        Pi5 is a commercial SBC and is NOT rated for automotive ASIL-D or
  *        IEC 61508 SIL-3.  These tests document the available safety-relevant
@@ -41,11 +18,13 @@ FunctionalSafetyTesting::~FunctionalSafetyTesting()
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 // ---------------------------------------------------------------------------
-static std::string fsReadFile(const std::string& path)
+[[maybe_unused]] static std::string fsReadFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open()) return "";
@@ -281,8 +260,8 @@ TestOutput FunctionalSafetyTesting::testFaultInjectionTesting()
         int fd = open("/dev/watchdog0", O_RDWR);
         if (fd >= 0)
         {
-            int bootStatus = 0;
 #ifdef WDIOC_GETBOOTSTATUS
+            int bootStatus = 0;
             if (ioctl(fd, WDIOC_GETBOOTSTATUS, &bootStatus) == 0)
                 data.push_back("[INFO] WD boot-status: " + std::to_string(bootStatus) +
                                (bootStatus != 0 ? " (prior WD reset)" : " (no prior WD reset)"));

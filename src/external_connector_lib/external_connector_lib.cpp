@@ -14,6 +14,7 @@
 
 #include <array>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <net/if.h>
 #include <sstream>

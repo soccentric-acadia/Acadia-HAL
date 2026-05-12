@@ -113,7 +113,7 @@ TestOutput PowerManagementTesting::testPoweroptimizedModes()
 
     // Check powersave mode
     bool hasPowersave = govs.find("powersave") != std::string::npos;
-    bool hasOndemand  = govs.find("ondemand")  != std::string::npos;
+    bool hasOndemand  = govs.find("ondemand")  != std::string::npos; (void)hasOndemand;
     bool hasSchedutil = govs.find("schedutil")  != std::string::npos;
     data.push_back("powersave: " + std::string(hasPowersave ? "available" : "not available"));
     data.push_back("schedutil: " + std::string(hasSchedutil ? "available (recommended)" : "not available"));
@@ -383,7 +383,7 @@ TestOutput PowerManagementTesting::testPoweronReset()
     std::string vc = pwrRunCmd("vcgencmd get_throttled 2>/dev/null");
     if (!vc.empty()) {
         data.push_back("vcgencmd throttled flags: " + vc);
-        long flags = 0;
+        unsigned long flags = 0;
         if (sscanf(vc.c_str(), "throttled=0x%lx", &flags) == 1 && flags == 0)
             data.push_back("Clean power-on: no throttle/uvolt events.");
     }
@@ -408,7 +408,7 @@ TestOutput PowerManagementTesting::testBrownoutDetection()
     std::string throttled = pwrRunCmd("vcgencmd get_throttled 2>/dev/null");
     if (!throttled.empty()) {
         data.push_back("vcgencmd get_throttled: " + throttled);
-        long flags = 0;
+        unsigned long flags = 0;
         if (sscanf(throttled.c_str(), "throttled=0x%lx", &flags) == 1) {
             bool uvActive  = (flags & 0x1)     != 0;
             bool uvHistory = (flags & 0x10000) != 0;

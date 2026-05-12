@@ -1,28 +1,5 @@
 /**
  * @file mcu_interface_lib.cpp
- * @brief Implementation file for McuInterfaceTesting class
- * @author sandesh ghimire
- * @copyright (C) Soccentric LLC */
-
-#include "mcu_interface_lib.h"
-#include "../platform_rpi5.h"
-
-/**
- * @brief Constructor for McuInterfaceTesting
- */
-McuInterfaceTesting::McuInterfaceTesting()
-{
-}
-
-/**
- * @brief Destructor for McuInterfaceTesting
- */
-McuInterfaceTesting::~McuInterfaceTesting()
-{
-}
-
-/**
- * @file mcu_interface_lib.cpp
  * @brief MCU interface tests for Raspberry Pi 5.
  *        Pi5 can communicate with an external MCU (RP2040, STM32, etc.) via
  *        SPI (/dev/spidev0.0), UART (/dev/ttyAMA0), or I2C (/dev/i2c-1).
@@ -36,7 +13,9 @@ McuInterfaceTesting::~McuInterfaceTesting()
 #include "../platform_rpi5.h"
 
 #include <array>
+#include <cerrno>
 #include <cstdio>
+#include <cstring>
 #include <fcntl.h>
 #include <fstream>
 #include <linux/spi/spidev.h>
@@ -48,7 +27,7 @@ McuInterfaceTesting::~McuInterfaceTesting()
 #include <vector>
 
 // ---------------------------------------------------------------------------
-static std::string mcuReadFile(const std::string& path)
+[[maybe_unused]] static std::string mcuReadFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open()) return "";

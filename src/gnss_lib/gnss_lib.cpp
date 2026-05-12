@@ -1,28 +1,5 @@
 /**
  * @file gnss_lib.cpp
- * @brief Implementation file for GnssTesting class
- * @author sandesh ghimire
- * @copyright (C) Soccentric LLC */
-
-#include "gnss_lib.h"
-#include "../platform_rpi5.h"
-
-/**
- * @brief Constructor for GnssTesting
- */
-GnssTesting::GnssTesting()
-{
-}
-
-/**
- * @brief Destructor for GnssTesting
- */
-GnssTesting::~GnssTesting()
-{
-}
-
-/**
- * @file gnss_lib.cpp
  * @brief GNSS tests for Raspberry Pi 5.
  *        Pi5 has NO built-in GNSS receiver.  GNSS capability requires an
  *        external module (e.g. u-blox M10/F9 via UART/SPI/USB).  Tests verify
@@ -45,7 +22,7 @@ GnssTesting::~GnssTesting()
 #include <vector>
 
 // ---------------------------------------------------------------------------
-static std::string gnssReadFile(const std::string& path)
+[[maybe_unused]] static std::string gnssReadFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open()) return "";

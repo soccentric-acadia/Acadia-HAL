@@ -1,28 +1,5 @@
 /**
  * @file serializer_deserializer_lib.cpp
- * @brief Implementation file for SerializerDeserializerTesting class
- * @author sandesh ghimire
- * @copyright (C) Soccentric LLC */
-
-#include "serializer_deserializer_lib.h"
-#include "../platform_rpi5.h"
-
-/**
- * @brief Constructor for SerializerDeserializerTesting
- */
-SerializerDeserializerTesting::SerializerDeserializerTesting()
-{
-}
-
-/**
- * @brief Destructor for SerializerDeserializerTesting
- */
-SerializerDeserializerTesting::~SerializerDeserializerTesting()
-{
-}
-
-/**
- * @file serializer_deserializer_lib.cpp
  * @brief SerDes tests for Raspberry Pi 5.
  *        Pi5 has no dedicated automotive SerDes (GMSL/FPD-Link/MIPI CSI-2 HS).
  *        CSI-2 camera links use the built-in Unicam controller.  These tests
@@ -46,7 +23,7 @@ SerializerDeserializerTesting::~SerializerDeserializerTesting()
 #include <vector>
 
 // ---------------------------------------------------------------------------
-static std::string serReadFile(const std::string& path)
+[[maybe_unused]] static std::string serReadFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open()) return "";
@@ -72,7 +49,7 @@ static std::string serRunCmd(const std::string& cmd)
     return result;
 }
 
-static bool serPathExists(const std::string& p)
+[[maybe_unused]] static bool serPathExists(const std::string& p)
 {
     struct stat st {};
     return stat(p.c_str(), &st) == 0;

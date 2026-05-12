@@ -1,28 +1,5 @@
 /**
  * @file environmental_lib.cpp
- * @brief Implementation file for EnvironmentalTesting class
- * @author sandesh ghimire
- * @copyright (C) Soccentric LLC */
-
-#include "environmental_lib.h"
-#include "../platform_rpi5.h"
-
-/**
- * @brief Constructor for EnvironmentalTesting
- */
-EnvironmentalTesting::EnvironmentalTesting()
-{
-}
-
-/**
- * @brief Destructor for EnvironmentalTesting
- */
-EnvironmentalTesting::~EnvironmentalTesting()
-{
-}
-
-/**
- * @file environmental_lib.cpp
  * @brief Environmental / physical-environment tests for Raspberry Pi 5.
  *        Verifies that the hardware is operating within its rated environmental
  *        envelope using sysfs thermal, hwmon, and power-supply interfaces.

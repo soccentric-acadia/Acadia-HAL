@@ -1,28 +1,5 @@
 /**
  * @file reliability_lib.cpp
- * @brief Implementation file for ReliabilityTesting class
- * @author sandesh ghimire
- * @copyright (C) Soccentric LLC */
-
-#include "reliability_lib.h"
-#include "../platform_rpi5.h"
-
-/**
- * @brief Constructor for ReliabilityTesting
- */
-ReliabilityTesting::ReliabilityTesting()
-{
-}
-
-/**
- * @brief Destructor for ReliabilityTesting
- */
-ReliabilityTesting::~ReliabilityTesting()
-{
-}
-
-/**
- * @file reliability_lib.cpp
  * @brief Reliability tests for Raspberry Pi 5 (BCM2712).
  *        Tests characterise the long-term health of the board by examining
  *        system uptime, thermal headroom, power-supply stability indicators,

@@ -97,6 +97,7 @@ TestOutput SenseHatTesting::testSenseHatDetection()
     // Check overlay loaded
     std::string cmdline = shReadFile("/boot/firmware/config.txt");
     bool overlayLoaded = !shRunCmd("dtoverlay -l 2>/dev/null | grep -c 'sense'").empty();
+    (void)overlayLoaded;
     bool senseFb = shPathExists("/dev/fb1") || !shRunCmd("lsmod | grep -c 'rpi_sense_fb'").empty();
     data.push_back(senseFb ? "[PASS] rpi-sense-fb module / /dev/fb1 present"
                            : "[INFO] rpi-sense-fb not loaded (add dtoverlay=rpi-sense-hat to config.txt)");
@@ -408,6 +409,7 @@ TestOutput SenseHatTesting::testI2cBusIntegrity()
         {
             // Count responding devices
             int devCount = 0;
+            (void)devCount;
             size_t pos = 0;
             while ((pos = scan.find("  ", pos)) == std::string::npos ? false : (pos += 2, true))
             {

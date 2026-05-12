@@ -25,7 +25,7 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
-static std::string cm3ReadFile(const std::string& path)
+[[maybe_unused]] static std::string cm3ReadFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open()) return "";

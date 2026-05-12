@@ -1,28 +1,5 @@
 /**
  * @file imu_lib.cpp
- * @brief Implementation file for ImuTesting class
- * @author sandesh ghimire
- * @copyright (C) Soccentric LLC */
-
-#include "imu_lib.h"
-#include "../platform_rpi5.h"
-
-/**
- * @brief Constructor for ImuTesting
- */
-ImuTesting::ImuTesting()
-{
-}
-
-/**
- * @brief Destructor for ImuTesting
- */
-ImuTesting::~ImuTesting()
-{
-}
-
-/**
- * @file imu_lib.cpp
  * @brief IMU tests for Raspberry Pi 5.
  *        Pi5 has NO built-in IMU.  Inertial sensing requires an external module
  *        connected via I2C (e.g. ICM-42688 on /dev/i2c-1) or SPI.  Tests use

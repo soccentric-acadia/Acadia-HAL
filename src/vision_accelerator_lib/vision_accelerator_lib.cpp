@@ -27,7 +27,7 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
-static std::string vaReadFile(const std::string& path)
+[[maybe_unused]] static std::string vaReadFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open()) return "";

@@ -1,28 +1,5 @@
 /**
  * @file ethernet_switch_lib.cpp
- * @brief Implementation file for EthernetSwitchTesting class
- * @author sandesh ghimire
- * @copyright (C) Soccentric LLC */
-
-#include "ethernet_switch_lib.h"
-#include "../platform_rpi5.h"
-
-/**
- * @brief Constructor for EthernetSwitchTesting
- */
-EthernetSwitchTesting::EthernetSwitchTesting()
-{
-}
-
-/**
- * @brief Destructor for EthernetSwitchTesting
- */
-EthernetSwitchTesting::~EthernetSwitchTesting()
-{
-}
-
-/**
- * @file ethernet_switch_lib.cpp
  * @brief Ethernet switch tests for Raspberry Pi 5.
  *        Pi5 has NO built-in Ethernet switch (only a single-port GbE via
  *        BCM54213PE PHY on eth0, managed by the RP1 south-bridge MAC).
@@ -38,6 +15,7 @@ EthernetSwitchTesting::~EthernetSwitchTesting()
 
 #include <array>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <net/if.h>
 #include <sstream>

@@ -317,7 +317,7 @@ TestOutput StorageTesting::testSequentialWritePerformance()
     }
     (void)tmpFile;
 
-    std::vector<char> buf(512 * 1024, 0xAB);
+    std::vector<char> buf(512 * 1024, static_cast<char>(0xAB));
     auto t0 = std::chrono::high_resolution_clock::now();
     size_t written = 0;
     while (written < WRITE_SIZE) {
@@ -791,7 +791,7 @@ TestOutput StorageTesting::testStorageEncryptionSupport()
 
     // Check dm-crypt kernel module
     std::string dmCrypt = storRunCmd("lsmod 2>/dev/null | grep dm_crypt");
-    data.push_back("dm-crypt module: " + (dmCrypt.empty() ? "not loaded" : "LOADED"));
+    data.push_back(std::string("dm-crypt module: ") + (dmCrypt.empty() ? "not loaded" : "LOADED"));
 
     // Check cryptsetup
     bool cryptSetup = pathExists("/usr/sbin/cryptsetup") || pathExists("/sbin/cryptsetup");

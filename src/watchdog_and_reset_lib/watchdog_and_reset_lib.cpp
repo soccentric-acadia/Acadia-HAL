@@ -93,7 +93,7 @@ TestOutput WatchdogAndResetTesting::testWatchdogTimerFunctionality()
 
         int bootStatus = 0;
         if (ioctl(fd, WDIOC_GETBOOTSTATUS, &bootStatus) == 0)
-            data.push_back("Boot status (watchdog reset flag): " +
+            data.push_back(std::string("Boot status (watchdog reset flag): ") +
                            (bootStatus ? "WATCHDOG RESET" : "normal boot"));
 
         // Write 'V' to disable watchdog on close (magic close)
@@ -247,7 +247,7 @@ TestOutput WatchdogAndResetTesting::testPoweronReset()
     if (!throttled.empty()) {
         data.push_back("vcgencmd throttled: " + throttled);
         // Bit 16 = 'was under-voltage', Bit 18 = 'was throttled' — indicates brownout/reset
-        long flags = 0;
+        unsigned long flags = 0;
         if (sscanf(throttled.c_str(), "throttled=0x%lx", &flags) == 1) {
             if (flags & 0x10000) data.push_back("  -> Previous under-voltage event recorded.");
             if (flags & 0x40000) data.push_back("  -> Previous throttling event recorded.");
@@ -376,7 +376,7 @@ TestOutput WatchdogAndResetTesting::testThermalReset()
     std::string throttled = wdRunCmd("vcgencmd get_throttled 2>/dev/null");
     if (!throttled.empty()) {
         data.push_back("Throttle flags: " + throttled);
-        long flags = 0;
+        unsigned long flags = 0;
         if (sscanf(throttled.c_str(), "throttled=0x%lx", &flags) == 1) {
             if (flags & 0x80000) {
                 data.push_back("  -> Previous soft temperature limit event recorded.");
@@ -409,7 +409,7 @@ TestOutput WatchdogAndResetTesting::testResetReasonLogging()
     std::string throttled = wdRunCmd("vcgencmd get_throttled 2>/dev/null");
     if (!throttled.empty()) {
         data.push_back("vcgencmd get_throttled: " + throttled);
-        long flags = 0;
+        unsigned long flags = 0;
         if (sscanf(throttled.c_str(), "throttled=0x%lx", &flags) == 1) {
             if (flags == 0) data.push_back("  -> Clean boot, no reset events recorded.");
             if (flags & 0x1)     data.push_back("  -> Active: under-voltage");

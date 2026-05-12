@@ -455,6 +455,7 @@ TestOutput SoftwareInterfaceTesting::testMultimediaApi()
     // HDMI audio (vc4-hdmi)
     bool hdmiAudio = swPathExists("/proc/asound") &&
                      swRunCmd("grep -l 'vc4-hdmi\\|bcm2835' /proc/asound/cards 2>/dev/null | wc -l") != "0";
+    (void)hdmiAudio;
 
     // GStreamer pipeline test (fakesrc → fakesink, no hardware needed)
     std::string gstTest = swRunCmd("gst-launch-1.0 fakesrc num-buffers=1 ! fakesink 2>&1 | grep -c 'Execution ended'");

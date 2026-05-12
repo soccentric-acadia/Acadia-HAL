@@ -72,7 +72,7 @@ static long long parseMeminfo(const std::string& key)
 /** Simple memory copy bandwidth microbenchmark. Returns GB/s. */
 static double measureMemBandwidthGBs(size_t bufSizeBytes, double testSecs = 1.0)
 {
-    std::vector<char> src(bufSizeBytes, 0xAA);
+    std::vector<char> src(bufSizeBytes, static_cast<char>(0xAA));
     std::vector<char> dst(bufSizeBytes, 0x00);
 
     auto tEnd = std::chrono::steady_clock::now() +
@@ -604,7 +604,7 @@ TestOutput SystemMemoryTesting::testMemoryLeaksDetection()
     // Allocate and free 100 MB — no leak expected
     const size_t ALLOC = 100 * 1024 * 1024;
     {
-        std::vector<char> tmp(ALLOC, 0xBB);
+        std::vector<char> tmp(ALLOC, static_cast<char>(0xBB));
         (void)tmp;
     } // freed here
 

@@ -302,6 +302,7 @@ TestOutput EthernetTesting::testFlowControl()
 
     // Check RX/TX pause frame counters
     long long txPause = ethReadInt("/sys/class/net/" + std::string(ETH_IFACE) + "/statistics/tx_carrier_errors");
+    (void)txPause;
     data.push_back("Flow control: check with ethtool -a eth0 when link is up.");
     data.push_back("PASS: Flow control check complete.");
 
@@ -321,7 +322,7 @@ TestOutput EthernetTesting::testVlanTagging()
 
     // Check if 8021q module is loaded
     std::string vlanMod = ethRunCmd("lsmod 2>/dev/null | grep 8021q");
-    data.push_back("8021q kernel module: " + (vlanMod.empty() ? "not loaded (load with: modprobe 8021q)" : "LOADED"));
+    data.push_back(std::string("8021q kernel module: ") + (vlanMod.empty() ? "not loaded (load with: modprobe 8021q)" : "LOADED"));
 
     // Check existing VLAN interfaces
     std::string vlanIfs = ethRunCmd("ip link show type vlan 2>/dev/null");

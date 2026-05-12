@@ -225,7 +225,7 @@ TestOutput SecurityFeaturesTesting::testSecureStorage()
 
     // Check dm-crypt / LUKS support
     std::string dmCrypt = secRunCmd("lsmod 2>/dev/null | grep dm_crypt");
-    data.push_back("dm-crypt kernel module: " + (dmCrypt.empty() ? "not loaded (load: modprobe dm-crypt)" : "LOADED"));
+    data.push_back(std::string("dm-crypt kernel module: ") + (dmCrypt.empty() ? "not loaded (load: modprobe dm-crypt)" : "LOADED"));
 
     // Check cryptsetup
     bool cryptsetup = (access("/usr/sbin/cryptsetup", F_OK) == 0) || (access("/sbin/cryptsetup", F_OK) == 0);
@@ -264,12 +264,12 @@ TestOutput SecurityFeaturesTesting::testCryptographicAccelerators()
     };
 
     bool hasAes  = checkFlag(cpuFlags, "aes");
-    bool hasSha1 = checkFlag(cpuFlags, "sha1");
+    bool hasSha1 = checkFlag(cpuFlags, "sha1"); (void)hasSha1;
     bool hasSha2 = checkFlag(cpuFlags, "sha2");
-    bool hasSha3 = checkFlag(cpuFlags, "sha3");
-    bool hasPmull= checkFlag(cpuFlags, "pmull");
-    bool hasCrc32= checkFlag(cpuFlags, "crc32");
-    bool hasSVE  = checkFlag(cpuFlags, "sve");
+    bool hasSha3 = checkFlag(cpuFlags, "sha3"); (void)hasSha3;
+    bool hasPmull= checkFlag(cpuFlags, "pmull"); (void)hasPmull;
+    bool hasCrc32= checkFlag(cpuFlags, "crc32"); (void)hasCrc32;
+    bool hasSVE  = checkFlag(cpuFlags, "sve");  (void)hasSVE;
 
     // Check OpenSSL hw acceleration
     std::string sslEngines = secRunCmd("openssl engine 2>/dev/null");

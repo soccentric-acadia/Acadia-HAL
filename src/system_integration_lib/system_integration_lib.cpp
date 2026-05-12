@@ -1,28 +1,5 @@
 /**
  * @file system_integration_lib.cpp
- * @brief Implementation file for SystemIntegrationTesting class
- * @author sandesh ghimire
- * @copyright (C) Soccentric LLC */
-
-#include "../platform_rpi5.h"
-#include "system_integration_lib.h"
-
-/**
- * @brief Constructor for SystemIntegrationTesting
- */
-SystemIntegrationTesting::SystemIntegrationTesting()
-{
-}
-
-/**
- * @brief Destructor for SystemIntegrationTesting
- */
-SystemIntegrationTesting::~SystemIntegrationTesting()
-{
-}
-
-/**
- * @file system_integration_lib.cpp
  * @brief System integration tests for Raspberry Pi 5.
  *        Exercises concurrent subsystem load, resource contention,
  *        end-to-end latency (POSIX clocks), system throughput (memcpy
