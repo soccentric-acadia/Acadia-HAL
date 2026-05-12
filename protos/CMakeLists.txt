@@ -1,19 +1,20 @@
 # protos/CMakeLists.txt
 #
-# Protobuf + gRPC code generation and hal_protos static library.
+# Full Protobuf + gRPC build for the HAL proto layer.
+# Both Protobuf and gRPC are REQUIRED — the build fails fast if either is absent.
 #
-# Produced target : hal_protos (STATIC)
-# Consumers       : target_link_libraries(<target> hal_protos)
-# Include paths   : automatically propagated via target properties
+# Produced targets
+# ─────────────────────────────────────────────────────────────
+#  hal_protos          STATIC  generated protobuf/gRPC C++
+#  hal_protos_server   STATIC  gRPC service implementation (server-side)
+#  hal_protos_client   STATIC  gRPC client wrapper
+#  hal_server          EXEC    standalone HAL gRPC server
 #
-# Generated header locations (relative to the build-time include root):
-#   common.pb.h
-#   hal_service.pb.h          hal_service.grpc.pb.h
-#   modules/audio_interfaces.pb.h
-#   modules/cpu.pb.h
-#   ... (one .pb.h per module proto)
+# Consumers
+#   target_link_libraries(my_target PRIVATE hal_protos_client)  # client only
+#   target_link_libraries(my_target PRIVATE hal_protos_server)  # server (pulls in all 35 HAL modules)
 #
-# Example client usage after linking hal_protos:
+# Generated header include paths (propagated automatically):
 #   #include "common.pb.h"
 #   #include "hal_service.grpc.pb.h"
 #   #include "modules/cpu.pb.h"
@@ -21,43 +22,35 @@
 cmake_minimum_required(VERSION 3.10)
 
 # ============================================================
-# 1. Locate Protobuf
+# 1. Protobuf — REQUIRED
 # ============================================================
 find_package(Protobuf REQUIRED)
 message(STATUS "[hal_protos] protobuf ${Protobuf_VERSION}  (${Protobuf_INCLUDE_DIRS})")
 message(STATUS "[hal_protos] protoc   ${Protobuf_PROTOC_EXECUTABLE}")
 
 # ============================================================
-# 2. Locate gRPC (CMake config preferred; pkg-config fallback)
+# 2. gRPC — REQUIRED (CMake config preferred; pkg-config fallback)
 # ============================================================
 find_package(gRPC CONFIG QUIET)
 if(gRPC_FOUND)
-    message(STATUS "[hal_protos] gRPC ${gRPC_VERSION} found via CMake config")
-    set(HAL_GRPC_LIBRARIES gRPC::grpc++)
+    message(STATUS "[hal_protos] gRPC ${gRPC_VERSION} via CMake config")
+    set(HAL_GRPC_LIBRARIES gRPC::grpc++ gRPC::grpc)
     get_target_property(GRPC_CPP_PLUGIN gRPC::grpc_cpp_plugin LOCATION)
 else()
-    find_package(PkgConfig QUIET)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(GRPCPP QUIET grpc++)
-    endif()
-    if(GRPCPP_FOUND)
-        message(STATUS "[hal_protos] gRPC found via pkg-config")
-        set(HAL_GRPC_LIBRARIES ${GRPCPP_LIBRARIES})
-        find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin
-            HINTS /usr/bin /usr/local/bin
-            DOC   "Path to the grpc_cpp_plugin protoc plugin")
-    else()
-        message(WARNING
-            "[hal_protos] gRPC not found. "
-            "hal_protos will be built without gRPC stubs. "
-            "Install libgrpc++-dev and protobuf-compiler-grpc, then re-run cmake.")
-        set(HAL_GRPC_LIBRARIES "")
-        set(GRPC_CPP_PLUGIN    "")
-    endif()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GRPCPP REQUIRED grpc++)
+    message(STATUS "[hal_protos] gRPC via pkg-config")
+    set(HAL_GRPC_LIBRARIES ${GRPCPP_LIBRARIES})
+    find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin
+        HINTS /usr/bin /usr/local/bin
+        REQUIRED
+        DOC "Path to the grpc_cpp_plugin protoc plugin")
 endif()
 
+message(STATUS "[hal_protos] grpc_cpp_plugin: ${GRPC_CPP_PLUGIN}")
+
 # ============================================================
-# 3. Output directory for generated sources
+# 3. Output directories for generated sources
 # ============================================================
 set(PROTO_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY "${PROTO_BINARY_DIR}")
@@ -69,8 +62,6 @@ file(MAKE_DIRECTORY "${PROTO_BINARY_DIR}/modules")
 set(COMMON_PROTO  "${CMAKE_CURRENT_SOURCE_DIR}/common.proto")
 set(SERVICE_PROTO "${CMAKE_CURRENT_SOURCE_DIR}/hal_service.proto")
 file(GLOB MODULE_PROTOS "${CMAKE_CURRENT_SOURCE_DIR}/modules/*.proto")
-
-# All protos that need plain protobuf C++ generation
 set(ALL_PROTOS ${COMMON_PROTO} ${SERVICE_PROTO} ${MODULE_PROTOS})
 
 # ============================================================
@@ -80,10 +71,9 @@ set(PROTO_SRCS "")
 set(PROTO_HDRS "")
 
 foreach(PROTO_FILE IN LISTS ALL_PROTOS)
-    # Derive output paths mirroring the source tree layout under PROTO_BINARY_DIR
     file(RELATIVE_PATH PROTO_REL "${CMAKE_CURRENT_SOURCE_DIR}" "${PROTO_FILE}")
-    get_filename_component(PROTO_REL_DIR  "${PROTO_REL}" DIRECTORY)
-    get_filename_component(PROTO_NAME_WE  "${PROTO_FILE}" NAME_WE)
+    get_filename_component(PROTO_REL_DIR "${PROTO_REL}" DIRECTORY)
+    get_filename_component(PROTO_NAME_WE "${PROTO_FILE}" NAME_WE)
 
     if(PROTO_REL_DIR)
         set(OUT_SUBDIR "${PROTO_BINARY_DIR}/${PROTO_REL_DIR}")
@@ -103,47 +93,41 @@ foreach(PROTO_FILE IN LISTS ALL_PROTOS)
                 "--cpp_out=${PROTO_BINARY_DIR}"
                 "${PROTO_FILE}"
         DEPENDS "${PROTO_FILE}" "${COMMON_PROTO}"
-        COMMENT "[protoc] generating C++ for ${PROTO_REL}"
+        COMMENT "[protoc pb]   ${PROTO_REL}"
         VERBATIM
     )
-
     list(APPEND PROTO_SRCS "${PROTO_SRC}")
     list(APPEND PROTO_HDRS "${PROTO_HDR}")
 endforeach()
 
 # ============================================================
-# 6. Generate gRPC stubs for hal_service.proto only
+# 6. Generate gRPC stubs for hal_service.proto
 # ============================================================
-set(GRPC_SRC "")
-set(GRPC_HDR "")
+set(GRPC_SRC "${PROTO_BINARY_DIR}/hal_service.grpc.pb.cc")
+set(GRPC_HDR "${PROTO_BINARY_DIR}/hal_service.grpc.pb.h")
 
-if(GRPC_CPP_PLUGIN)
-    set(GRPC_SRC "${PROTO_BINARY_DIR}/hal_service.grpc.pb.cc")
-    set(GRPC_HDR "${PROTO_BINARY_DIR}/hal_service.grpc.pb.h")
-
-    add_custom_command(
-        OUTPUT  "${GRPC_SRC}" "${GRPC_HDR}"
-        COMMAND "${Protobuf_PROTOC_EXECUTABLE}"
-                "--proto_path=${CMAKE_CURRENT_SOURCE_DIR}"
-                "--proto_path=${Protobuf_INCLUDE_DIRS}"
-                "--grpc_out=${PROTO_BINARY_DIR}"
-                "--plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN}"
-                "${SERVICE_PROTO}"
-        DEPENDS "${SERVICE_PROTO}" "${COMMON_PROTO}"
-        COMMENT "[protoc] generating gRPC stubs for hal_service.proto"
-        VERBATIM
-    )
-endif()
+add_custom_command(
+    OUTPUT  "${GRPC_SRC}" "${GRPC_HDR}"
+    COMMAND "${Protobuf_PROTOC_EXECUTABLE}"
+            "--proto_path=${CMAKE_CURRENT_SOURCE_DIR}"
+            "--proto_path=${Protobuf_INCLUDE_DIRS}"
+            "--grpc_out=${PROTO_BINARY_DIR}"
+            "--plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN}"
+            "${SERVICE_PROTO}"
+    DEPENDS "${SERVICE_PROTO}" "${COMMON_PROTO}"
+    COMMENT "[protoc grpc] hal_service.proto"
+    VERBATIM
+)
 
 # ============================================================
-# 7. Build the hal_protos static library
+# 7. hal_protos — generated protobuf + gRPC sources
 # ============================================================
 add_library(hal_protos STATIC
     ${PROTO_SRCS}
     ${GRPC_SRC}
 )
 
-# Suppress warnings in protoc-generated code (they are not our responsibility)
+# Suppress warnings in protoc-generated code.
 target_compile_options(hal_protos PRIVATE
     $<$<CXX_COMPILER_ID:GNU>:   -w>
     $<$<CXX_COMPILER_ID:Clang>: -w>
@@ -151,10 +135,8 @@ target_compile_options(hal_protos PRIVATE
 
 target_include_directories(hal_protos
     PUBLIC
-        # Generated headers live here; consumers can #include "modules/cpu.pb.h"
-        "${PROTO_BINARY_DIR}"
-        # Well-known protos (google/protobuf/*.proto)
-        "${Protobuf_INCLUDE_DIRS}"
+        "${PROTO_BINARY_DIR}"       # #include "common.pb.h", "modules/cpu.pb.h"
+        "${Protobuf_INCLUDE_DIRS}"  # google/protobuf/*.h
 )
 
 target_link_libraries(hal_protos
@@ -164,16 +146,67 @@ target_link_libraries(hal_protos
 )
 
 # ============================================================
-# 8. Install rules (optional — integrate with the repo install target)
+# 8. hal_protos_server — gRPC service implementation
 # ============================================================
-install(TARGETS hal_protos
+add_library(hal_protos_server STATIC
+    server/hal_service_impl.cpp
+    server/module_registry_all.cpp
+)
+
+target_include_directories(hal_protos_server
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}"  # #include "server/hal_service_impl.h"
+        "${CMAKE_SOURCE_DIR}/src"      # #include "cpu_lib/cpu_lib.h"
+)
+
+target_link_libraries(hal_protos_server
+    PUBLIC
+        hal_protos
+        acu_full_test   # all 35 HAL module implementations
+)
+
+# ============================================================
+# 9. hal_protos_client — gRPC client wrapper
+# ============================================================
+add_library(hal_protos_client STATIC
+    client/hal_client.cpp
+)
+
+target_include_directories(hal_protos_client
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}"  # #include "client/hal_client.h"
+)
+
+target_link_libraries(hal_protos_client
+    PUBLIC
+        hal_protos
+)
+
+# ============================================================
+# 10. hal_server — standalone server executable
+# ============================================================
+add_executable(hal_server
+    server/hal_server_main.cpp
+)
+
+target_link_libraries(hal_server
+    PRIVATE
+        hal_protos_server
+)
+
+install(TARGETS hal_server
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# ============================================================
+# 11. Install rules for libraries and generated headers
+# ============================================================
+install(TARGETS hal_protos hal_protos_server hal_protos_client
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-# Install generated headers, preserving the modules/ subdirectory structure
 install(
     DIRECTORY   "${PROTO_BINARY_DIR}/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/hal_protos"
-    FILES_MATCHING
-        PATTERN "*.pb.h"
+    FILES_MATCHING PATTERN "*.pb.h"
 )
