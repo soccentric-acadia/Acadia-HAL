@@ -94,7 +94,8 @@ TestOutput DisplayInterfaces::testHdmiOutput()
     if (!drm.empty()) data.push_back("DRM devices: " + drm);
 
     // Check HDMI0 and HDMI1 status
-    for (const char* hdmi : {"HDMI-A-1", "HDMI-A-2"}) {
+    static const char* const hdmiPorts[] = {"HDMI-A-1", "HDMI-A-2"};
+    for (const char* hdmi : hdmiPorts) {
         std::string base = "/sys/class/drm/card1-" + std::string(hdmi);
         if (access(base.c_str(), F_OK) != 0)
             base = "/sys/class/drm/card0-" + std::string(hdmi);

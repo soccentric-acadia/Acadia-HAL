@@ -340,7 +340,8 @@ TestOutput PowerManagementTesting::testAllInternalVoltageRails()
     }
 
     // vcgencmd measure_volts
-    for (const char* rail : {"core", "sdram_c", "sdram_i", "sdram_p"}) {
+    static const char* const vcRails[] = {"core", "sdram_c", "sdram_i", "sdram_p"};
+    for (const char* rail : vcRails) {
         std::string v = pwrRunCmd((std::string("vcgencmd measure_volts ") + rail + " 2>/dev/null").c_str());
         if (!v.empty()) data.push_back(std::string(rail) + ": " + v);
     }
@@ -630,10 +631,11 @@ TestOutput PowerManagementTesting::testBatteryCharging()
     data.push_back("Pi5 is a single-board computer powered by USB-C PD (5V input only).");
 
     // Check if any UPS/battery HAT is attached
+    static const char* const battPaths[] = {"/sys/class/power_supply/BAT0",
+                                              "/sys/class/power_supply/battery",
+                                              "/sys/class/power_supply/axp20x-battery"};
     bool battPresent = false;
-    for (const char* path : {"/sys/class/power_supply/BAT0",
-                              "/sys/class/power_supply/battery",
-                              "/sys/class/power_supply/axp20x-battery"}) {
+    for (const char* path : battPaths) {
         if (access(path, F_OK) == 0) {
             battPresent = true;
             data.push_back("Battery HAT detected: " + std::string(path));
@@ -661,9 +663,10 @@ TestOutput PowerManagementTesting::testUpsFunctionality()
     data.push_back("Pi5 does not have built-in UPS. UPS requires external HAT.");
 
     // Check for UPS devices
+    static const char* const upsPaths[] = {"/sys/class/power_supply/UPS0",
+                                            "/sys/class/power_supply/ups"};
     bool upsFound = false;
-    for (const char* path : {"/sys/class/power_supply/UPS0",
-                              "/sys/class/power_supply/ups"}) {
+    for (const char* path : upsPaths) {
         if (access(path, F_OK) == 0) {
             upsFound = true;
             std::string status = pwrReadFile(std::string(path) + "/status");
