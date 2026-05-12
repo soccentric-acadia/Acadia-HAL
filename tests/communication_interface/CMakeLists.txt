@@ -1,4 +1,5 @@
 add_executable(test_communication_interface main.cpp)
 target_link_libraries(test_communication_interface communication_interface_lib)
-target_include_directories(test_communication_interface PRIVATE ../src/communication_interface_lib)
+target_include_directories(test_communication_interface PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_communication_interface COMMAND test_communication_interface)
+install(TARGETS test_communication_interface RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

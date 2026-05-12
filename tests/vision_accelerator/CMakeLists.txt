@@ -1,4 +1,5 @@
 add_executable(test_vision_accelerator main.cpp)
 target_link_libraries(test_vision_accelerator vision_accelerator_lib)
-target_include_directories(test_vision_accelerator PRIVATE ../src/vision_accelerator_lib)
+target_include_directories(test_vision_accelerator PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_vision_accelerator COMMAND test_vision_accelerator)
+install(TARGETS test_vision_accelerator RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

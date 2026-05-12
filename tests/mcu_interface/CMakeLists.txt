@@ -1,4 +1,5 @@
 add_executable(test_mcu_interface main.cpp)
 target_link_libraries(test_mcu_interface mcu_interface_lib)
-target_include_directories(test_mcu_interface PRIVATE ../src/mcu_interface_lib)
+target_include_directories(test_mcu_interface PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_mcu_interface COMMAND test_mcu_interface)
+install(TARGETS test_mcu_interface RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

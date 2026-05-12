@@ -1,4 +1,5 @@
 add_executable(test_imu main.cpp)
 target_link_libraries(test_imu imu_lib)
-target_include_directories(test_imu PRIVATE ../src/imu_lib)
+target_include_directories(test_imu PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_imu COMMAND test_imu)
+install(TARGETS test_imu RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -2,6 +2,11 @@
 add_library(lib_base lib_base.cpp lib_base.h)
 target_include_directories(lib_base PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(lib_base Threads::Threads)
+install(TARGETS lib_base
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+install(FILES lib_base.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/acaida_hal)
 
 # Add all feature libraries
 add_subdirectory(gpu_lib)

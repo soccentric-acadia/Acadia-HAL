@@ -1,4 +1,5 @@
 add_executable(test_software_interface main.cpp)
-target_link_libraries(test_software_interface acu_full_test)
-target_include_directories(test_software_interface PRIVATE ../src)
+target_link_libraries(test_software_interface software_interface_lib)
+target_include_directories(test_software_interface PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_software_interface COMMAND test_software_interface)
+install(TARGETS test_software_interface RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

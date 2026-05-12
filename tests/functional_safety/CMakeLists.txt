@@ -1,4 +1,5 @@
 add_executable(test_functional_safety main.cpp)
 target_link_libraries(test_functional_safety functional_safety_lib)
-target_include_directories(test_functional_safety PRIVATE ../src/functional_safety_lib)
+target_include_directories(test_functional_safety PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_functional_safety COMMAND test_functional_safety)
+install(TARGETS test_functional_safety RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

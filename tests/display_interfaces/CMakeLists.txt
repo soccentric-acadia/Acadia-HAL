@@ -1,4 +1,5 @@
 add_executable(test_display_interfaces main.cpp)
 target_link_libraries(test_display_interfaces display_interfaces)
-target_include_directories(test_display_interfaces PRIVATE ../src)
+target_include_directories(test_display_interfaces PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_display_interfaces COMMAND test_display_interfaces)
+install(TARGETS test_display_interfaces RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

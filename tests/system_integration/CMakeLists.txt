@@ -1,4 +1,5 @@
 add_executable(test_system_integration main.cpp)
 target_link_libraries(test_system_integration system_integration_lib)
-target_include_directories(test_system_integration PRIVATE ../src/system_integration_lib)
+target_include_directories(test_system_integration PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_system_integration COMMAND test_system_integration)
+install(TARGETS test_system_integration RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

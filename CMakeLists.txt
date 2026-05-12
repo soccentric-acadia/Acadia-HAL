@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find threading library
 find_package(Threads REQUIRED)
+include(GNUInstallDirs)
 
 # Enable testing
 enable_testing()
@@ -98,6 +99,17 @@ target_link_libraries(acu_full_test Threads::Threads)
 add_library(acu_full_test_shared SHARED ${SRC_SOURCES})
 target_include_directories(acu_full_test_shared PUBLIC src)
 target_link_libraries(acu_full_test_shared Threads::Threads)
+
+# Install rules for aggregate libraries and headers
+install(TARGETS acu_full_test
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+install(TARGETS acu_full_test_shared
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+install(DIRECTORY src/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/acaida_hal
+    FILES_MATCHING PATTERN "*.h"
+)
 
 # Add tests directory
 add_subdirectory(tests)

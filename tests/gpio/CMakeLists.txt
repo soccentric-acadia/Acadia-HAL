@@ -1,4 +1,5 @@
 add_executable(test_gpio main.cpp)
 target_link_libraries(test_gpio gpio_lib)
-target_include_directories(test_gpio PRIVATE ../src/gpio_lib)
+target_include_directories(test_gpio PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_gpio COMMAND test_gpio)
+install(TARGETS test_gpio RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

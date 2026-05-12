@@ -1,4 +1,5 @@
 add_executable(test_watchdog_and_reset main.cpp)
 target_link_libraries(test_watchdog_and_reset watchdog_and_reset_lib)
-target_include_directories(test_watchdog_and_reset PRIVATE ../src/watchdog_and_reset_lib)
+target_include_directories(test_watchdog_and_reset PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_watchdog_and_reset COMMAND test_watchdog_and_reset)
+install(TARGETS test_watchdog_and_reset RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
