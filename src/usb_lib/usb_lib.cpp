@@ -173,7 +173,14 @@ TestOutput UsbTesting::testUsbHostMode()
         data.push_back("[FAIL] No USB root hubs found under /sys/bus/usb/devices/");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -194,7 +201,14 @@ TestOutput UsbTesting::testUsbDeviceMode()
     DIR* dir = opendir(udcClass.c_str());
     if (!dir) {
         data.push_back("[FAIL] /sys/class/udc not found – USB gadget framework not loaded");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     int udcCount = 0;
@@ -224,7 +238,14 @@ TestOutput UsbTesting::testUsbDeviceMode()
     else
         data.push_back("[INFO] dwc3 driver not found (device mode may be disabled in DT)");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -273,7 +294,14 @@ TestOutput UsbTesting::testUsb32Gen2Speed()
     }
 
     data.push_back("SuperSpeed+ (Gen2) device instances: " + std::to_string(ssPlus));
-    return {found, data};
+    {
+        TestOutput _out;
+        _out.status = found ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = found ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -319,7 +347,14 @@ TestOutput UsbTesting::testUsb31Gen1BackwardCompatibility()
         data.push_back("[WARN] No SuperSpeed (5 Gbps) ports or devices detected – connect a USB 3.x device");
 
     data.push_back("USB 3.1 Gen1 (5 Gbps) device count: " + std::to_string(ss5Count));
-    return {found, data};
+    {
+        TestOutput _out;
+        _out.status = found ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = found ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -365,7 +400,14 @@ TestOutput UsbTesting::testUsb20BackwardCompatibility()
     data.push_back("USB 2.0 HS (480 Mbps) devices: " + std::to_string(hs480));
     data.push_back("USB FS (12 Mbps) devices: " + std::to_string(fs12));
     data.push_back("USB LS (1.5 Mbps) devices: " + std::to_string(ls15));
-    return {found, data};
+    {
+        TestOutput _out;
+        _out.status = found ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = found ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -448,7 +490,14 @@ TestOutput UsbTesting::testUsbPowerDelivery()
     data.push_back("Self-powered devices: " + std::to_string(selfPoweredCount));
     data.push_back("Bus-powered devices : " + std::to_string(busPoweredCount));
     data.push_back("USB-PD supply entries: " + std::to_string(pdEntries));
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -508,7 +557,14 @@ TestOutput UsbTesting::testMultipleUsbDeviceEnumeration()
         data.push_back("[FAIL] No USB devices with valid VID:PID found");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -568,7 +624,14 @@ TestOutput UsbTesting::testUsbHotplugDetection()
     if (!passed)
         data.push_back("[FAIL] USB hotplug infrastructure not detected");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -636,7 +699,14 @@ TestOutput UsbTesting::testUsbSuspendresume()
         data.push_back("[WARN] No USB devices with runtime PM attributes found");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -714,7 +784,14 @@ TestOutput UsbTesting::testUsbMassStorageDevices()
         data.push_back("[INFO] No USB mass storage devices currently connected – connect a USB drive to verify");
 
     data.push_back("USB mass storage interfaces found: " + std::to_string(storageCount));
-    return {passed || storageCount > 0, data};
+    {
+        TestOutput _out;
+        _out.status = (passed || storageCount > 0) ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = (passed || storageCount > 0) ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -764,7 +841,14 @@ TestOutput UsbTesting::testUsbCameras()
         data.push_back("[INFO] No USB cameras detected – connect a UVC camera to verify");
 
     data.push_back("UVC interface count: " + std::to_string(uvcCount));
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -835,7 +919,14 @@ TestOutput UsbTesting::testUsbNetworkAdapters()
         data.push_back("[INFO] No USB network adapters detected – connect a USB Ethernet/LTE adapter to verify");
 
     data.push_back("USB network interface count: " + std::to_string(netCount));
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -909,7 +1000,14 @@ TestOutput UsbTesting::testUsbHubs()
     if (!passed)
         data.push_back("[FAIL] No USB hubs detected");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -966,7 +1064,14 @@ TestOutput UsbTesting::testUsbAudioDevices()
         data.push_back("[INFO] No USB audio devices detected – connect a USB headset/DAC to verify");
 
     data.push_back("USB audio interface count: " + std::to_string(audioCount));
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1032,7 +1137,14 @@ TestOutput UsbTesting::testUsbHidDevices()
         data.push_back("[INFO] No USB HID devices detected – connect a USB keyboard/mouse to verify");
 
     data.push_back("USB HID interface count: " + std::to_string(hidCount));
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1049,7 +1161,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsbHostMode();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbHostMode", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbHostMode";
+            _tr.test_id = "testUsbHostMode";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsbDeviceMode
@@ -1058,7 +1177,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsbDeviceMode();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbDeviceMode", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbDeviceMode";
+            _tr.test_id = "testUsbDeviceMode";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsb32Gen2Speed
@@ -1067,7 +1193,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsb32Gen2Speed();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsb32Gen2Speed", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsb32Gen2Speed";
+            _tr.test_id = "testUsb32Gen2Speed";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsb31Gen1BackwardCompatibility
@@ -1076,7 +1209,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsb31Gen1BackwardCompatibility();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsb31Gen1BackwardCompatibility", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsb31Gen1BackwardCompatibility";
+            _tr.test_id = "testUsb31Gen1BackwardCompatibility";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsb20BackwardCompatibility
@@ -1085,7 +1225,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsb20BackwardCompatibility();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsb20BackwardCompatibility", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsb20BackwardCompatibility";
+            _tr.test_id = "testUsb20BackwardCompatibility";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsbPowerDelivery
@@ -1094,7 +1241,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsbPowerDelivery();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbPowerDelivery", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbPowerDelivery";
+            _tr.test_id = "testUsbPowerDelivery";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultipleUsbDeviceEnumeration
@@ -1103,7 +1257,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testMultipleUsbDeviceEnumeration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultipleUsbDeviceEnumeration", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultipleUsbDeviceEnumeration";
+            _tr.test_id = "testMultipleUsbDeviceEnumeration";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsbHotplugDetection
@@ -1112,7 +1273,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsbHotplugDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbHotplugDetection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbHotplugDetection";
+            _tr.test_id = "testUsbHotplugDetection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsbSuspendresume
@@ -1121,7 +1289,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsbSuspendresume();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbSuspendresume", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbSuspendresume";
+            _tr.test_id = "testUsbSuspendresume";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsbMassStorageDevices
@@ -1130,7 +1305,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsbMassStorageDevices();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbMassStorageDevices", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbMassStorageDevices";
+            _tr.test_id = "testUsbMassStorageDevices";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsbCameras
@@ -1139,7 +1321,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsbCameras();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbCameras", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbCameras";
+            _tr.test_id = "testUsbCameras";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsbNetworkAdapters
@@ -1148,7 +1337,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsbNetworkAdapters();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbNetworkAdapters", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbNetworkAdapters";
+            _tr.test_id = "testUsbNetworkAdapters";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsbHubs
@@ -1157,7 +1353,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsbHubs();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbHubs", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbHubs";
+            _tr.test_id = "testUsbHubs";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsbAudioDevices
@@ -1166,7 +1369,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsbAudioDevices();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbAudioDevices", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbAudioDevices";
+            _tr.test_id = "testUsbAudioDevices";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsbHidDevices
@@ -1175,7 +1385,14 @@ std::vector<TestResult> UsbTesting::runAllTests()
         TestOutput result = testUsbHidDevices();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbHidDevices", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbHidDevices";
+            _tr.test_id = "testUsbHidDevices";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -1214,7 +1431,10 @@ std::vector<std::string> UsbTesting::getAvailableTests()
 TestResult UsbTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testUsbHostMode") {
         result = testUsbHostMode();
@@ -1250,10 +1470,26 @@ TestResult UsbTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

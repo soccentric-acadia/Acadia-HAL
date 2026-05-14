@@ -147,7 +147,14 @@ TestOutput SystemMemoryTesting::testAll64gbMemoryAccessibility()
         data.push_back("PASS: 4 GB LPDDR4X memory accessible.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -181,7 +188,14 @@ TestOutput SystemMemoryTesting::testMemoryBankTesting()
     if (!numaNode.empty()) data.push_back("NUMA node0 present (UMA system)");
 
     data.push_back("PASS: Memory bank topology verified.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -200,7 +214,14 @@ TestOutput SystemMemoryTesting::test256bitMemoryInterface()
     data.push_back("Bus width calculation: 64-bit × 4267 MT/s × 2 (DDR) / 8 = ~17 GB/s");
 
     data.push_back("PASS: 64-bit LPDDR4X memory interface confirmed for Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +257,14 @@ TestOutput SystemMemoryTesting::testMemoryClockFrequency()
     // BCM2712 memory controller speed is fixed at boot from firmware
     data.push_back("Memory controller: BCM2712 (fixed at LPDDR4X-4267 by firmware)");
     data.push_back("PASS: LPDDR4X clock frequency confirmed at spec: 4267 MT/s.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -265,7 +293,14 @@ TestOutput SystemMemoryTesting::testMemoryBandwidth()
         data.push_back("PASS: Memory bandwidth within acceptable range.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -303,7 +338,14 @@ TestOutput SystemMemoryTesting::testMemoryLatencyMeasurements()
         data.push_back("PASS: Memory latency hierarchy consistent.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -338,7 +380,14 @@ TestOutput SystemMemoryTesting::testMemoryErrorCorrection()
     data.push_back("NOTE: For ECC memory, use server-grade ARM platforms (e.g., ThunderX2, Altra).");
     data.push_back("PASS: ECC check complete (non-ECC LPDDR4X confirmed).");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -375,7 +424,14 @@ TestOutput SystemMemoryTesting::testMemoryThermalBehavior()
         data.push_back("PASS: Memory thermal behavior within acceptable range.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -416,7 +472,14 @@ TestOutput SystemMemoryTesting::testSequentialReadwritePerformance()
         data.push_back("PASS: Sequential memory performance acceptable.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -441,7 +504,14 @@ TestOutput SystemMemoryTesting::testRandomReadwritePerformance()
         data.push_back("PASS: Random access latency within expected range.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -481,7 +551,14 @@ TestOutput SystemMemoryTesting::testMemoryAllocationdeallocation()
         data.push_back("PASS: All allocations succeeded.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -528,7 +605,14 @@ TestOutput SystemMemoryTesting::testMemoryFragmentationHandling()
         data.push_back("PASS: Memory fragmentation test passed.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -569,7 +653,14 @@ TestOutput SystemMemoryTesting::testOutofmemoryConditions()
         data.push_back("PASS: Sufficient memory available (no OOM risk detected).");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -621,7 +712,14 @@ TestOutput SystemMemoryTesting::testMemoryLeaksDetection()
         data.push_back("PASS: No significant memory leak detected.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -663,7 +761,14 @@ TestOutput SystemMemoryTesting::testDmaTofromMemory()
         data.push_back("PASS: DMA subsystem detected.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -707,7 +812,14 @@ TestOutput SystemMemoryTesting::testConcurrentMemoryAccessPatterns()
         data.push_back("PASS: Concurrent memory access test passed.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -724,7 +836,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testAll64gbMemoryAccessibility();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAll64gbMemoryAccessibility", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAll64gbMemoryAccessibility";
+            _tr.test_id = "testAll64gbMemoryAccessibility";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMemoryBankTesting
@@ -733,7 +852,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testMemoryBankTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMemoryBankTesting", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMemoryBankTesting";
+            _tr.test_id = "testMemoryBankTesting";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test256bitMemoryInterface
@@ -742,7 +868,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = test256bitMemoryInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test256bitMemoryInterface", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test256bitMemoryInterface";
+            _tr.test_id = "test256bitMemoryInterface";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMemoryClockFrequency
@@ -751,7 +884,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testMemoryClockFrequency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMemoryClockFrequency", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMemoryClockFrequency";
+            _tr.test_id = "testMemoryClockFrequency";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMemoryBandwidth
@@ -760,7 +900,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testMemoryBandwidth();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMemoryBandwidth", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMemoryBandwidth";
+            _tr.test_id = "testMemoryBandwidth";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMemoryLatencyMeasurements
@@ -769,7 +916,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testMemoryLatencyMeasurements();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMemoryLatencyMeasurements", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMemoryLatencyMeasurements";
+            _tr.test_id = "testMemoryLatencyMeasurements";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMemoryErrorCorrection
@@ -778,7 +932,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testMemoryErrorCorrection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMemoryErrorCorrection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMemoryErrorCorrection";
+            _tr.test_id = "testMemoryErrorCorrection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMemoryThermalBehavior
@@ -787,7 +948,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testMemoryThermalBehavior();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMemoryThermalBehavior", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMemoryThermalBehavior";
+            _tr.test_id = "testMemoryThermalBehavior";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSequentialReadwritePerformance
@@ -796,7 +964,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testSequentialReadwritePerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSequentialReadwritePerformance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSequentialReadwritePerformance";
+            _tr.test_id = "testSequentialReadwritePerformance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRandomReadwritePerformance
@@ -805,7 +980,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testRandomReadwritePerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRandomReadwritePerformance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRandomReadwritePerformance";
+            _tr.test_id = "testRandomReadwritePerformance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMemoryAllocationdeallocation
@@ -814,7 +996,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testMemoryAllocationdeallocation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMemoryAllocationdeallocation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMemoryAllocationdeallocation";
+            _tr.test_id = "testMemoryAllocationdeallocation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMemoryFragmentationHandling
@@ -823,7 +1012,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testMemoryFragmentationHandling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMemoryFragmentationHandling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMemoryFragmentationHandling";
+            _tr.test_id = "testMemoryFragmentationHandling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testOutofmemoryConditions
@@ -832,7 +1028,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testOutofmemoryConditions();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testOutofmemoryConditions", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testOutofmemoryConditions";
+            _tr.test_id = "testOutofmemoryConditions";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMemoryLeaksDetection
@@ -841,7 +1044,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testMemoryLeaksDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMemoryLeaksDetection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMemoryLeaksDetection";
+            _tr.test_id = "testMemoryLeaksDetection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDmaTofromMemory
@@ -850,7 +1060,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testDmaTofromMemory();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDmaTofromMemory", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDmaTofromMemory";
+            _tr.test_id = "testDmaTofromMemory";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testConcurrentMemoryAccessPatterns
@@ -859,7 +1076,14 @@ std::vector<TestResult> SystemMemoryTesting::runAllTests()
         TestOutput result = testConcurrentMemoryAccessPatterns();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testConcurrentMemoryAccessPatterns", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testConcurrentMemoryAccessPatterns";
+            _tr.test_id = "testConcurrentMemoryAccessPatterns";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -891,7 +1115,10 @@ std::vector<std::string> SystemMemoryTesting::getAvailableTests()
 TestResult SystemMemoryTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testAll64gbMemoryAccessibility") {
         result = testAll64gbMemoryAccessibility();
@@ -927,10 +1154,26 @@ TestResult SystemMemoryTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

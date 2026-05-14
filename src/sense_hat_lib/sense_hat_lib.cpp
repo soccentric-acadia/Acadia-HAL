@@ -129,7 +129,14 @@ TestOutput SenseHatTesting::testSenseHatDetection()
         data.push_back("[INFO] Skipping I2C scan (bus not available)");
     }
 
-    return {anyFound || senseFb, data};
+    {
+        TestOutput _out;
+        _out.status = (anyFound || senseFb) ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = (anyFound || senseFb) ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -169,7 +176,14 @@ TestOutput SenseHatTesting::testLedMatrix()
                                : "[INFO] ATtiny88 @ 0x46 not detected");
     }
 
-    return {fb1, data};
+    {
+        TestOutput _out;
+        _out.status = fb1 ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = fb1 ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -213,7 +227,14 @@ TestOutput SenseHatTesting::testTemperatureSensor()
             data.push_back("[INFO] HTS221 not found (Sense HAT not attached or driver not loaded)");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -246,7 +267,14 @@ TestOutput SenseHatTesting::testHumiditySensor()
     if (!found)
         data.push_back("[INFO] HTS221 humidity IIO channel not available");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -291,7 +319,14 @@ TestOutput SenseHatTesting::testPressureSensor()
     if (!found)
         data.push_back("[INFO] LPS25H not found (Sense HAT not attached or driver not loaded)");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -357,7 +392,14 @@ TestOutput SenseHatTesting::testImuSensors()
     if (!magnOk)  data.push_back("[INFO] LSM9DS1 magnetometer IIO channel not found");
     data.push_back("[INFO] Load driver: sudo modprobe lsm9ds1 (or add to /etc/modules)");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -387,7 +429,14 @@ TestOutput SenseHatTesting::testJoystick()
     data.push_back(js0 ? "[INFO] /dev/input/js0 present" : "[INFO] /dev/input/js0 absent");
 
     data.push_back("[INFO] Joystick uses keys: UP/DOWN/LEFT/RIGHT/ENTER");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -433,7 +482,14 @@ TestOutput SenseHatTesting::testI2cBusIntegrity()
     std::string i2cMod = shRunCmd("lsmod 2>/dev/null | grep -c 'i2c_dev'");
     data.push_back("[INFO] i2c_dev module loaded: " + i2cMod);
 
-    return {i2c1, data};
+    {
+        TestOutput _out;
+        _out.status = i2c1 ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = i2c1 ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -447,7 +503,14 @@ std::vector<TestResult> SenseHatTesting::runAllTests()
         auto start = std::chrono::high_resolution_clock::now();
         TestOutput out = (this->*fn)();
         auto end = std::chrono::high_resolution_clock::now();
-        results.push_back({name, out, end - start});
+        {
+            TestResult _tr;
+            _tr.name = name;
+            _tr.test_id = name;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+            _tr.output = out;
+            results.push_back(_tr);
+        }
     };
     run("testSenseHatDetection",  &SenseHatTesting::testSenseHatDetection);
     run("testLedMatrix",          &SenseHatTesting::testLedMatrix);
@@ -477,7 +540,10 @@ std::vector<std::string> SenseHatTesting::getAvailableTests()
 TestResult SenseHatTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if      (testName == "testSenseHatDetection")  result = testSenseHatDetection();
     else if (testName == "testLedMatrix")           result = testLedMatrix();
@@ -489,9 +555,25 @@ TestResult SenseHatTesting::runSingleTest(const std::string& testName)
     else if (testName == "testI2cBusIntegrity")     result = testI2cBusIntegrity();
     else {
         auto end = std::chrono::high_resolution_clock::now();
-        return {testName + " (UNKNOWN)", {false, {}}, end - start};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
-    return {testName, result, end - start};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        _tr.output = result;
+        return _tr;
+    }
 }

@@ -127,7 +127,14 @@ TestOutput ThermalManagementTesting::testSocJunctionTemperature()
     double tempC = readSocTempC();
     if (tempC < 0) {
         data.push_back("FAIL: Cannot read SoC temperature.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("SoC temperature: " + std::to_string(tempC) + " °C");
@@ -144,7 +151,14 @@ TestOutput ThermalManagementTesting::testSocJunctionTemperature()
         data.push_back("PASS: SoC junction temperature within safe operating range.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -172,7 +186,14 @@ TestOutput ThermalManagementTesting::testGpuTemperature()
         data.push_back("PASS: GPU temperature within limits.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -210,7 +231,14 @@ TestOutput ThermalManagementTesting::testCpuTemperature()
     }
 
     if (passed) data.push_back("PASS: CPU temperature within safe range.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -238,7 +266,14 @@ TestOutput ThermalManagementTesting::testMemoryTemperature()
         data.push_back("PASS: Memory thermal check passed (via SoC proxy).");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -284,7 +319,14 @@ TestOutput ThermalManagementTesting::testBoardAmbientTemperature()
     }
 
     if (passed) data.push_back("PASS: Board ambient temperature check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -300,7 +342,14 @@ TestOutput ThermalManagementTesting::testAllThermalZones()
 
     if (zones.empty()) {
         data.push_back("FAIL: No thermal zones found.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     for (const auto& z : zones) {
@@ -312,7 +361,14 @@ TestOutput ThermalManagementTesting::testAllThermalZones()
 
     data.push_back("Total thermal zones: " + std::to_string(zones.size()));
     if (passed) data.push_back("PASS: All thermal zones within safe range.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -356,7 +412,14 @@ TestOutput ThermalManagementTesting::testThermalThrottlingThresholds()
         data.push_back("PASS: Throttle thresholds confirmed, no active throttling.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -396,7 +459,14 @@ TestOutput ThermalManagementTesting::testThermalShutdownTemperature()
         data.push_back("PASS: Safe headroom to shutdown temperature.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -434,7 +504,14 @@ TestOutput ThermalManagementTesting::testCoolingSolutionEffectiveness()
         data.push_back("PASS: Cooling solution effective for 3s full-load test.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -461,7 +538,14 @@ TestOutput ThermalManagementTesting::testTemperatureDistributionAcrossDie()
     }
 
     data.push_back("PASS: Die temperature distribution check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -514,7 +598,14 @@ TestOutput ThermalManagementTesting::testSustainedThermalPerformance()
         data.push_back("PASS: Sustained thermal performance test complete.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -561,7 +652,14 @@ TestOutput ThermalManagementTesting::testThermalRecoveryTime()
         data.push_back("PASS: Thermal recovery within acceptable time.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -618,7 +716,14 @@ TestOutput ThermalManagementTesting::testFanControl()
         data.push_back("PASS: Fan control interface detected.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 std::vector<TestResult> ThermalManagementTesting::runAllTests()
 {
@@ -630,7 +735,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testSocJunctionTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSocJunctionTemperature", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSocJunctionTemperature";
+            _tr.test_id = "testSocJunctionTemperature";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpuTemperature
@@ -639,7 +751,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testGpuTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpuTemperature", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpuTemperature";
+            _tr.test_id = "testGpuTemperature";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCpuTemperature
@@ -648,7 +767,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testCpuTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCpuTemperature", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCpuTemperature";
+            _tr.test_id = "testCpuTemperature";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMemoryTemperature
@@ -657,7 +783,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testMemoryTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMemoryTemperature", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMemoryTemperature";
+            _tr.test_id = "testMemoryTemperature";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testBoardAmbientTemperature
@@ -666,7 +799,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testBoardAmbientTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testBoardAmbientTemperature", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testBoardAmbientTemperature";
+            _tr.test_id = "testBoardAmbientTemperature";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAllThermalZones
@@ -675,7 +815,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testAllThermalZones();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAllThermalZones", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAllThermalZones";
+            _tr.test_id = "testAllThermalZones";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testThermalThrottlingThresholds
@@ -684,7 +831,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testThermalThrottlingThresholds();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testThermalThrottlingThresholds", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testThermalThrottlingThresholds";
+            _tr.test_id = "testThermalThrottlingThresholds";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testThermalShutdownTemperature
@@ -693,7 +847,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testThermalShutdownTemperature();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testThermalShutdownTemperature", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testThermalShutdownTemperature";
+            _tr.test_id = "testThermalShutdownTemperature";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCoolingSolutionEffectiveness
@@ -702,7 +863,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testCoolingSolutionEffectiveness();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCoolingSolutionEffectiveness", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCoolingSolutionEffectiveness";
+            _tr.test_id = "testCoolingSolutionEffectiveness";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testTemperatureDistributionAcrossDie
@@ -711,7 +879,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testTemperatureDistributionAcrossDie();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testTemperatureDistributionAcrossDie", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testTemperatureDistributionAcrossDie";
+            _tr.test_id = "testTemperatureDistributionAcrossDie";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSustainedThermalPerformance
@@ -720,7 +895,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testSustainedThermalPerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSustainedThermalPerformance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSustainedThermalPerformance";
+            _tr.test_id = "testSustainedThermalPerformance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testThermalRecoveryTime
@@ -729,7 +911,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testThermalRecoveryTime();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testThermalRecoveryTime", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testThermalRecoveryTime";
+            _tr.test_id = "testThermalRecoveryTime";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testFanControl
@@ -738,7 +927,14 @@ std::vector<TestResult> ThermalManagementTesting::runAllTests()
         TestOutput result = testFanControl();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testFanControl", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testFanControl";
+            _tr.test_id = "testFanControl";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -775,7 +971,10 @@ std::vector<std::string> ThermalManagementTesting::getAvailableTests()
 TestResult ThermalManagementTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testSocJunctionTemperature") {
         result = testSocJunctionTemperature();
@@ -807,10 +1006,26 @@ TestResult ThermalManagementTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

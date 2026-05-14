@@ -113,7 +113,15 @@ TestOutput SerializerDeserializerTesting::testSerializationFunctionality()
     data.push_back(gmslAddr.empty() ? "[INFO] No known GMSL-2 deserializer address on I2C-1"
                                     : "[PASS] GMSL-2 compatible address on I2C-1: " + gmslAddr);
 
-    return {unicamFound || !videoDevs.empty(), data};
+    {
+        TestOutput _out;
+        const bool _ok = unicamFound || !videoDevs.empty();
+        _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -132,7 +140,14 @@ TestOutput SerializerDeserializerTesting::testDataIntegrity()
     {
         data.push_back("[INFO] No /dev/video0 — cannot perform frame integrity check");
         data.push_back("[INFO] Connect a camera to CSI-2 port for this test");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Capture 1 frame with v4l2-ctl and check file size > 0
@@ -146,7 +161,14 @@ TestOutput SerializerDeserializerTesting::testDataIntegrity()
     // Clean up
     system("rm -f /tmp/serdes_frame.raw 2>/dev/null");
 
-    return {frameOk, data};
+    {
+        TestOutput _out;
+        _out.status = frameOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = frameOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -169,7 +191,14 @@ TestOutput SerializerDeserializerTesting::testLinkSpeed()
     // CSI-2 D-PHY lane speed: Pi5 Unicam supports up to 1 Gbps/lane x 4 lanes = 4 Gbps
     data.push_back("[INFO] Pi5 Unicam: D-PHY max 1 Gbps/lane, up to 4 lanes = 4 Gbps aggregate");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -191,7 +220,14 @@ TestOutput SerializerDeserializerTesting::testErrorDetection()
                                  : "[WARN] V4L2 errors: " + v4lErr);
 
     data.push_back("[INFO] MIPI CSI-2 D-PHY has built-in ECC (1-bit correction, 2-bit detection)");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -218,7 +254,14 @@ TestOutput SerializerDeserializerTesting::testDeserializationFunctionality()
     data.push_back(lcCams.empty() ? "[INFO] No libcamera cameras found"
                                   : "[PASS] libcamera cameras:\n" + lcCams);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -242,7 +285,14 @@ TestOutput SerializerDeserializerTesting::testClockRecovery()
     data.push_back("[INFO] vcgencmd core clock: " + (mclk.empty() ? "N/A" : mclk));
     data.push_back("[INFO] Camera MCLK = 24 MHz from XTAL; link clock embedded in D-PHY");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -280,7 +330,14 @@ TestOutput SerializerDeserializerTesting::testMultistreamSupport()
     }
 
     data.push_back("[INFO] For multi-stream (GMSL-2) use MAX96724 deser + imx390 sensors on VC0–3");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -297,7 +354,14 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
         TestOutput result = testSerializationFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSerializationFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSerializationFunctionality";
+            _tr.test_id = "testSerializationFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDataIntegrity
@@ -306,7 +370,14 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
         TestOutput result = testDataIntegrity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDataIntegrity", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDataIntegrity";
+            _tr.test_id = "testDataIntegrity";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testLinkSpeed
@@ -315,7 +386,14 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
         TestOutput result = testLinkSpeed();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testLinkSpeed", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testLinkSpeed";
+            _tr.test_id = "testLinkSpeed";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testErrorDetection
@@ -324,7 +402,14 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
         TestOutput result = testErrorDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testErrorDetection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testErrorDetection";
+            _tr.test_id = "testErrorDetection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDeserializationFunctionality
@@ -333,7 +418,14 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
         TestOutput result = testDeserializationFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDeserializationFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDeserializationFunctionality";
+            _tr.test_id = "testDeserializationFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testClockRecovery
@@ -342,7 +434,14 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
         TestOutput result = testClockRecovery();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testClockRecovery", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testClockRecovery";
+            _tr.test_id = "testClockRecovery";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultistreamSupport
@@ -351,7 +450,14 @@ std::vector<TestResult> SerializerDeserializerTesting::runAllTests()
         TestOutput result = testMultistreamSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultistreamSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultistreamSupport";
+            _tr.test_id = "testMultistreamSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -377,7 +483,10 @@ std::vector<std::string> SerializerDeserializerTesting::getAvailableTests()
 TestResult SerializerDeserializerTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testSerializationFunctionality") {
         result = testSerializationFunctionality();
@@ -397,10 +506,26 @@ TestResult SerializerDeserializerTesting::runSingleTest(const std::string& testN
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

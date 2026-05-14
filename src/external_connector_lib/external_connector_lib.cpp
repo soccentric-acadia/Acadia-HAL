@@ -105,7 +105,14 @@ TestOutput ExternalConnectorTesting::testKl15PowerInput()
     std::string psList = ecRunCmd("ls /sys/class/power_supply/ 2>/dev/null");
     data.push_back(psList.empty() ? "[INFO] No power_supply entries" : "[INFO] Power supply: " + psList);
 
-    return {uvOk, data};
+    {
+        TestOutput _out;
+        _out.status = uvOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = uvOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -124,7 +131,14 @@ TestOutput ExternalConnectorTesting::testAdenlrSignals()
     std::string gpioInfo = ecRunCmd("gpioinfo 2>/dev/null | head -6");
     data.push_back(gpioInfo.empty() ? "[INFO] gpioinfo not available" : "[INFO] " + gpioInfo);
 
-    return {gpioOk, data};
+    {
+        TestOutput _out;
+        _out.status = gpioOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = gpioOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -146,7 +160,14 @@ TestOutput ExternalConnectorTesting::testBcmCanInterface()
         std::string canStats = ecRunCmd("ip -details link show can0 2>/dev/null | tail -3");
         data.push_back("[INFO] can0 details:\n" + canStats);
     }
-    return {can0, data};
+    {
+        TestOutput _out;
+        _out.status = can0 ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = can0 ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -165,7 +186,14 @@ TestOutput ExternalConnectorTesting::testVcuCanInterface()
     if (!can1 && can0)
         data.push_back("[INFO] can0 (BCM-CAN) present; can1 (VCU-CAN) requires dual-port CAN HAT");
 
-    return {can0 || can1, data};
+    {
+        TestOutput _out;
+        _out.status = (can0 || can1) ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = (can0 || can1) ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -186,7 +214,14 @@ TestOutput ExternalConnectorTesting::testAllConnectorPinsContinuity()
     std::string gpioCount = ecRunCmd("gpioinfo 2>/dev/null | grep -c 'line'");
     data.push_back("[INFO] GPIO lines: " + gpioCount);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -200,7 +235,14 @@ TestOutput ExternalConnectorTesting::testConnectorRetentionForce()
     data.push_back("[INFO] Pi5 connectors: USB-C (5 V), micro-HDMI x2 (28-AWG rated), CSI-2 FPC, USB-A x2");
     data.push_back("[INFO] 40-pin GPIO header: TE Connectivity 2x20 0.1\" friction-fit");
     data.push_back("[INFO] Test procedure: pull each connector at rated extraction force and verify no movement");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -220,7 +262,14 @@ TestOutput ExternalConnectorTesting::testConnectorContactResistance()
     data.push_back(uvClean ? "[PASS] No under-voltage (contact resistance likely OK)"
                            : "[INFO] Under-voltage flag set (possible poor connector): " + throttle);
 
-    return {uvClean, data};
+    {
+        TestOutput _out;
+        _out.status = uvClean ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = uvClean ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -242,7 +291,14 @@ TestOutput ExternalConnectorTesting::test12vAsilQsRPower()
     }
 
     data.push_back("[INFO] For 12V ASIL-rated supply use TI TPS65381A / NXP FS84 PMIC");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -267,7 +323,14 @@ TestOutput ExternalConnectorTesting::testConnectorMechanicalIntegrity()
     data.push_back(sdRemove == "0" ? "[PASS] No SD card removal events"
                                    : "[WARN] SD removals: " + sdRemove);
 
-    return {usbOk, data};
+    {
+        TestOutput _out;
+        _out.status = usbOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = usbOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -287,7 +350,14 @@ TestOutput ExternalConnectorTesting::testEtcl3j703()
     std::string speed = ecReadFile("/sys/class/net/eth0/speed");
     data.push_back("[INFO] eth0 speed: " + speed + " Mbps");
 
-    return {eth0, data};
+    {
+        TestOutput _out;
+        _out.status = eth0 ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = eth0 ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -303,7 +373,14 @@ TestOutput ExternalConnectorTesting::testEtcl2j704()
     data.push_back(eth1.empty() ? "[INFO] No secondary NIC (J704 ETCL2 not populated)"
                                 : "[PASS] Secondary NIC: " + eth1);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -318,7 +395,14 @@ TestOutput ExternalConnectorTesting::testEtc3j705()
     std::string ifaces = ecRunCmd("ip link show 2>/dev/null | grep -c '^[0-9]'");
     data.push_back("[INFO] Total network interfaces: " + ifaces);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -340,7 +424,14 @@ TestOutput ExternalConnectorTesting::testAllEthernetPhyConnections()
     bool linkUp = (ecReadFile("/sys/class/net/eth0/carrier") == "1");
     data.push_back(linkUp ? "[PASS] eth0 carrier: link up" : "[WARN] eth0 carrier: link down");
 
-    return {linkUp, data};
+    {
+        TestOutput _out;
+        _out.status = linkUp ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = linkUp ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -359,7 +450,14 @@ TestOutput ExternalConnectorTesting::testCc1j709()
     std::string lcCams = ecRunCmd("libcamera-hello --list-cameras 2>/dev/null | head -3");
     data.push_back(lcCams.empty() ? "[INFO] No libcamera cameras" : "[INFO] " + lcCams);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -375,7 +473,14 @@ TestOutput ExternalConnectorTesting::testCc2j710()
     data.push_back(cam1 ? "[PASS] /dev/video1 present (camera connected to CAM0)"
                         : "[INFO] /dev/video1 absent (no camera on CAM0)");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -394,7 +499,14 @@ TestOutput ExternalConnectorTesting::testCc3j711()
     bool dsiOk = !ecRunCmd("ls /sys/bus/platform/devices/*dsi* 2>/dev/null").empty();
     data.push_back(dsiOk ? "[PASS] DSI platform device present" : "[INFO] DSI not found");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -409,7 +521,14 @@ TestOutput ExternalConnectorTesting::testCc4j712()
     data.push_back(hdmi1.empty() ? "[INFO] HDMI-2 DRM status unavailable"
                                  : "[INFO] HDMI-2: " + hdmi1);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -428,7 +547,14 @@ TestOutput ExternalConnectorTesting::testSv()
     std::string usbCam = ecRunCmd("lsusb 2>/dev/null | grep -i 'camera\\|webcam\\|UVC' | head -3");
     data.push_back(usbCam.empty() ? "[INFO] No USB UVC camera" : "[PASS] USB camera: " + usbCam);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -454,7 +580,14 @@ TestOutput ExternalConnectorTesting::testGnssAntCon()
     std::string gpsd = ecRunCmd("systemctl is-active gpsd 2>/dev/null");
     data.push_back("[INFO] gpsd: " + (gpsd.empty() ? "inactive" : gpsd));
 
-    return {uartOk, data};
+    {
+        TestOutput _out;
+        _out.status = uartOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = uartOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -475,7 +608,14 @@ TestOutput ExternalConnectorTesting::testEthdebugCon()
     data.push_back(usb0.empty() ? "[INFO] No USB gadget debug NIC (usb0)"
                                 : "[PASS] USB gadget NIC: " + usb0);
 
-    return {eth0, data};
+    {
+        TestOutput _out;
+        _out.status = eth0 ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = eth0 ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -501,7 +641,14 @@ TestOutput ExternalConnectorTesting::testAllConnectorPinAssignments()
     data.push_back("[INFO] Pin 19: GPIO10 (MOSI), Pin 21: GPIO9 (MISO), Pin 23: GPIO11 (SCLK)");
     data.push_back("[INFO] Pin 24: GPIO8 (CE0), Pin 26: GPIO7 (CE1)");
 
-    return {gpioOk, data};
+    {
+        TestOutput _out;
+        _out.status = gpioOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = gpioOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -518,7 +665,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testKl15PowerInput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testKl15PowerInput", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testKl15PowerInput";
+            _tr.test_id = "testKl15PowerInput";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAdenlrSignals
@@ -527,7 +681,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testAdenlrSignals();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAdenlrSignals", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAdenlrSignals";
+            _tr.test_id = "testAdenlrSignals";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testBcmCanInterface
@@ -536,7 +697,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testBcmCanInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testBcmCanInterface", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testBcmCanInterface";
+            _tr.test_id = "testBcmCanInterface";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVcuCanInterface
@@ -545,7 +713,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testVcuCanInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVcuCanInterface", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVcuCanInterface";
+            _tr.test_id = "testVcuCanInterface";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAllConnectorPinsContinuity
@@ -554,7 +729,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testAllConnectorPinsContinuity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAllConnectorPinsContinuity", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAllConnectorPinsContinuity";
+            _tr.test_id = "testAllConnectorPinsContinuity";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testConnectorRetentionForce
@@ -563,7 +745,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testConnectorRetentionForce();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testConnectorRetentionForce", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testConnectorRetentionForce";
+            _tr.test_id = "testConnectorRetentionForce";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testConnectorContactResistance
@@ -572,7 +761,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testConnectorContactResistance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testConnectorContactResistance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testConnectorContactResistance";
+            _tr.test_id = "testConnectorContactResistance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test12vAsilQsRPower
@@ -581,7 +777,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = test12vAsilQsRPower();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test12vAsilQsRPower", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test12vAsilQsRPower";
+            _tr.test_id = "test12vAsilQsRPower";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testConnectorMechanicalIntegrity
@@ -590,7 +793,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testConnectorMechanicalIntegrity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testConnectorMechanicalIntegrity", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testConnectorMechanicalIntegrity";
+            _tr.test_id = "testConnectorMechanicalIntegrity";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEtcl3j703
@@ -599,7 +809,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testEtcl3j703();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEtcl3j703", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEtcl3j703";
+            _tr.test_id = "testEtcl3j703";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEtcl2j704
@@ -608,7 +825,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testEtcl2j704();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEtcl2j704", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEtcl2j704";
+            _tr.test_id = "testEtcl2j704";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEtc3j705
@@ -617,7 +841,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testEtc3j705();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEtc3j705", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEtc3j705";
+            _tr.test_id = "testEtc3j705";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAllEthernetPhyConnections
@@ -626,7 +857,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testAllEthernetPhyConnections();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAllEthernetPhyConnections", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAllEthernetPhyConnections";
+            _tr.test_id = "testAllEthernetPhyConnections";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCc1j709
@@ -635,7 +873,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testCc1j709();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCc1j709", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCc1j709";
+            _tr.test_id = "testCc1j709";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCc2j710
@@ -644,7 +889,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testCc2j710();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCc2j710", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCc2j710";
+            _tr.test_id = "testCc2j710";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCc3j711
@@ -653,7 +905,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testCc3j711();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCc3j711", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCc3j711";
+            _tr.test_id = "testCc3j711";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCc4j712
@@ -662,7 +921,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testCc4j712();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCc4j712", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCc4j712";
+            _tr.test_id = "testCc4j712";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSv
@@ -671,7 +937,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testSv();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSv", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSv";
+            _tr.test_id = "testSv";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGnssAntCon
@@ -680,7 +953,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testGnssAntCon();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGnssAntCon", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGnssAntCon";
+            _tr.test_id = "testGnssAntCon";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEthdebugCon
@@ -689,7 +969,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testEthdebugCon();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEthdebugCon", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEthdebugCon";
+            _tr.test_id = "testEthdebugCon";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAllConnectorPinAssignments
@@ -698,7 +985,14 @@ std::vector<TestResult> ExternalConnectorTesting::runAllTests()
         TestOutput result = testAllConnectorPinAssignments();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAllConnectorPinAssignments", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAllConnectorPinAssignments";
+            _tr.test_id = "testAllConnectorPinAssignments";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -742,7 +1036,10 @@ std::vector<std::string> ExternalConnectorTesting::getAvailableTests()
 TestResult ExternalConnectorTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testKl15PowerInput") {
         result = testKl15PowerInput();
@@ -788,10 +1085,26 @@ TestResult ExternalConnectorTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

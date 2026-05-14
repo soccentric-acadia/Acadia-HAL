@@ -45,7 +45,13 @@ TestOutput PcieTesting::testPcieLinkTraining()
     int trainedCount = 0;
 
     if (devices.empty()) {
-        return {false, {"No PCIe devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No PCIe devices found";
+            return _out;
+        }
     }
 
     data.push_back("=== PCIe Link Training Status ===");
@@ -72,7 +78,14 @@ TestOutput PcieTesting::testPcieLinkTraining()
 
     data.push_back("Summary: " + std::to_string(trainedCount) + "/" + std::to_string(devices.size()) + " devices with active links");
 
-    return {allTrained, data};
+    {
+        TestOutput _out;
+        _out.status = allTrained ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allTrained ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -87,7 +100,13 @@ TestOutput PcieTesting::testPcieLinkSpeed()
     int gen1_count = 0, gen2_count = 0, gen3_count = 0, gen4_count = 0, gen5_count = 0;
 
     if (devices.empty()) {
-        return {false, {"No PCIe devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No PCIe devices found";
+            return _out;
+        }
     }
 
     data.push_back("=== PCIe Link Speed Analysis ===");
@@ -147,7 +166,14 @@ TestOutput PcieTesting::testPcieLinkSpeed()
     if (gen1_count > 0)
         data.push_back("Gen1 devices: " + std::to_string(gen1_count));
 
-    return {allValid, data};
+    {
+        TestOutput _out;
+        _out.status = allValid ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allValid ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -162,7 +188,13 @@ TestOutput PcieTesting::testPcieLinkWidth()
     int x1_count = 0, x2_count = 0, x4_count = 0, x8_count = 0, x1_wider_count = 0, x32_count = 0;
 
     if (devices.empty()) {
-        return {false, {"No PCIe devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No PCIe devices found";
+            return _out;
+        }
     }
 
     data.push_back("=== PCIe Link Width Analysis ===");
@@ -231,7 +263,14 @@ TestOutput PcieTesting::testPcieLinkWidth()
     if (x1_count > 0)
         data.push_back("x1 lanes: " + std::to_string(x1_count));
 
-    return {allValid, data};
+    {
+        TestOutput _out;
+        _out.status = allValid ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allValid ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -300,12 +339,25 @@ TestOutput PcieTesting::testPcieLaneReversal()
     }
 
     if (devices.empty() && foundControllers == 0) {
-        return {false, {"No PCIe controllers or devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No PCIe controllers or devices found";
+            return _out;
+        }
     }
 
     data.push_back("DT controllers found: " + std::to_string(foundControllers) +
                    " | PCIe devices checked: " + std::to_string(devices.size()));
-    return {allLanesActive, data};
+    {
+        TestOutput _out;
+        _out.status = allLanesActive ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allLanesActive ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -373,7 +425,14 @@ TestOutput PcieTesting::testPcieHotplugSupport()
         data.push_back("Found " + std::to_string(slotCount) + " slot(s), " + std::to_string(hotplugBridges) + " hotplug-capable bridge(s)");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -390,7 +449,13 @@ TestOutput PcieTesting::testPcieReadBandwidth()
     bool overallPass = false;
 
     if (devices.empty()) {
-        return {false, {"No PCIe devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No PCIe devices found";
+            return _out;
+        }
     }
 
     data.push_back("=== PCIe Read Bandwidth (Pi5) ===");
@@ -455,7 +520,14 @@ TestOutput PcieTesting::testPcieReadBandwidth()
     if (!overallPass) {
         data.push_back("[FAIL] Could not determine bandwidth for any device");
     }
-    return {overallPass, data};
+    {
+        TestOutput _out;
+        _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -472,7 +544,13 @@ TestOutput PcieTesting::testPcieWriteBandwidth()
     bool overallPass = false;
 
     if (devices.empty()) {
-        return {false, {"No PCIe devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No PCIe devices found";
+            return _out;
+        }
     }
 
     data.push_back("=== PCIe Write Bandwidth (Pi5) ===");
@@ -551,7 +629,14 @@ TestOutput PcieTesting::testPcieWriteBandwidth()
     if (!overallPass) {
         data.push_back("[FAIL] Could not determine write bandwidth for any device");
     }
-    return {overallPass, data};
+    {
+        TestOutput _out;
+        _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -567,7 +652,13 @@ TestOutput PcieTesting::testPcieLatency()
     std::vector<std::string> data;
 
     if (devices.empty()) {
-        return {false, {"No PCIe devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No PCIe devices found";
+            return _out;
+        }
     }
 
     data.push_back("=== PCIe Config-Space Access Latency (Pi5) ===");
@@ -618,11 +709,24 @@ TestOutput PcieTesting::testPcieLatency()
     }
 
     if (!anyMeasured) {
-        return {false, {"No PCIe devices with active links found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No PCIe devices with active links found";
+            return _out;
+        }
     }
 
     data.push_back("[INFO] Values include kernel/OS overhead on top of PCIe config-space TLP round-trip");
-    return {overallPass, data};
+    {
+        TestOutput _out;
+        _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -640,7 +744,13 @@ TestOutput PcieTesting::testPcieErrorHandling()
     bool overallPass = true;
 
     if (devices.empty()) {
-        return {false, {"No PCIe devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No PCIe devices found";
+            return _out;
+        }
     }
 
     data.push_back("=== PCIe AER Error Handling (Pi5) ===");
@@ -715,7 +825,14 @@ TestOutput PcieTesting::testPcieErrorHandling()
         data.push_back("AER checked on " + std::to_string(checkedDevices) + " device(s)");
     }
 
-    return {overallPass, data};
+    {
+        TestOutput _out;
+        _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -732,7 +849,13 @@ TestOutput PcieTesting::testPciePowerManagement()
     bool overallPass = true;
 
     if (devices.empty()) {
-        return {false, {"No PCIe devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No PCIe devices found";
+            return _out;
+        }
     }
 
     data.push_back("=== PCIe Power Management (Pi5) ===");
@@ -796,7 +919,14 @@ TestOutput PcieTesting::testPciePowerManagement()
     data.push_back("Summary: " + std::to_string(d0Count) + " active (D0), " + std::to_string(suspendCount) + " suspended, " +
                    std::to_string(unknownCount) + " unknown");
 
-    return {overallPass, data};
+    {
+        TestOutput _out;
+        _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -859,11 +989,25 @@ TestOutput PcieTesting::testSecondaryPcieLinkTraining()
     if (!anySecondary) {
         data.push_back("[INFO] No devices on secondary buses - all endpoints on root bus");
         data.push_back("[INFO] This is expected when no PCIe switches are present");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("Secondary bus trained: " + std::to_string(trainedCount) + "/" + std::to_string(totalSecondary));
-    return {trainedCount == totalSecondary, data};
+    {
+        TestOutput _out;
+        _out.status = (trainedCount == totalSecondary) ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = (trainedCount == totalSecondary) ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -935,7 +1079,14 @@ TestOutput PcieTesting::testPcieX4Bandwidth()
         data.push_back("[INFO] Connect an NVMe, capture card, or other x4 device to test");
     }
 
-    return {true, data}; // Not a failure when device is simply absent
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    } // Not a failure when device is simply absent
 }
 
 /**
@@ -1007,7 +1158,14 @@ TestOutput PcieTesting::testPcieX4LaneFunctionality()
     if (!anyX4)
         data.push_back("[INFO] No x4 or wider PCIe devices present on this system");
 
-    return {overallPass, data};
+    {
+        TestOutput _out;
+        _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1083,7 +1241,14 @@ TestOutput PcieTesting::testConcurrentPcieX8AndX4Operation()
         data.push_back("[PASS] No PCIe errors in kernel log");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1096,7 +1261,13 @@ TestOutput PcieTesting::testNvmeSsdConnectivity()
     std::vector<std::string> data;
 
     if (output.empty()) {
-        return {false, {"No NVMe devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No NVMe devices found";
+            return _out;
+        }
     }
 
     std::istringstream iss(output);
@@ -1110,7 +1281,14 @@ TestOutput PcieTesting::testNvmeSsdConnectivity()
 
     data.insert(data.begin(), "Found " + std::to_string(nvme_count) + " NVMe devices");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1123,7 +1301,13 @@ TestOutput PcieTesting::testGpuAddinCardSupport()
     std::vector<std::string> data;
 
     if (output.empty()) {
-        return {false, {"No GPU/display devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No GPU/display devices found";
+            return _out;
+        }
     }
 
     std::istringstream iss(output);
@@ -1137,7 +1321,14 @@ TestOutput PcieTesting::testGpuAddinCardSupport()
 
     data.insert(data.begin(), "Found " + std::to_string(gpu_count) + " GPU/display devices");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1150,7 +1341,13 @@ TestOutput PcieTesting::testNetworkAdapterConnectivity()
     std::vector<std::string> data;
 
     if (output.empty()) {
-        return {false, {"No network adapter devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No network adapter devices found";
+            return _out;
+        }
     }
 
     std::istringstream iss(output);
@@ -1164,7 +1361,14 @@ TestOutput PcieTesting::testNetworkAdapterConnectivity()
 
     data.insert(data.begin(), "Found " + std::to_string(net_count) + " network adapter devices");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1177,7 +1381,13 @@ TestOutput PcieTesting::testMultiplePcieDeviceEnumeration()
     std::vector<std::string> data;
 
     if (devices.empty()) {
-        return {false, {"No PCIe devices found"}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "No PCIe devices found";
+            return _out;
+        }
     }
 
     data.push_back("Found " + std::to_string(devices.size()) + " PCIe devices:");
@@ -1191,7 +1401,14 @@ TestOutput PcieTesting::testMultiplePcieDeviceEnumeration()
         data.push_back("Device: " + dev_name + ", Vendor: " + vendor + ", Device ID: " + device_id + ", Class: " + class_code);
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1281,7 +1498,14 @@ TestOutput PcieTesting::testPcieSwitchCompatibility()
         data.push_back("[PASS] PCI bridge(s) enumerated and accessible");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1298,7 +1522,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieLinkTraining();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieLinkTraining", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieLinkTraining";
+            _tr.test_id = "testPcieLinkTraining";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieLinkSpeed
@@ -1307,7 +1538,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieLinkSpeed();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieLinkSpeed", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieLinkSpeed";
+            _tr.test_id = "testPcieLinkSpeed";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieLinkWidth
@@ -1316,7 +1554,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieLinkWidth();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieLinkWidth", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieLinkWidth";
+            _tr.test_id = "testPcieLinkWidth";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieLaneReversal
@@ -1325,7 +1570,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieLaneReversal();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieLaneReversal", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieLaneReversal";
+            _tr.test_id = "testPcieLaneReversal";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieHotplugSupport
@@ -1334,7 +1586,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieHotplugSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieHotplugSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieHotplugSupport";
+            _tr.test_id = "testPcieHotplugSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieReadBandwidth
@@ -1343,7 +1602,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieReadBandwidth();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieReadBandwidth", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieReadBandwidth";
+            _tr.test_id = "testPcieReadBandwidth";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieWriteBandwidth
@@ -1352,7 +1618,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieWriteBandwidth();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieWriteBandwidth", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieWriteBandwidth";
+            _tr.test_id = "testPcieWriteBandwidth";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieLatency
@@ -1361,7 +1634,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieLatency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieLatency", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieLatency";
+            _tr.test_id = "testPcieLatency";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieErrorHandling
@@ -1370,7 +1650,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieErrorHandling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieErrorHandling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieErrorHandling";
+            _tr.test_id = "testPcieErrorHandling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPciePowerManagement
@@ -1379,7 +1666,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPciePowerManagement();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPciePowerManagement", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPciePowerManagement";
+            _tr.test_id = "testPciePowerManagement";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSecondaryPcieLinkTraining
@@ -1388,7 +1682,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testSecondaryPcieLinkTraining();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSecondaryPcieLinkTraining", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSecondaryPcieLinkTraining";
+            _tr.test_id = "testSecondaryPcieLinkTraining";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieX4Bandwidth
@@ -1397,7 +1698,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieX4Bandwidth();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieX4Bandwidth", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieX4Bandwidth";
+            _tr.test_id = "testPcieX4Bandwidth";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieX4LaneFunctionality
@@ -1406,7 +1714,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieX4LaneFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieX4LaneFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieX4LaneFunctionality";
+            _tr.test_id = "testPcieX4LaneFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testConcurrentPcieX8AndX4Operation
@@ -1415,7 +1730,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testConcurrentPcieX8AndX4Operation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testConcurrentPcieX8AndX4Operation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testConcurrentPcieX8AndX4Operation";
+            _tr.test_id = "testConcurrentPcieX8AndX4Operation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testNvmeSsdConnectivity
@@ -1424,7 +1746,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testNvmeSsdConnectivity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testNvmeSsdConnectivity", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testNvmeSsdConnectivity";
+            _tr.test_id = "testNvmeSsdConnectivity";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpuAddinCardSupport
@@ -1433,7 +1762,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testGpuAddinCardSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpuAddinCardSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpuAddinCardSupport";
+            _tr.test_id = "testGpuAddinCardSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testNetworkAdapterConnectivity
@@ -1442,7 +1778,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testNetworkAdapterConnectivity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testNetworkAdapterConnectivity", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testNetworkAdapterConnectivity";
+            _tr.test_id = "testNetworkAdapterConnectivity";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultiplePcieDeviceEnumeration
@@ -1451,7 +1794,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testMultiplePcieDeviceEnumeration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultiplePcieDeviceEnumeration", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultiplePcieDeviceEnumeration";
+            _tr.test_id = "testMultiplePcieDeviceEnumeration";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieSwitchCompatibility
@@ -1460,7 +1810,14 @@ std::vector<TestResult> PcieTesting::runAllTests()
         TestOutput result = testPcieSwitchCompatibility();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieSwitchCompatibility", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieSwitchCompatibility";
+            _tr.test_id = "testPcieSwitchCompatibility";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -1503,7 +1860,10 @@ std::vector<std::string> PcieTesting::getAvailableTests()
 TestResult PcieTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testPcieLinkTraining") {
         result = testPcieLinkTraining();
@@ -1547,12 +1907,28 @@ TestResult PcieTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }
 
 // Helper functions

@@ -211,7 +211,14 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
         data.push_back("[INFO] /proc/device-tree/unicam not found");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -273,7 +280,14 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
     else
         data.push_back("[INFO] No V4L2 nodes detected; connect a D-PHY camera to verify");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -333,7 +347,14 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
     // Raspberry Pi 5 supports C-PHY on its Unicam; report capability
     data.push_back("[PASS] Raspberry Pi 5 Unicam hardware supports both D-PHY and C-PHY modes");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -393,7 +414,14 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
     if (!ispFound)
         data.push_back("[INFO] VI platform device not directly visible in sysfs (may be embedded)");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -441,7 +469,14 @@ TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
 
     data.push_back("[PASS] Raspberry Pi 5 Unicam hardware supports MIPI CSI-2 virtual channels");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -511,7 +546,14 @@ TestOutput CameraInterfacesTesting::testCameraClockGeneration()
 
     data.push_back("[PASS] Raspberry Pi 5 provides dedicated PLL (PLLP/PLLD) for camera clocks");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -576,7 +618,14 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
 
     data.push_back("[INFO] Pi5 camera power: AVDD(2.8V) -> DVDD(1.2V) -> IOVDD(1.8V) -> XCLK -> NRESET");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -595,7 +644,14 @@ TestOutput CameraInterfacesTesting::testRaw8()
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes found; RAW8 supported by Orin ISP/Unicam hardware");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool raw8Found = false;
@@ -618,7 +674,14 @@ TestOutput CameraInterfacesTesting::testRaw8()
         data.push_back("[INFO] RAW8 not reported by current sensor; Orin ISP hardware supports SRGGB8/SGRBG8/SGBRG8/SBGGR8");
 
     data.push_back("[INFO] Pi5 ISP supports RAW8 Bayer formats on all CSI ports");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -637,7 +700,14 @@ TestOutput CameraInterfacesTesting::testRaw10()
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes found; RAW10 supported by Orin ISP/Unicam hardware");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool raw10Found = false;
@@ -659,7 +729,14 @@ TestOutput CameraInterfacesTesting::testRaw10()
         data.push_back("[INFO] RAW10 not reported by current sensor; Orin ISP hardware supports SRGGB10");
 
     data.push_back("[INFO] 10-bit Bayer RAW is the most common format for automotive cameras on Orin");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -677,7 +754,14 @@ TestOutput CameraInterfacesTesting::testRaw12()
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes found; RAW12 supported by Orin ISP hardware");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool raw12Found = false;
@@ -699,7 +783,14 @@ TestOutput CameraInterfacesTesting::testRaw12()
         data.push_back("[INFO] RAW12 not reported by current sensor; Orin ISP supports SRGGB12/SGRBG12");
 
     data.push_back("[INFO] RAW12 provides higher dynamic range for automotive imaging sensors");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -717,7 +808,14 @@ TestOutput CameraInterfacesTesting::testRaw14()
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes found; RAW14 supported by Orin ISP hardware");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool raw14Found = false;
@@ -739,7 +837,14 @@ TestOutput CameraInterfacesTesting::testRaw14()
         data.push_back("[INFO] RAW14 not reported by current sensor; Orin Unicam hardware supports 14-bit Bayer");
 
     data.push_back("[INFO] RAW14 offers highest bit depth for HDR automotive camera sensors on Orin");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -758,7 +863,14 @@ TestOutput CameraInterfacesTesting::testYuv422()
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes; Orin ISP supports YUV 4:2:2 output");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool yuvFound = false;
@@ -793,7 +905,14 @@ TestOutput CameraInterfacesTesting::testYuv422()
         data.push_back("[INFO] YUV 4:2:2 format not listed by current sensor; Orin ISP can output YUYV/UYVY");
 
     data.push_back("[INFO] YUV 4:2:2 is commonly used for serializer/deserializer camera links on Orin");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -812,7 +931,14 @@ TestOutput CameraInterfacesTesting::testRgbFormats()
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
         data.push_back("[INFO] No /dev/video* nodes; Orin ISP supports RGB output formats");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool rgbFound = false;
@@ -834,7 +960,14 @@ TestOutput CameraInterfacesTesting::testRgbFormats()
         data.push_back("[INFO] RGB formats not listed by current sensor; Orin ISP can output RGB24/ARGB32");
 
     data.push_back("[INFO] Orin ISP supports RGB888, BGR888, ARGB8888 as post-processed output formats");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -910,7 +1043,14 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
         data.push_back("[INFO] v4l2-ctl not available or no ISP V4L2 device listed");
 
     data.push_back("[PASS] Orin ISP hardware: 2 pipelines, supports up to 36 MPix/s aggregate throughput");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -929,7 +1069,14 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
         data.push_back("[INFO] No camera nodes; AE is implemented in Argus/NvMedia stack on Orin");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool aeFound = false;
@@ -964,7 +1111,14 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
     }
 
     data.push_back("[INFO] Orin ISP hardware AE: supports shutter speed 1us-1s, analog gain 1x-16x");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -982,7 +1136,14 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
         data.push_back("[INFO] No camera nodes; AWB handled by Argus/ISP on Orin");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool awbFound = false;
@@ -1011,7 +1172,14 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
         data.push_back("[INFO] nvargus-daemon not running");
 
     data.push_back("[INFO] Orin ISP AWB: Grey-World, Perfect Reflector, and Bayesian estimation modes");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1060,7 +1228,14 @@ TestOutput CameraInterfacesTesting::testAutoFocus()
     }
 
     data.push_back("[INFO] Orin supports AF via I2C VCM driver (e.g. DW9714) through Argus camera API");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1113,7 +1288,14 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
     }
 
     data.push_back("[PASS] Orin ISP hardware supports 17x17 LSC mesh grid for all 4 Bayer channels");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1162,7 +1344,14 @@ TestOutput CameraInterfacesTesting::testDemosaicing()
     }
 
     data.push_back("[PASS] Orin ISP hardware demosaicing: 12-tap adaptive filter, supports HDR multi-exposure");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1206,7 +1395,14 @@ TestOutput CameraInterfacesTesting::testNoiseReduction()
 
     data.push_back("[PASS] Orin ISP hardware NR: SNR with 7x7 kernel, TNR3 with motion-adaptive blending");
     data.push_back("[INFO] TNR requires motion estimation engine; adds ~1 frame latency");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1243,7 +1439,14 @@ TestOutput CameraInterfacesTesting::testEdgeEnhancement()
 
     data.push_back("[PASS] Orin ISP hardware EE: unsharp-mask filter, adjustable strength and threshold");
     data.push_back("[INFO] Argus API: ICaptureSession::setEdgeEnhancementStrength() range [0.0, 1.0]");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1286,7 +1489,14 @@ TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
 
     data.push_back("[PASS] Orin ISP CCM: 3x3 float matrix with offset, hardware-applied post-demosaicing");
     data.push_back("[INFO] Argus API: ISourceSettings::setColorCorrectionMatrix() for manual CCM override");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1329,7 +1539,14 @@ TestOutput CameraInterfacesTesting::testGammaCorrection()
 
     data.push_back("[PASS] Orin ISP hardware gamma: 1024-entry 16-bit LUT, per-channel R/G/B independent curves");
     data.push_back("[INFO] Argus API: ISourceSettings::setGainRange() and tone-curve controls");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1346,7 +1563,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testAllCsi2LanesFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAllCsi2LanesFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAllCsi2LanesFunctionality";
+            _tr.test_id = "testAllCsi2LanesFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCsi2DphyOperation
@@ -1355,7 +1579,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testCsi2DphyOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCsi2DphyOperation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCsi2DphyOperation";
+            _tr.test_id = "testCsi2DphyOperation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCsi2CphyOperation
@@ -1364,7 +1595,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testCsi2CphyOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCsi2CphyOperation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCsi2CphyOperation";
+            _tr.test_id = "testCsi2CphyOperation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultipleCameraSimultaneousOperation
@@ -1373,7 +1611,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testMultipleCameraSimultaneousOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultipleCameraSimultaneousOperation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultipleCameraSimultaneousOperation";
+            _tr.test_id = "testMultipleCameraSimultaneousOperation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVirtualChannelSupport
@@ -1382,7 +1627,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testVirtualChannelSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVirtualChannelSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVirtualChannelSupport";
+            _tr.test_id = "testVirtualChannelSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCameraClockGeneration
@@ -1391,7 +1643,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testCameraClockGeneration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCameraClockGeneration", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCameraClockGeneration";
+            _tr.test_id = "testCameraClockGeneration";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCameraPowerSequencing
@@ -1400,7 +1659,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testCameraPowerSequencing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCameraPowerSequencing", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCameraPowerSequencing";
+            _tr.test_id = "testCameraPowerSequencing";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRaw8
@@ -1409,7 +1675,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testRaw8();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRaw8", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRaw8";
+            _tr.test_id = "testRaw8";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRaw10
@@ -1418,7 +1691,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testRaw10();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRaw10", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRaw10";
+            _tr.test_id = "testRaw10";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRaw12
@@ -1427,7 +1707,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testRaw12();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRaw12", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRaw12";
+            _tr.test_id = "testRaw12";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRaw14
@@ -1436,7 +1723,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testRaw14();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRaw14", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRaw14";
+            _tr.test_id = "testRaw14";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testYuv422
@@ -1445,7 +1739,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testYuv422();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testYuv422", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testYuv422";
+            _tr.test_id = "testYuv422";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRgbFormats
@@ -1454,7 +1755,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testRgbFormats();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRgbFormats", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRgbFormats";
+            _tr.test_id = "testRgbFormats";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testIspPipelineProcessing
@@ -1463,7 +1771,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testIspPipelineProcessing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testIspPipelineProcessing", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testIspPipelineProcessing";
+            _tr.test_id = "testIspPipelineProcessing";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAutoExposure
@@ -1472,7 +1787,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testAutoExposure();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAutoExposure", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAutoExposure";
+            _tr.test_id = "testAutoExposure";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAutoWhiteBalance
@@ -1481,7 +1803,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testAutoWhiteBalance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAutoWhiteBalance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAutoWhiteBalance";
+            _tr.test_id = "testAutoWhiteBalance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAutoFocus
@@ -1490,7 +1819,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testAutoFocus();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAutoFocus", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAutoFocus";
+            _tr.test_id = "testAutoFocus";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testLensShadingCorrection
@@ -1499,7 +1835,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testLensShadingCorrection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testLensShadingCorrection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testLensShadingCorrection";
+            _tr.test_id = "testLensShadingCorrection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDemosaicing
@@ -1508,7 +1851,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testDemosaicing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDemosaicing", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDemosaicing";
+            _tr.test_id = "testDemosaicing";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testNoiseReduction
@@ -1517,7 +1867,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testNoiseReduction();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testNoiseReduction", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testNoiseReduction";
+            _tr.test_id = "testNoiseReduction";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEdgeEnhancement
@@ -1526,7 +1883,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testEdgeEnhancement();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEdgeEnhancement", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEdgeEnhancement";
+            _tr.test_id = "testEdgeEnhancement";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testColorCorrectionMatrix
@@ -1535,7 +1899,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testColorCorrectionMatrix();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testColorCorrectionMatrix", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testColorCorrectionMatrix";
+            _tr.test_id = "testColorCorrectionMatrix";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGammaCorrection
@@ -1544,7 +1915,14 @@ std::vector<TestResult> CameraInterfacesTesting::runAllTests()
         TestOutput result = testGammaCorrection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGammaCorrection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGammaCorrection";
+            _tr.test_id = "testGammaCorrection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -1591,7 +1969,10 @@ std::vector<std::string> CameraInterfacesTesting::getAvailableTests()
 TestResult CameraInterfacesTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testAllCsi2LanesFunctionality") {
         result = testAllCsi2LanesFunctionality();
@@ -1643,10 +2024,26 @@ TestResult CameraInterfacesTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

@@ -42,5 +42,7 @@ message Config {
 
 // Result from a single camera_interfaces test run.
 message Result {
-  repeated hal.common.TestResultEntry test_results = 1;
+  reserved 1;
+  reserved "test_results";
+  repeated hal.common.TestResult results = 2;
 }

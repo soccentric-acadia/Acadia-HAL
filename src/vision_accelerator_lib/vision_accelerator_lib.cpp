@@ -93,7 +93,14 @@ TestOutput VisionAcceleratorTesting::testDualVectorProcessingUnits()
     std::string gpuFreq = vaRunCmd("vcgencmd measure_clock v3d 2>/dev/null");
     data.push_back("[INFO] v3d clock: " + (gpuFreq.empty() ? "N/A" : gpuFreq));
 
-    return {v3dOk, data};
+    {
+        TestOutput _out;
+        _out.status = v3dOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = v3dOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -116,7 +123,14 @@ TestOutput VisionAcceleratorTesting::testVectorCoresInEachVpu()
                   cpuFeatures.find("asimdhp") != std::string::npos;
     data.push_back(fp16Ok ? "[PASS] FP16 (SIMD half-precision) supported" : "[INFO] No FP16 SIMD");
 
-    return {neOk, data};
+    {
+        TestOutput _out;
+        _out.status = neOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = neOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -134,7 +148,14 @@ TestOutput VisionAcceleratorTesting::testVliwSlots()
     data.push_back(hailoOk ? "[PASS] Hailo-8 /dev/hailo0 present (supports VLIW DSP ops)"
                            : "[INFO] No Hailo-8 HAT");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -156,7 +177,15 @@ TestOutput VisionAcceleratorTesting::testScalarExecutionUnits()
                    (maxFreq.empty() ? "N/A" : std::to_string(std::stoi(maxFreq) / 1000) + " MHz") +
                    " (rated " + std::to_string(RPI5_CPU_MAX_FREQ_MHZ) + " MHz)");
 
-    return {!cpuFreq.empty(), data};
+    {
+        TestOutput _out;
+        const bool _ok = (!cpuFreq.empty());
+        _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -180,7 +209,15 @@ TestOutput VisionAcceleratorTesting::testVectorExecutionUnits()
                    std::to_string(static_cast<int>(gbps * 1000)) + " MB/s  (" +
                    std::to_string(ns / 1000000) + " ms)");
 
-    return {gbps > 0.5, data};
+    {
+        TestOutput _out;
+        const bool _ok = (gbps > 0.5);
+        _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -198,7 +235,14 @@ TestOutput VisionAcceleratorTesting::testDmaEngine1Functionality()
     std::string dmaMod = vaRunCmd("grep -c 'bcm2835-dma\\|bcm2712' /proc/modules 2>/dev/null");
     data.push_back("[INFO] BCM DMA module count: " + dmaMod);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -217,7 +261,14 @@ TestOutput VisionAcceleratorTesting::testDmaEngine2Functionality()
     std::string rp1Mod = vaRunCmd("grep -c '^rp1' /proc/modules 2>/dev/null");
     data.push_back("[INFO] RP1 modules loaded: " + rp1Mod);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -243,7 +294,14 @@ TestOutput VisionAcceleratorTesting::testDmaBandwidthTesting()
     data.push_back("[INFO] Pi5 theoretical LPDDR4X-4267 bandwidth: ~34 GB/s (dual-channel)");
 
     bool ok = gbps > 1.0;
-    return {ok, data};
+    {
+        TestOutput _out;
+        _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -274,7 +332,15 @@ TestOutput VisionAcceleratorTesting::testDmaLatencyTesting()
     data.push_back("[PASS] 4 KB DMA-proxy latency avg: " + std::to_string(avgNs) + " ns");
     data.push_back("[INFO] CPU L1 cache copy; true DMA latency via /dev/mem requires root");
 
-    return {avgNs < 100000, data};
+    {
+        TestOutput _out;
+        const bool _ok = (avgNs < 100000);
+        _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -299,7 +365,14 @@ TestOutput VisionAcceleratorTesting::testComputerVisionAlgorithms()
         "print('NEON' if 'NEON' in info else 'no-NEON')\" 2>/dev/null");
     data.push_back(ocvBuild == "NEON" ? "[PASS] OpenCV built with NEON acceleration" : "[INFO] " + ocvBuild);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -320,7 +393,14 @@ TestOutput VisionAcceleratorTesting::testImageProcessingPipelines()
     data.push_back("[INFO] Pi5 ISP pipeline: Sensor → MIPI D-PHY → Unicam → bcm2835-isp");
     data.push_back("[INFO]   bcm2835-isp stages: debayer, ALSC, AGC, AWB, denoise, sharpen");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -335,7 +415,14 @@ TestOutput VisionAcceleratorTesting::testFeatureDetection()
     if (ocv.empty())
     {
         data.push_back("[INFO] OpenCV not available — skipping FAST/ORB test");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     std::string result = vaRunCmd(
@@ -348,7 +435,15 @@ TestOutput VisionAcceleratorTesting::testFeatureDetection()
     data.push_back(!result.empty() ? "[PASS] FAST detector found " + result + " keypoints"
                                    : "[INFO] FAST keypoint test failed");
 
-    return {!result.empty(), data};
+    {
+        TestOutput _out;
+        const bool _ok = (!result.empty());
+        _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -363,7 +458,14 @@ TestOutput VisionAcceleratorTesting::testOpticalFlow()
     if (ocv.empty())
     {
         data.push_back("[INFO] OpenCV not available — skipping optical flow test");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     std::string result = vaRunCmd(
@@ -376,7 +478,15 @@ TestOutput VisionAcceleratorTesting::testOpticalFlow()
     data.push_back(result.empty() ? "[INFO] Farneback flow test failed"
                                   : "[PASS] Optical flow: " + result);
 
-    return {!result.empty(), data};
+    {
+        TestOutput _out;
+        const bool _ok = (!result.empty());
+        _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -391,7 +501,14 @@ TestOutput VisionAcceleratorTesting::testStereoDisparity()
     if (ocv.empty())
     {
         data.push_back("[INFO] OpenCV not available — skipping stereo test");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     std::string result = vaRunCmd(
@@ -405,7 +522,15 @@ TestOutput VisionAcceleratorTesting::testStereoDisparity()
     data.push_back(result.empty() ? "[INFO] StereoBM test failed"
                                   : "[PASS] Stereo disparity: " + result);
 
-    return {!result.empty(), data};
+    {
+        TestOutput _out;
+        const bool _ok = (!result.empty());
+        _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -431,7 +556,14 @@ TestOutput VisionAcceleratorTesting::testPvaPowerConsumption()
     data.push_back("[INFO] Pi5 BCM2712 rated for 5W typical (25°C, default clock)");
     data.push_back("[INFO] For Hailo-8 vision accelerator power: ~2 W typical, 10 W peak");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -451,7 +583,14 @@ TestOutput VisionAcceleratorTesting::test5dimensionalAddressing()
     data.push_back(dmaInfo.empty() ? "[INFO] DMA4 platform entries not found"
                                    : "[INFO] DMA platform devices: " + dmaInfo);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -469,7 +608,14 @@ TestOutput VisionAcceleratorTesting::test16HardwareChannelsPerEngine()
                                     : "[INFO] DMA alloc count: " + dmaChans);
 
     data.push_back("[INFO] BCM2712 DMA4: 8 channels @ 400 MHz, 32-bit address, 128-bit bus");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -486,7 +632,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testDualVectorProcessingUnits();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDualVectorProcessingUnits", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDualVectorProcessingUnits";
+            _tr.test_id = "testDualVectorProcessingUnits";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVectorCoresInEachVpu
@@ -495,7 +648,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testVectorCoresInEachVpu();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVectorCoresInEachVpu", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVectorCoresInEachVpu";
+            _tr.test_id = "testVectorCoresInEachVpu";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVliwSlots
@@ -504,7 +664,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testVliwSlots();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVliwSlots", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVliwSlots";
+            _tr.test_id = "testVliwSlots";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testScalarExecutionUnits
@@ -513,7 +680,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testScalarExecutionUnits();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testScalarExecutionUnits", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testScalarExecutionUnits";
+            _tr.test_id = "testScalarExecutionUnits";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVectorExecutionUnits
@@ -522,7 +696,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testVectorExecutionUnits();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVectorExecutionUnits", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVectorExecutionUnits";
+            _tr.test_id = "testVectorExecutionUnits";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDmaEngine1Functionality
@@ -531,7 +712,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testDmaEngine1Functionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDmaEngine1Functionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDmaEngine1Functionality";
+            _tr.test_id = "testDmaEngine1Functionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDmaEngine2Functionality
@@ -540,7 +728,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testDmaEngine2Functionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDmaEngine2Functionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDmaEngine2Functionality";
+            _tr.test_id = "testDmaEngine2Functionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test5dimensionalAddressing
@@ -549,7 +744,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = test5dimensionalAddressing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test5dimensionalAddressing", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test5dimensionalAddressing";
+            _tr.test_id = "test5dimensionalAddressing";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test16HardwareChannelsPerEngine
@@ -558,7 +760,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = test16HardwareChannelsPerEngine();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test16HardwareChannelsPerEngine", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test16HardwareChannelsPerEngine";
+            _tr.test_id = "test16HardwareChannelsPerEngine";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDmaBandwidthTesting
@@ -567,7 +776,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testDmaBandwidthTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDmaBandwidthTesting", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDmaBandwidthTesting";
+            _tr.test_id = "testDmaBandwidthTesting";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDmaLatencyTesting
@@ -576,7 +792,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testDmaLatencyTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDmaLatencyTesting", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDmaLatencyTesting";
+            _tr.test_id = "testDmaLatencyTesting";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testComputerVisionAlgorithms
@@ -585,7 +808,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testComputerVisionAlgorithms();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testComputerVisionAlgorithms", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testComputerVisionAlgorithms";
+            _tr.test_id = "testComputerVisionAlgorithms";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testImageProcessingPipelines
@@ -594,7 +824,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testImageProcessingPipelines();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testImageProcessingPipelines", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testImageProcessingPipelines";
+            _tr.test_id = "testImageProcessingPipelines";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testFeatureDetection
@@ -603,7 +840,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testFeatureDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testFeatureDetection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testFeatureDetection";
+            _tr.test_id = "testFeatureDetection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testOpticalFlow
@@ -612,7 +856,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testOpticalFlow();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testOpticalFlow", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testOpticalFlow";
+            _tr.test_id = "testOpticalFlow";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testStereoDisparity
@@ -621,7 +872,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testStereoDisparity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testStereoDisparity", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testStereoDisparity";
+            _tr.test_id = "testStereoDisparity";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPvaPowerConsumption
@@ -630,7 +888,14 @@ std::vector<TestResult> VisionAcceleratorTesting::runAllTests()
         TestOutput result = testPvaPowerConsumption();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPvaPowerConsumption", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPvaPowerConsumption";
+            _tr.test_id = "testPvaPowerConsumption";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -669,7 +934,10 @@ std::vector<std::string> VisionAcceleratorTesting::getAvailableTests()
 TestResult VisionAcceleratorTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testDualVectorProcessingUnits") {
         result = testDualVectorProcessingUnits();
@@ -705,10 +973,26 @@ TestResult VisionAcceleratorTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

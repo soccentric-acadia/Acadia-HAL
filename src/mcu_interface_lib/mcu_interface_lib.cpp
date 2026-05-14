@@ -103,7 +103,14 @@ TestOutput McuInterfaceTesting::testMcuCommunicationInterface()
                           : "[WARN] GPIO chip not found");
 
     bool anyOk = spiOk || uartOk || i2cOk;
-    return {anyOk, data};
+    {
+        TestOutput _out;
+        _out.status = anyOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = anyOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -118,7 +125,14 @@ TestOutput McuInterfaceTesting::testMcuFirmwareOperation()
     {
         data.push_back("[INFO] /dev/ttyAMA0 not available — skipping firmware probe");
         data.push_back("[INFO] Connect MCU (RP2040/STM32) TX→Pi5 UART0 RX for this test");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Check UART is not being used by another process
@@ -135,7 +149,14 @@ TestOutput McuInterfaceTesting::testMcuFirmwareOperation()
 
     data.push_back("[INFO] MCU firmware test requires MCU running echo firmware");
     data.push_back("[INFO] Expected: send 0xAA 0x55; receive 0x55 0xAA (loopback)");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -160,7 +181,14 @@ TestOutput McuInterfaceTesting::testMcuWatchdog()
     data.push_back("[INFO] MCU watchdog expects periodic 0x5A heartbeat on SPI/UART from Pi5");
     data.push_back("[INFO] MCU resets Pi5 via nRESET GPIO if heartbeat stops");
 
-    return {wdPresent, data};
+    {
+        TestOutput _out;
+        _out.status = wdPresent ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = wdPresent ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -186,7 +214,14 @@ TestOutput McuInterfaceTesting::testMcuGpioInterface()
     data.push_back(intrLine.empty() ? "[INFO] GPIO25 (MCU IRQ) state not available"
                                     : "[INFO] GPIO25: " + intrLine);
 
-    return {gpioChipOk, data};
+    {
+        TestOutput _out;
+        _out.status = gpioChipOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = gpioChipOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -200,14 +235,28 @@ TestOutput McuInterfaceTesting::testMcuSpiInterface()
     if (!mcuPathExists("/dev/spidev0.0"))
     {
         data.push_back("[INFO] /dev/spidev0.0 not present (enable with dtparam=spi=on)");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     int fd = open("/dev/spidev0.0", O_RDWR);
     if (fd < 0)
     {
         data.push_back("[WARN] Cannot open /dev/spidev0.0: " + std::string(strerror(errno)));
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     uint8_t mode = SPI_MODE_0;
@@ -228,7 +277,14 @@ TestOutput McuInterfaceTesting::testMcuSpiInterface()
     else data.push_back("[PASS] SPI speed 1 MHz set");
 
     close(fd);
-    return {ok, data};
+    {
+        TestOutput _out;
+        _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -242,7 +298,14 @@ TestOutput McuInterfaceTesting::testMcuUartInterface()
     if (!mcuPathExists("/dev/ttyAMA0"))
     {
         data.push_back("[INFO] /dev/ttyAMA0 not present (dtparam=uart0=on)");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("[PASS] /dev/ttyAMA0 present");
@@ -258,7 +321,14 @@ TestOutput McuInterfaceTesting::testMcuUartInterface()
     if (getty == "active")
         data.push_back("[INFO] Disable getty for MCU use: systemctl stop serial-getty@ttyAMA0");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -283,7 +353,14 @@ TestOutput McuInterfaceTesting::testMcuDmsInterface()
     data.push_back(i2cDms.empty() ? "[INFO] No DMS MCU address range on I2C-1"
                                   : "[PASS] DMS MCU candidate address: " + i2cDms);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -313,7 +390,14 @@ TestOutput McuInterfaceTesting::testMcuToOrinDataTransfer()
     if (!spiOk && !uartOk)
         data.push_back("[WARN] Neither SPI nor UART available for MCU data transfer");
 
-    return {spiOk || uartOk, data};
+    {
+        TestOutput _out;
+        _out.status = (spiOk || uartOk) ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = (spiOk || uartOk) ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -334,7 +418,14 @@ TestOutput McuInterfaceTesting::testSecondaryMcuRedundancy()
     bool uart1 = mcuPathExists("/dev/ttyAMA1") || mcuPathExists("/dev/ttyAMA10");
     data.push_back(uart1 ? "[PASS] Secondary UART found" : "[INFO] No secondary UART MCU path");
 
-    return {spi0, data};
+    {
+        TestOutput _out;
+        _out.status = spi0 ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = spi0 ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -357,7 +448,14 @@ TestOutput McuInterfaceTesting::testMcuFailoverMechanism()
     data.push_back(wdOk ? "[PASS] Hardware watchdog present (MCU health monitor)"
                         : "[INFO] Watchdog not available");
 
-    return {spi0 || spi1, data};
+    {
+        TestOutput _out;
+        _out.status = (spi0 || spi1) ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = (spi0 || spi1) ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -384,7 +482,14 @@ TestOutput McuInterfaceTesting::testMcuSynchronization()
                                   : "[INFO] chrony:\n" + chrony);
 
     data.push_back("[INFO] For μs-level sync: use SPI CS falling edge as start-of-frame timestamp");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -401,7 +506,14 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
         TestOutput result = testMcuCommunicationInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMcuCommunicationInterface", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMcuCommunicationInterface";
+            _tr.test_id = "testMcuCommunicationInterface";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMcuFirmwareOperation
@@ -410,7 +522,14 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
         TestOutput result = testMcuFirmwareOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMcuFirmwareOperation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMcuFirmwareOperation";
+            _tr.test_id = "testMcuFirmwareOperation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMcuWatchdog
@@ -419,7 +538,14 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
         TestOutput result = testMcuWatchdog();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMcuWatchdog", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMcuWatchdog";
+            _tr.test_id = "testMcuWatchdog";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMcuGpioInterface
@@ -428,7 +554,14 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
         TestOutput result = testMcuGpioInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMcuGpioInterface", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMcuGpioInterface";
+            _tr.test_id = "testMcuGpioInterface";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMcuSpiInterface
@@ -437,7 +570,14 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
         TestOutput result = testMcuSpiInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMcuSpiInterface", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMcuSpiInterface";
+            _tr.test_id = "testMcuSpiInterface";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMcuUartInterface
@@ -446,7 +586,14 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
         TestOutput result = testMcuUartInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMcuUartInterface", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMcuUartInterface";
+            _tr.test_id = "testMcuUartInterface";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMcuDmsInterface
@@ -455,7 +602,14 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
         TestOutput result = testMcuDmsInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMcuDmsInterface", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMcuDmsInterface";
+            _tr.test_id = "testMcuDmsInterface";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMcuToOrinDataTransfer
@@ -464,7 +618,14 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
         TestOutput result = testMcuToOrinDataTransfer();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMcuToOrinDataTransfer", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMcuToOrinDataTransfer";
+            _tr.test_id = "testMcuToOrinDataTransfer";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSecondaryMcuRedundancy
@@ -473,7 +634,14 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
         TestOutput result = testSecondaryMcuRedundancy();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSecondaryMcuRedundancy", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSecondaryMcuRedundancy";
+            _tr.test_id = "testSecondaryMcuRedundancy";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMcuFailoverMechanism
@@ -482,7 +650,14 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
         TestOutput result = testMcuFailoverMechanism();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMcuFailoverMechanism", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMcuFailoverMechanism";
+            _tr.test_id = "testMcuFailoverMechanism";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMcuSynchronization
@@ -491,7 +666,14 @@ std::vector<TestResult> McuInterfaceTesting::runAllTests()
         TestOutput result = testMcuSynchronization();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMcuSynchronization", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMcuSynchronization";
+            _tr.test_id = "testMcuSynchronization";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -518,7 +700,10 @@ std::vector<std::string> McuInterfaceTesting::getAvailableTests()
 TestResult McuInterfaceTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testMcuCommunicationInterface") {
         result = testMcuCommunicationInterface();
@@ -546,10 +731,26 @@ TestResult McuInterfaceTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

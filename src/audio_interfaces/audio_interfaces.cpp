@@ -196,7 +196,14 @@ TestOutput AudioInterfaces::testI2sInterface()
         data.push_back("INFO: RP1-I2S sysfs path not found at expected address");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -258,7 +265,14 @@ TestOutput AudioInterfaces::testAudioInput()
         }
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -318,7 +332,14 @@ TestOutput AudioInterfaces::testAudioOutput()
         }
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -415,7 +436,14 @@ TestOutput AudioInterfaces::testAudioSampleRates()
     if (passed)
         data.push_back("All required sample rates supported");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -487,7 +515,14 @@ TestOutput AudioInterfaces::testAudioBitDepths()
         }
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -563,7 +598,14 @@ TestOutput AudioInterfaces::testMultiChannelAudio()
     }
     (void)minChannels;
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -662,7 +704,14 @@ TestOutput AudioInterfaces::testAudioDmaTransfers()
     if (!admaifFound)
         data.push_back("INFO: RP1-I2S sysfs path not found at expected BCM2712 address");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -770,7 +819,14 @@ TestOutput AudioInterfaces::testAudioLatency()
     std::snprintf(jitBuf, sizeof(jitBuf), "Syscall timing floor: %.1f ns/call (%d iterations)", avgNs, iterations);
     data.push_back(jitBuf);
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 std::vector<TestResult> AudioInterfaces::runAllTests()
 {
@@ -782,7 +838,14 @@ std::vector<TestResult> AudioInterfaces::runAllTests()
         TestOutput result = testI2sInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testI2sInterface", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testI2sInterface";
+            _tr.test_id = "testI2sInterface";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAudioInput
@@ -791,7 +854,14 @@ std::vector<TestResult> AudioInterfaces::runAllTests()
         TestOutput result = testAudioInput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAudioInput", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAudioInput";
+            _tr.test_id = "testAudioInput";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAudioOutput
@@ -800,7 +870,14 @@ std::vector<TestResult> AudioInterfaces::runAllTests()
         TestOutput result = testAudioOutput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAudioOutput", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAudioOutput";
+            _tr.test_id = "testAudioOutput";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAudioSampleRates
@@ -809,7 +886,14 @@ std::vector<TestResult> AudioInterfaces::runAllTests()
         TestOutput result = testAudioSampleRates();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAudioSampleRates", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAudioSampleRates";
+            _tr.test_id = "testAudioSampleRates";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAudioBitDepths
@@ -818,7 +902,14 @@ std::vector<TestResult> AudioInterfaces::runAllTests()
         TestOutput result = testAudioBitDepths();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAudioBitDepths", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAudioBitDepths";
+            _tr.test_id = "testAudioBitDepths";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultiChannelAudio
@@ -827,7 +918,14 @@ std::vector<TestResult> AudioInterfaces::runAllTests()
         TestOutput result = testMultiChannelAudio();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultiChannelAudio", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultiChannelAudio";
+            _tr.test_id = "testMultiChannelAudio";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAudioDmaTransfers
@@ -836,7 +934,14 @@ std::vector<TestResult> AudioInterfaces::runAllTests()
         TestOutput result = testAudioDmaTransfers();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAudioDmaTransfers", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAudioDmaTransfers";
+            _tr.test_id = "testAudioDmaTransfers";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAudioLatency
@@ -845,7 +950,14 @@ std::vector<TestResult> AudioInterfaces::runAllTests()
         TestOutput result = testAudioLatency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAudioLatency", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAudioLatency";
+            _tr.test_id = "testAudioLatency";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -871,7 +983,10 @@ std::vector<std::string> AudioInterfaces::getAvailableTests()
 TestResult AudioInterfaces::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testI2sInterface") {
         result = testI2sInterface();
@@ -893,10 +1008,26 @@ TestResult AudioInterfaces::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

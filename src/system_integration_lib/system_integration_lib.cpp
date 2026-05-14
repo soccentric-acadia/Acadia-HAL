@@ -112,7 +112,14 @@ TestOutput SystemIntegrationTesting::testConcurrentOperationOfAllSubsystems()
     if (!temp.empty())
         data.push_back("[INFO] CPU temp: " + std::to_string(std::stoi(temp) / 1000) + " °C under load");
 
-    return {totalMb > 0, data};
+    {
+        TestOutput _out;
+        _out.status = (totalMb > 0) ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = (totalMb > 0) ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -144,7 +151,14 @@ TestOutput SystemIntegrationTesting::testResourceContentionHandling()
     std::string oom = siRunCmd("dmesg 2>/dev/null | grep -c 'Out of memory'");
     data.push_back(oom == "0" ? "[PASS] No OOM kills recorded" : "[WARN] OOM events: " + oom);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -165,7 +179,15 @@ TestOutput SystemIntegrationTesting::testSystemBottleneckIdentification()
         std::string cpu;
         long long user, nice, system, idle;
         f >> cpu >> user >> nice >> system >> idle;
-        return {user, nice, system, idle};
+        {
+            TestOutput _out;
+            const bool _ok = (user, nice, system);
+            _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < idle.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = idle[_i];
+            return _out;
+        }
     };
     auto s1 = readCpuStat();
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -183,7 +205,14 @@ TestOutput SystemIntegrationTesting::testSystemBottleneckIdentification()
     std::string diskStat = siRunCmd("iostat -x 1 1 2>/dev/null | grep mmcblk | head -2");
     data.push_back(diskStat.empty() ? "[INFO] iostat not available" : "[INFO] Disk I/O:\n" + diskStat);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -218,7 +247,14 @@ TestOutput SystemIntegrationTesting::testEndtoendLatency()
                    std::to_string(1000 / 30) + " ms at 30 fps");
 
     bool ok = (memNs > 0 && memNs < 50000000LL); // < 50 ms
-    return {ok, data};
+    {
+        TestOutput _out;
+        _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -252,7 +288,14 @@ TestOutput SystemIntegrationTesting::testSystemThroughput()
                    std::to_string(RPI5_ETH_SPEED_MBPS) + " Mbps");
 
     bool ok = gbps > 0.5;
-    return {ok, data};
+    {
+        TestOutput _out;
+        _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -285,7 +328,14 @@ TestOutput SystemIntegrationTesting::testMultimodalAiWorkloads()
     data.push_back(lc.empty() ? "[INFO] libcamera not available"
                               : "[PASS] libcamera output:\n" + lc);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -311,7 +361,14 @@ TestOutput SystemIntegrationTesting::testAutonomousDrivingStack()
     std::string gst = siRunCmd("gst-launch-1.0 --version 2>/dev/null | head -1");
     data.push_back(gst.empty() ? "[INFO] GStreamer not found" : "[PASS] " + gst);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -344,7 +401,14 @@ TestOutput SystemIntegrationTesting::testSensorFusionPipeline()
     data.push_back("[INFO] Fusion pipeline: libcamera → OpenCV → TFLite + IMU IIO → EKF → /odom");
 
     bool ok = camOk || imuOk;
-    return {ok, data};
+    {
+        TestOutput _out;
+        _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -361,7 +425,14 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
         TestOutput result = testConcurrentOperationOfAllSubsystems();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testConcurrentOperationOfAllSubsystems", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testConcurrentOperationOfAllSubsystems";
+            _tr.test_id = "testConcurrentOperationOfAllSubsystems";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testResourceContentionHandling
@@ -370,7 +441,14 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
         TestOutput result = testResourceContentionHandling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testResourceContentionHandling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testResourceContentionHandling";
+            _tr.test_id = "testResourceContentionHandling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSystemBottleneckIdentification
@@ -379,7 +457,14 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
         TestOutput result = testSystemBottleneckIdentification();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSystemBottleneckIdentification", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSystemBottleneckIdentification";
+            _tr.test_id = "testSystemBottleneckIdentification";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEndtoendLatency
@@ -388,7 +473,14 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
         TestOutput result = testEndtoendLatency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEndtoendLatency", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEndtoendLatency";
+            _tr.test_id = "testEndtoendLatency";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSystemThroughput
@@ -397,7 +489,14 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
         TestOutput result = testSystemThroughput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSystemThroughput", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSystemThroughput";
+            _tr.test_id = "testSystemThroughput";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultimodalAiWorkloads
@@ -406,7 +505,14 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
         TestOutput result = testMultimodalAiWorkloads();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultimodalAiWorkloads", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultimodalAiWorkloads";
+            _tr.test_id = "testMultimodalAiWorkloads";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAutonomousDrivingStack
@@ -415,7 +521,14 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
         TestOutput result = testAutonomousDrivingStack();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAutonomousDrivingStack", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAutonomousDrivingStack";
+            _tr.test_id = "testAutonomousDrivingStack";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSensorFusionPipeline
@@ -424,7 +537,14 @@ std::vector<TestResult> SystemIntegrationTesting::runAllTests()
         TestOutput result = testSensorFusionPipeline();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSensorFusionPipeline", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSensorFusionPipeline";
+            _tr.test_id = "testSensorFusionPipeline";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -456,7 +576,10 @@ std::vector<std::string> SystemIntegrationTesting::getAvailableTests()
 TestResult SystemIntegrationTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testConcurrentOperationOfAllSubsystems") {
         result = testConcurrentOperationOfAllSubsystems();
@@ -478,10 +601,26 @@ TestResult SystemIntegrationTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

@@ -109,7 +109,15 @@ TestOutput GnssTesting::testGpsSignalReception()
         data.push_back("[INFO] No GGA NMEA data (no fix or module absent)");
     }
 
-    return {portFound || gpsdState == "active", data};
+    {
+        TestOutput _out;
+        const bool _ok = portFound || gpsdState == "active";
+        _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -137,7 +145,14 @@ TestOutput GnssTesting::testGlonassSupport()
         data.push_back("[INFO] UBX MON-GNSS:\n" + ubxInfo);
 
     data.push_back("[INFO] Multi-constellation GNSS requires u-blox M10 or equivalent module");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -155,7 +170,14 @@ TestOutput GnssTesting::testGalileoSupport()
         data.push_back("[INFO] No Galileo sentence (module absent or Galileo not enabled)");
 
     data.push_back("[INFO] Galileo support requires u-blox M10 / ZED-F9P or equivalent");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -173,7 +195,14 @@ TestOutput GnssTesting::testBeidouSupport()
         data.push_back("[INFO] No BeiDou sentence");
 
     data.push_back("[INFO] BeiDou support requires multi-constellation module");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -211,7 +240,14 @@ TestOutput GnssTesting::testPositionAccuracy()
     }
 
     data.push_back("[INFO] Typical L1 single-band accuracy: 2–5 m CEP; RTK: <10 cm");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -235,7 +271,14 @@ TestOutput GnssTesting::testTimetofirstfix()
         data.push_back("[INFO] Cold TTFF: ~30–60 s; warm: ~5–15 s; hot: ~1–3 s");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -277,7 +320,14 @@ TestOutput GnssTesting::testGnssAntennaConnection()
     if (!ubxMon.empty())
         data.push_back("[INFO] UBX antenna status: " + ubxMon);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -309,7 +359,14 @@ TestOutput GnssTesting::testAgpsFunctionality()
     data.push_back(netCheck == "1" ? "[PASS] Internet reachable (AGPS download possible)"
                                    : "[INFO] Internet not reachable — offline AGPS only");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -326,7 +383,14 @@ std::vector<TestResult> GnssTesting::runAllTests()
         TestOutput result = testGpsSignalReception();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpsSignalReception", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpsSignalReception";
+            _tr.test_id = "testGpsSignalReception";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGlonassSupport
@@ -335,7 +399,14 @@ std::vector<TestResult> GnssTesting::runAllTests()
         TestOutput result = testGlonassSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGlonassSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGlonassSupport";
+            _tr.test_id = "testGlonassSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGalileoSupport
@@ -344,7 +415,14 @@ std::vector<TestResult> GnssTesting::runAllTests()
         TestOutput result = testGalileoSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGalileoSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGalileoSupport";
+            _tr.test_id = "testGalileoSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testBeidouSupport
@@ -353,7 +431,14 @@ std::vector<TestResult> GnssTesting::runAllTests()
         TestOutput result = testBeidouSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testBeidouSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testBeidouSupport";
+            _tr.test_id = "testBeidouSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPositionAccuracy
@@ -362,7 +447,14 @@ std::vector<TestResult> GnssTesting::runAllTests()
         TestOutput result = testPositionAccuracy();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPositionAccuracy", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPositionAccuracy";
+            _tr.test_id = "testPositionAccuracy";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testTimetofirstfix
@@ -371,7 +463,14 @@ std::vector<TestResult> GnssTesting::runAllTests()
         TestOutput result = testTimetofirstfix();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testTimetofirstfix", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testTimetofirstfix";
+            _tr.test_id = "testTimetofirstfix";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGnssAntennaConnection
@@ -380,7 +479,14 @@ std::vector<TestResult> GnssTesting::runAllTests()
         TestOutput result = testGnssAntennaConnection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGnssAntennaConnection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGnssAntennaConnection";
+            _tr.test_id = "testGnssAntennaConnection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAgpsFunctionality
@@ -389,7 +495,14 @@ std::vector<TestResult> GnssTesting::runAllTests()
         TestOutput result = testAgpsFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAgpsFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAgpsFunctionality";
+            _tr.test_id = "testAgpsFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -415,7 +528,10 @@ std::vector<std::string> GnssTesting::getAvailableTests()
 TestResult GnssTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testGpsSignalReception") {
         result = testGpsSignalReception();
@@ -437,10 +553,26 @@ TestResult GnssTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

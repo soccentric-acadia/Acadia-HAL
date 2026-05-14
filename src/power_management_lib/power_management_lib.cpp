@@ -94,7 +94,14 @@ TestOutput PowerManagementTesting::testMaximumPerformanceMode()
     if (!gpuGov.empty()) data.push_back("GPU devfreq governor: " + gpuGov);
 
     data.push_back("PASS: Performance mode check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -124,7 +131,14 @@ TestOutput PowerManagementTesting::testPoweroptimizedModes()
 
     data.push_back("Set powersave: echo powersave > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
     data.push_back("PASS: Power-optimized modes check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +170,14 @@ TestOutput PowerManagementTesting::testIdlePowerConsumption()
     if (!throttled.empty()) data.push_back("vcgencmd throttled: " + throttled);
 
     data.push_back("PASS: Idle power check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -180,7 +201,14 @@ TestOutput PowerManagementTesting::testSleepStates()
     data.push_back("Wake from halt via: GPIO, USB, network (WoL), or external power cycle.");
 
     data.push_back("PASS: Sleep state check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -214,7 +242,14 @@ TestOutput PowerManagementTesting::testPowerStateTransitions()
     data.push_back("PM QoS latency: " + std::string(pmQos ? "available" : "not found"));
 
     data.push_back("PASS: Power state transition check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -240,7 +275,14 @@ TestOutput PowerManagementTesting::testWakeupSources()
 
     data.push_back("Pi5 wakeup sources: GPIO (J8 header), USB devices, Ethernet WoL, RTC alarm");
     data.push_back("PASS: Wakeup sources check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -264,7 +306,14 @@ TestOutput PowerManagementTesting::testPowerButtonFunctionality()
 
     data.push_back("Pi5 power button: short press = soft shutdown, long press = hard power off.");
     data.push_back("PASS: Power button check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -286,7 +335,14 @@ TestOutput PowerManagementTesting::test12vAsilQsLRail()
 
     data.push_back("Pi5 voltage rails: VDD_CORE(~1.0V), VDD_ARM, VDD_IO(3.3V/1.8V)");
     data.push_back("PASS: 12V ASIL QS-L check complete (N/A on Pi5).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -301,7 +357,14 @@ TestOutput PowerManagementTesting::test12vAsilQsRRail()
     data.push_back("NOTE: Pi5 does NOT have 12V ASIL safety rails.");
     data.push_back("Pi5 uses USB-C PD 5V input with MXL7704 PMIC.");
     data.push_back("PASS: 12V ASIL QS-R check complete (N/A on Pi5).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -347,7 +410,14 @@ TestOutput PowerManagementTesting::testAllInternalVoltageRails()
     }
 
     data.push_back("PASS: Voltage rails check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -368,7 +438,14 @@ TestOutput PowerManagementTesting::testPowerSequencing()
     if (!regs.empty()) data.push_back("Regulator summary: " + regs.substr(0, 600));
 
     data.push_back("PASS: Power sequencing check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -393,7 +470,14 @@ TestOutput PowerManagementTesting::testPoweronReset()
     if (!bootTime.empty()) data.push_back("System boot time: " + bootTime);
 
     data.push_back("PASS: Power-on reset check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -430,7 +514,14 @@ TestOutput PowerManagementTesting::testBrownoutDetection()
     std::string dmesgUv = pwrRunCmd("dmesg 2>/dev/null | grep -i 'under.volt\\|brownout' | tail -5");
     if (!dmesgUv.empty()) data.push_back("dmesg under-voltage: " + dmesgUv.substr(0, 300));
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -463,7 +554,14 @@ TestOutput PowerManagementTesting::testOvervoltageProtection()
 
     if (!ovpFound) data.push_back("No overvoltage alarms detected.");
     data.push_back("PASS: Overvoltage protection check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -482,7 +580,14 @@ TestOutput PowerManagementTesting::testUndervoltageProtection()
 
     data.push_back("Low-voltage threshold: <4.63V on 5V rail triggers under-voltage flag.");
     data.push_back("PASS: Undervoltage protection check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -503,7 +608,14 @@ TestOutput PowerManagementTesting::testOvercurrentProtection()
     if (!usbCur.empty()) data.push_back("USB bMaxPower: " + usbCur.substr(0, 100));
 
     data.push_back("PASS: Overcurrent protection check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -523,7 +635,14 @@ TestOutput PowerManagementTesting::testPowerSupplyRejection()
     if (!vcIdle.empty()) data.push_back("Core voltage (idle): " + vcIdle);
 
     data.push_back("PASS: Power supply rejection check complete (documentation-based).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -562,7 +681,14 @@ TestOutput PowerManagementTesting::testRealtimePowerConsumption()
     }
 
     data.push_back("PASS: Power consumption check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -589,7 +715,14 @@ TestOutput PowerManagementTesting::testPercomponentPowerMeasurement()
     data.push_back("Use INA3221/INA219 HAT for per-rail measurement.");
 
     data.push_back("PASS: Per-component power check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -615,7 +748,14 @@ TestOutput PowerManagementTesting::testPowerEfficiencyCalculation()
     }
 
     data.push_back("PASS: Power efficiency calculation complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -648,7 +788,14 @@ TestOutput PowerManagementTesting::testBatteryCharging()
 
     if (!battPresent) data.push_back("No battery HAT detected. Charging N/A on bare Pi5.");
     data.push_back("PASS: Battery check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -680,7 +827,14 @@ TestOutput PowerManagementTesting::testUpsFunctionality()
 
     if (!upsFound) data.push_back("No UPS detected. Attach a UPS HAT for power backup.");
     data.push_back("PASS: UPS check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -697,7 +851,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testMaximumPerformanceMode();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMaximumPerformanceMode", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMaximumPerformanceMode";
+            _tr.test_id = "testMaximumPerformanceMode";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPoweroptimizedModes
@@ -706,7 +867,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testPoweroptimizedModes();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPoweroptimizedModes", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPoweroptimizedModes";
+            _tr.test_id = "testPoweroptimizedModes";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testIdlePowerConsumption
@@ -715,7 +883,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testIdlePowerConsumption();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testIdlePowerConsumption", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testIdlePowerConsumption";
+            _tr.test_id = "testIdlePowerConsumption";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSleepStates
@@ -724,7 +899,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testSleepStates();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSleepStates", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSleepStates";
+            _tr.test_id = "testSleepStates";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPowerStateTransitions
@@ -733,7 +915,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testPowerStateTransitions();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPowerStateTransitions", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPowerStateTransitions";
+            _tr.test_id = "testPowerStateTransitions";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testWakeupSources
@@ -742,7 +931,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testWakeupSources();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testWakeupSources", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testWakeupSources";
+            _tr.test_id = "testWakeupSources";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPowerButtonFunctionality
@@ -751,7 +947,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testPowerButtonFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPowerButtonFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPowerButtonFunctionality";
+            _tr.test_id = "testPowerButtonFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test12vAsilQsLRail
@@ -760,7 +963,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = test12vAsilQsLRail();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test12vAsilQsLRail", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test12vAsilQsLRail";
+            _tr.test_id = "test12vAsilQsLRail";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test12vAsilQsRRail
@@ -769,7 +979,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = test12vAsilQsRRail();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test12vAsilQsRRail", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test12vAsilQsRRail";
+            _tr.test_id = "test12vAsilQsRRail";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAllInternalVoltageRails
@@ -778,7 +995,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testAllInternalVoltageRails();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAllInternalVoltageRails", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAllInternalVoltageRails";
+            _tr.test_id = "testAllInternalVoltageRails";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPowerSequencing
@@ -787,7 +1011,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testPowerSequencing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPowerSequencing", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPowerSequencing";
+            _tr.test_id = "testPowerSequencing";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPoweronReset
@@ -796,7 +1027,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testPoweronReset();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPoweronReset", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPoweronReset";
+            _tr.test_id = "testPoweronReset";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testBrownoutDetection
@@ -805,7 +1043,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testBrownoutDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testBrownoutDetection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testBrownoutDetection";
+            _tr.test_id = "testBrownoutDetection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testOvervoltageProtection
@@ -814,7 +1059,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testOvervoltageProtection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testOvervoltageProtection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testOvervoltageProtection";
+            _tr.test_id = "testOvervoltageProtection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUndervoltageProtection
@@ -823,7 +1075,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testUndervoltageProtection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUndervoltageProtection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUndervoltageProtection";
+            _tr.test_id = "testUndervoltageProtection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testOvercurrentProtection
@@ -832,7 +1091,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testOvercurrentProtection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testOvercurrentProtection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testOvercurrentProtection";
+            _tr.test_id = "testOvercurrentProtection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPowerSupplyRejection
@@ -841,7 +1107,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testPowerSupplyRejection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPowerSupplyRejection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPowerSupplyRejection";
+            _tr.test_id = "testPowerSupplyRejection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRealtimePowerConsumption
@@ -850,7 +1123,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testRealtimePowerConsumption();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRealtimePowerConsumption", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRealtimePowerConsumption";
+            _tr.test_id = "testRealtimePowerConsumption";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPercomponentPowerMeasurement
@@ -859,7 +1139,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testPercomponentPowerMeasurement();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPercomponentPowerMeasurement", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPercomponentPowerMeasurement";
+            _tr.test_id = "testPercomponentPowerMeasurement";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPowerEfficiencyCalculation
@@ -868,7 +1155,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testPowerEfficiencyCalculation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPowerEfficiencyCalculation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPowerEfficiencyCalculation";
+            _tr.test_id = "testPowerEfficiencyCalculation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testBatteryCharging
@@ -877,7 +1171,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testBatteryCharging();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testBatteryCharging", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testBatteryCharging";
+            _tr.test_id = "testBatteryCharging";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUpsFunctionality
@@ -886,7 +1187,14 @@ std::vector<TestResult> PowerManagementTesting::runAllTests()
         TestOutput result = testUpsFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUpsFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUpsFunctionality";
+            _tr.test_id = "testUpsFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -930,7 +1238,10 @@ std::vector<std::string> PowerManagementTesting::getAvailableTests()
 TestResult PowerManagementTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testMaximumPerformanceMode") {
         result = testMaximumPerformanceMode();
@@ -976,10 +1287,26 @@ TestResult PowerManagementTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

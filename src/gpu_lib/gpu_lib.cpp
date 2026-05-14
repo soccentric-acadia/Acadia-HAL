@@ -220,7 +220,14 @@ TestOutput GpuTesting::testCudaCoresFunctionality()
 
     if (!present) {
         data.push_back("FAIL: VideoCore VII DRM device not found. V3D driver may not be loaded.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool v3dLoaded = (access("/sys/module/v3d", F_OK) == 0);
@@ -248,7 +255,14 @@ TestOutput GpuTesting::testCudaCoresFunctionality()
     if (passed)
         data.push_back("PASS: VideoCore VII GPU device verified (" + std::to_string(VC7_QUAD_CORE_COUNT) +
                        " quad cores / " + std::to_string(VC7_SHADER_UNIT_COUNT) + " ALUs).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -282,7 +296,14 @@ TestOutput GpuTesting::testTensorCoresOperation()
 
     if (passed)
         data.push_back("PASS: Tensor core check complete (N/A for VC7; external AI accelerators scanned).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -337,7 +358,14 @@ TestOutput GpuTesting::testGpuClockFrequencyStabilityAndThrottling()
 
     if (passed)
         data.push_back("PASS: VC7 GPU clock frequency within expected range.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -356,7 +384,14 @@ TestOutput GpuTesting::testGraphicsProcessingClustersBothClusters()
 
     if (!gpuDevicePresent()) {
         data.push_back("FAIL: VC7 GPU not present.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     const std::string drmPath = "/sys/class/drm";
@@ -385,7 +420,14 @@ TestOutput GpuTesting::testGraphicsProcessingClustersBothClusters()
 
     if (passed)
         data.push_back("PASS: VideoCore VII quad-core slices verified.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -404,7 +446,14 @@ TestOutput GpuTesting::testTextureProcessingClustersAll8Tpcs()
 
     if (!gpuDevicePresent()) {
         data.push_back("FAIL: VC7 GPU not present.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool renderPresent = (access(RPI5_V3D_RENDER_PATH, F_OK) == 0);
@@ -420,7 +469,14 @@ TestOutput GpuTesting::testTextureProcessingClustersAll8Tpcs()
 
     if (passed)
         data.push_back("PASS: VC7 texture processing capability confirmed.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -439,7 +495,14 @@ TestOutput GpuTesting::testStreamingMultiprocessorsAll16Sms()
 
     if (!gpuDevicePresent()) {
         data.push_back("FAIL: VC7 GPU not present.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     const std::string platPath = "/sys/bus/platform/devices/fde00000.gpu";
@@ -456,7 +519,14 @@ TestOutput GpuTesting::testStreamingMultiprocessorsAll16Sms()
     if (passed)
         data.push_back("PASS: VideoCore VII pipeline verified (" +
                        std::to_string(VC7_QUAD_CORE_COUNT) + " quad cores).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -474,7 +544,14 @@ TestOutput GpuTesting::testRenderOutputUnitsAll32Rops()
 
     if (!gpuDevicePresent()) {
         data.push_back("FAIL: VC7 GPU not present.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool drmPresent = (access(RPI5_DRM_CARD0, F_OK) == 0);
@@ -489,7 +566,14 @@ TestOutput GpuTesting::testRenderOutputUnitsAll32Rops()
 
     if (passed)
         data.push_back("PASS: VC7 tile-based render output system verified.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -506,7 +590,14 @@ TestOutput GpuTesting::testTextureMappingUnitsAll64Tmus()
 
     if (!gpuDevicePresent()) {
         data.push_back("FAIL: VC7 GPU not present.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("OpenGL ES 3.1 min texture image units: 16 (per spec)");
@@ -518,7 +609,14 @@ TestOutput GpuTesting::testTextureMappingUnitsAll64Tmus()
 
     if (passed)
         data.push_back("PASS: VC7 texture mapping capability verified.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -535,7 +633,14 @@ TestOutput GpuTesting::testL1CachePerSm()
 
     if (!gpuDevicePresent()) {
         data.push_back("FAIL: VC7 GPU not present.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     std::string cacheInfo = gpuRunCmd("cat /sys/kernel/debug/dri/0/v3d_cache_info 2>/dev/null");
@@ -553,7 +658,14 @@ TestOutput GpuTesting::testL1CachePerSm()
 
     if (passed)
         data.push_back("PASS: VC7 per-core cache structure documented.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -569,7 +681,14 @@ TestOutput GpuTesting::testL2Cache()
 
     if (!gpuDevicePresent()) {
         data.push_back("FAIL: VC7 GPU not present.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     std::string l2Stats = gpuRunCmd("cat /sys/kernel/debug/dri/0/v3d_l2c_stats 2>/dev/null");
@@ -586,7 +705,14 @@ TestOutput GpuTesting::testL2Cache()
 
     if (passed)
         data.push_back("PASS: VC7 L2 cache verified.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -646,7 +772,14 @@ TestOutput GpuTesting::testCacheCoherencyAndHitRates()
 
     if (passed)
         data.push_back("PASS: Cache coherency and access pattern test completed.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -688,7 +821,14 @@ TestOutput GpuTesting::testMemoryBandwidthToGpu()
 
     if (passed)
         data.push_back("PASS: Shared LPDDR4X memory bandwidth test completed.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -730,7 +870,14 @@ TestOutput GpuTesting::testInt8PerformanceVerification()
 
     if (passed)
         data.push_back("PASS: INT8 performance (CPU NEON) verified.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -764,7 +911,14 @@ TestOutput GpuTesting::testInt8SparsePerformance()
 
     if (passed)
         data.push_back("PASS: Sparse INT8 test completed (software path on Cortex-A76).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -801,7 +955,14 @@ TestOutput GpuTesting::testFp32ComputePerformance()
 
     if (passed)
         data.push_back("PASS: FP32 compute performance verified.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -818,7 +979,14 @@ TestOutput GpuTesting::testFp16ComputePerformance()
 
     if (!gpuDevicePresent()) {
         data.push_back("FAIL: VC7 GPU not present.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     volatile float sum = 0.0f;
@@ -836,7 +1004,14 @@ TestOutput GpuTesting::testFp16ComputePerformance()
 
     if (passed)
         data.push_back("PASS: FP16 compute capability verified on VC7.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -871,7 +1046,14 @@ TestOutput GpuTesting::testFp16TensorCorePerformance()
 
     if (passed)
         data.push_back("PASS: FP16 matrix compute capability documented for Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -908,7 +1090,14 @@ TestOutput GpuTesting::testMixedPrecisionOperations()
 
     if (passed)
         data.push_back("PASS: Mixed-precision operations verified.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -956,7 +1145,14 @@ TestOutput GpuTesting::testGpuThermalThrottlingBehavior()
 
     if (passed)
         data.push_back("PASS: VC7 thermal behaviour verified.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -996,7 +1192,14 @@ TestOutput GpuTesting::testGpuPowerConsumptionAtVariousLoads()
 
     if (passed)
         data.push_back("PASS: GPU power consumption test completed.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1071,7 +1274,14 @@ TestOutput GpuTesting::testSustainedPerformanceOverTime()
 
     if (passed)
         data.push_back("PASS: Sustained VC7 GPU performance test completed.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 std::vector<TestResult> GpuTesting::runAllTests()
@@ -1079,7 +1289,16 @@ std::vector<TestResult> GpuTesting::runAllTests()
     std::vector<TestResult> results;
     auto run = [&](const std::string& name, auto fn) {
         auto t0 = std::chrono::high_resolution_clock::now();
-        results.push_back({name, fn(), std::chrono::high_resolution_clock::now() - t0});
+        {
+            TestResult _tr;
+            _tr.name = name;
+            _tr.test_id = name;
+            auto _out = fn();
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::high_resolution_clock::now() - t0);
+            _tr.output = _out;
+            results.push_back(_tr);
+        }
     };
     run("testCudaCoresFunctionality",                  [this]{ return testCudaCoresFunctionality(); });
     run("testTensorCoresOperation",                    [this]{ return testTensorCoresOperation(); });
@@ -1139,7 +1358,10 @@ std::vector<std::string> GpuTesting::getAvailableTests()
 TestResult GpuTesting::runSingleTest(const std::string& testName)
 {
     auto t0 = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {"Unknown test: " + testName}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "Unknown test: " + testName;
 
     if      (testName == "testCudaCoresFunctionality")                  result = testCudaCoresFunctionality();
     else if (testName == "testTensorCoresOperation")                    result = testTensorCoresOperation();
@@ -1163,5 +1385,12 @@ TestResult GpuTesting::runSingleTest(const std::string& testName)
     else if (testName == "testGpuPowerConsumptionAtVariousLoads")       result = testGpuPowerConsumptionAtVariousLoads();
     else if (testName == "testSustainedPerformanceOverTime")            result = testSustainedPerformanceOverTime();
 
-    return {testName, result, std::chrono::high_resolution_clock::now() - t0};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - t0);
+        _tr.output = result;
+        return _tr;
+    }
 }

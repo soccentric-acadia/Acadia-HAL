@@ -251,7 +251,14 @@ TestOutput DeepLearningAcceleratorTesting::testDla1Functionality()
         data.push_back("Hailo-8 AI accelerator is present and driver-bound.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -292,7 +299,14 @@ TestOutput DeepLearningAcceleratorTesting::testDla2Functionality()
         data.push_back("gasket /dev/apex_0: " + std::string(apexDev ? "present" : "not found (install gasket-dkms)"));
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -345,7 +359,14 @@ TestOutput DeepLearningAcceleratorTesting::testDualDlaConcurrentOperation()
         data.push_back("FAIL: One or both concurrent threads did not complete.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -385,7 +406,14 @@ TestOutput DeepLearningAcceleratorTesting::testDlaClockFrequency()
     if (!hailoDev && !hailoMod)
         data.push_back("NOTE: Hailo-8 not installed; clock test not applicable.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -427,7 +455,14 @@ TestOutput DeepLearningAcceleratorTesting::testDlaPowerConsumption()
         }
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -490,7 +525,14 @@ TestOutput DeepLearningAcceleratorTesting::testConvolutionOperations()
     data.push_back("Supported kernel sizes: 1x1, 3x3, 5x5, 7x7 via Hailo Model Zoo / ONNX exporter");
     data.push_back("Convolution engine verification (software): " + std::string(convOk ? "OK" : "FAILED"));
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -529,7 +571,14 @@ TestOutput DeepLearningAcceleratorTesting::testDeconvolutionOperations()
 
     data.push_back("Pi5/Hailo-8 supports transposed convolutions for upsampling networks (decoders, segmentation).");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -566,7 +615,14 @@ TestOutput DeepLearningAcceleratorTesting::testFullyConnectedLayers()
                    " (expected 5,6,7)");
     data.push_back("Hailo-8 executes FC layers as 1x1 convolutions internally.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -638,7 +694,14 @@ TestOutput DeepLearningAcceleratorTesting::testActivationFunctions()
 
     data.push_back("Pi5+Hailo-8 hardware activations: ReLU, LReLU, Sigmoid, TanH, Clamp.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -691,7 +754,14 @@ TestOutput DeepLearningAcceleratorTesting::testPoolingOperations()
 
     data.push_back("Pi5+Hailo-8 supports: max-pool, average-pool, global average-pool.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -742,7 +812,14 @@ TestOutput DeepLearningAcceleratorTesting::testBatchNormalization()
 
     data.push_back("Hailo-8 BN is fused with convolution layers in the compiled HEF model.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -798,7 +875,14 @@ TestOutput DeepLearningAcceleratorTesting::testElementwiseOperations()
 
     data.push_back("Pi5+Hailo-8 element-wise ops: ADD, MUL, MAX supported in HailoRT graph.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -845,7 +929,14 @@ TestOutput DeepLearningAcceleratorTesting::testInt8Precision()
     if (!drvOk)
         passed = false;
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -906,7 +997,14 @@ TestOutput DeepLearningAcceleratorTesting::testFp16Precision()
 
     data.push_back("Pi5+Hailo-8 FP16 inference is supported via mixed-precision HEF compilation.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -956,7 +1054,14 @@ TestOutput DeepLearningAcceleratorTesting::testStructuredSparsitySupport()
     data.push_back(""
                    "");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1020,7 +1125,14 @@ TestOutput DeepLearningAcceleratorTesting::testHardwareSchedulerOperation()
 
     data.push_back("Pi5+Hailo-8 scheduler: HailoRT runtime manages inference pipeline queues.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1069,7 +1181,14 @@ TestOutput DeepLearningAcceleratorTesting::testDlaTopsVerification()
         data.push_back("PASS: AI accelerator(s) present; TOPS = " + std::to_string(expectedTops));
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1115,7 +1234,14 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThroughputTesting()
         data.push_back("FAIL: No batches completed in " + std::to_string(durMs) + " ms.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1165,7 +1291,14 @@ TestOutput DeepLearningAcceleratorTesting::testDlaLatencyMeasurements()
     data.push_back("Typical real Hailo-8 latency for ResNet-50 INT8: ~2 ms (PCIe Gen3 x1).");
     data.push_back("Use: hailortcli run --hef resnet50.hef --batch-size 1 for hardware latency.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1219,7 +1352,14 @@ TestOutput DeepLearningAcceleratorTesting::testDlaMemoryBandwidth()
 
     data.push_back("Pi5 spec: LPDDR4X 17 GB/s total; Hailo-8 gets ~1 GB/s via PCIe Gen3 x1.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1251,7 +1391,14 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThermalBehavior()
     if (zones.empty()) {
         data.push_back("WARN: No thermal zones found (debugfs may be needed).");
         // Not a hard failure — driver loading may be required
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Check all zones are below the warning threshold
@@ -1287,7 +1434,14 @@ TestOutput DeepLearningAcceleratorTesting::testDlaThermalBehavior()
 
     data.push_back("Pi5 thermal protection: firmware throttles CPU/GPU at 80 °C, shutdown at 85 °C.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1304,7 +1458,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testDla1Functionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDla1Functionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDla1Functionality";
+            _tr.test_id = "testDla1Functionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDla2Functionality
@@ -1313,7 +1474,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testDla2Functionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDla2Functionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDla2Functionality";
+            _tr.test_id = "testDla2Functionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDualDlaConcurrentOperation
@@ -1322,7 +1490,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testDualDlaConcurrentOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDualDlaConcurrentOperation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDualDlaConcurrentOperation";
+            _tr.test_id = "testDualDlaConcurrentOperation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDlaClockFrequency
@@ -1331,7 +1506,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testDlaClockFrequency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDlaClockFrequency", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDlaClockFrequency";
+            _tr.test_id = "testDlaClockFrequency";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDlaPowerConsumption
@@ -1340,7 +1522,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testDlaPowerConsumption();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDlaPowerConsumption", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDlaPowerConsumption";
+            _tr.test_id = "testDlaPowerConsumption";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testConvolutionOperations
@@ -1349,7 +1538,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testConvolutionOperations();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testConvolutionOperations", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testConvolutionOperations";
+            _tr.test_id = "testConvolutionOperations";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDeconvolutionOperations
@@ -1358,7 +1554,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testDeconvolutionOperations();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDeconvolutionOperations", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDeconvolutionOperations";
+            _tr.test_id = "testDeconvolutionOperations";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testFullyConnectedLayers
@@ -1367,7 +1570,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testFullyConnectedLayers();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testFullyConnectedLayers", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testFullyConnectedLayers";
+            _tr.test_id = "testFullyConnectedLayers";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testActivationFunctions
@@ -1376,7 +1586,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testActivationFunctions();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testActivationFunctions", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testActivationFunctions";
+            _tr.test_id = "testActivationFunctions";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPoolingOperations
@@ -1385,7 +1602,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testPoolingOperations();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPoolingOperations", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPoolingOperations";
+            _tr.test_id = "testPoolingOperations";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testBatchNormalization
@@ -1394,7 +1618,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testBatchNormalization();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testBatchNormalization", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testBatchNormalization";
+            _tr.test_id = "testBatchNormalization";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testElementwiseOperations
@@ -1403,7 +1634,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testElementwiseOperations();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testElementwiseOperations", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testElementwiseOperations";
+            _tr.test_id = "testElementwiseOperations";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testInt8Precision
@@ -1412,7 +1650,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testInt8Precision();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testInt8Precision", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testInt8Precision";
+            _tr.test_id = "testInt8Precision";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testFp16Precision
@@ -1421,7 +1666,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testFp16Precision();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testFp16Precision", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testFp16Precision";
+            _tr.test_id = "testFp16Precision";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testStructuredSparsitySupport
@@ -1430,7 +1682,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testStructuredSparsitySupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testStructuredSparsitySupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testStructuredSparsitySupport";
+            _tr.test_id = "testStructuredSparsitySupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testHardwareSchedulerOperation
@@ -1439,7 +1698,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testHardwareSchedulerOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testHardwareSchedulerOperation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testHardwareSchedulerOperation";
+            _tr.test_id = "testHardwareSchedulerOperation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDlaTopsVerification
@@ -1448,7 +1714,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testDlaTopsVerification();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDlaTopsVerification", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDlaTopsVerification";
+            _tr.test_id = "testDlaTopsVerification";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDlaThroughputTesting
@@ -1457,7 +1730,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testDlaThroughputTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDlaThroughputTesting", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDlaThroughputTesting";
+            _tr.test_id = "testDlaThroughputTesting";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDlaLatencyMeasurements
@@ -1466,7 +1746,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testDlaLatencyMeasurements();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDlaLatencyMeasurements", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDlaLatencyMeasurements";
+            _tr.test_id = "testDlaLatencyMeasurements";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDlaMemoryBandwidth
@@ -1475,7 +1762,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testDlaMemoryBandwidth();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDlaMemoryBandwidth", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDlaMemoryBandwidth";
+            _tr.test_id = "testDlaMemoryBandwidth";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDlaThermalBehavior
@@ -1484,7 +1778,14 @@ std::vector<TestResult> DeepLearningAcceleratorTesting::runAllTests()
         TestOutput result = testDlaThermalBehavior();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDlaThermalBehavior", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDlaThermalBehavior";
+            _tr.test_id = "testDlaThermalBehavior";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -1514,7 +1815,10 @@ std::vector<std::string> DeepLearningAcceleratorTesting::getAvailableTests()
 TestResult DeepLearningAcceleratorTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testDla1Functionality") {
         result = testDla1Functionality();
@@ -1562,10 +1866,26 @@ TestResult DeepLearningAcceleratorTesting::runSingleTest(const std::string& test
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

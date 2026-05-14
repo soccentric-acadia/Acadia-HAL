@@ -75,7 +75,14 @@ TestOutput DisplayInterfaces::testDisplayPortOutput()
     }
 
     data.push_back("PASS: DisplayPort check complete (native DP not supported on Pi5).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +120,14 @@ TestOutput DisplayInterfaces::testHdmiOutput()
     if (!dispPwr.empty()) data.push_back("vcgencmd display_power: " + dispPwr);
 
     data.push_back("PASS: HDMI output check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -140,7 +154,14 @@ TestOutput DisplayInterfaces::testMultiDisplaySupport()
 
     data.push_back("Pi5 supports simultaneous dual 4K@60Hz on HDMI0 + HDMI1.");
     data.push_back("PASS: Multi-display check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -167,7 +188,14 @@ TestOutput DisplayInterfaces::testVariousResolutions()
     }
 
     data.push_back("PASS: Resolution check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -191,7 +219,14 @@ TestOutput DisplayInterfaces::testVariousRefreshRates()
 
     data.push_back("Supported: 23.98/24/25/29.97/30/50/59.94/60 Hz");
     data.push_back("PASS: Refresh rate check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -216,7 +251,14 @@ TestOutput DisplayInterfaces::testHdrSupport()
 
     data.push_back("Enable HDR10: dtoverlay=vc4-kms-v3d + hdmi_force_hotplug=1");
     data.push_back("PASS: HDR support check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -241,7 +283,14 @@ TestOutput DisplayInterfaces::testDisplayHotPlugDetection()
 
     data.push_back("Pi5 HPD: Hardware interrupt via RP1 GPIO attached to micro-HDMI connector.");
     data.push_back("PASS: Hot-plug detection check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -258,7 +307,14 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
         TestOutput result = testDisplayPortOutput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDisplayPortOutput", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDisplayPortOutput";
+            _tr.test_id = "testDisplayPortOutput";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testHdmiOutput
@@ -267,7 +323,14 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
         TestOutput result = testHdmiOutput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testHdmiOutput", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testHdmiOutput";
+            _tr.test_id = "testHdmiOutput";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultiDisplaySupport
@@ -276,7 +339,14 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
         TestOutput result = testMultiDisplaySupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultiDisplaySupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultiDisplaySupport";
+            _tr.test_id = "testMultiDisplaySupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVariousResolutions
@@ -285,7 +355,14 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
         TestOutput result = testVariousResolutions();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVariousResolutions", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVariousResolutions";
+            _tr.test_id = "testVariousResolutions";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVariousRefreshRates
@@ -294,7 +371,14 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
         TestOutput result = testVariousRefreshRates();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVariousRefreshRates", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVariousRefreshRates";
+            _tr.test_id = "testVariousRefreshRates";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testHdrSupport
@@ -303,7 +387,14 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
         TestOutput result = testHdrSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testHdrSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testHdrSupport";
+            _tr.test_id = "testHdrSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDisplayHotPlugDetection
@@ -312,7 +403,14 @@ std::vector<TestResult> DisplayInterfaces::runAllTests()
         TestOutput result = testDisplayHotPlugDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDisplayHotPlugDetection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDisplayHotPlugDetection";
+            _tr.test_id = "testDisplayHotPlugDetection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -338,7 +436,10 @@ std::vector<std::string> DisplayInterfaces::getAvailableTests()
 TestResult DisplayInterfaces::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testDisplayPortOutput") {
         result = testDisplayPortOutput();
@@ -358,10 +459,26 @@ TestResult DisplayInterfaces::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

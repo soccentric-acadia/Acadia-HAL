@@ -275,7 +275,14 @@ TestOutput VideoEncodeDecodeTesting::testH265Encoding()
 
     if (passed)
         data.push_back("PASS: H.265 encoding hardware verified on Pi5 bcm2835-codec.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -317,7 +324,14 @@ TestOutput VideoEncodeDecodeTesting::testH264Encoding()
 
     if (passed)
         data.push_back("PASS: H.264 encoding hardware verified on Pi5 bcm2835-codec.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -367,7 +381,14 @@ TestOutput VideoEncodeDecodeTesting::testAv1Encoding()
 
     if (passed)
         data.push_back("PASS: AV1 encoding hardware verified on Pi5 bcm2835-codec.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -394,7 +415,14 @@ TestOutput VideoEncodeDecodeTesting::testMultipleStreamEncoding()
     if (!encPresent) {
         passed = false;
         data.push_back("FAIL: V4L2 M2M device node missing – multi-stream encode unavailable.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Check for dual bcm2835-codec nodes (Pi5 has 2 engines, may appear as video10/video11)
@@ -413,7 +441,14 @@ TestOutput VideoEncodeDecodeTesting::testMultipleStreamEncoding()
 
     if (passed)
         data.push_back("PASS: Multi-stream encoding hardware verified on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -444,7 +479,14 @@ TestOutput VideoEncodeDecodeTesting::testVariousResolutions()
     if (!encPresent && !decPresent) {
         passed = false;
         data.push_back("FAIL: Neither bcm2835-codec nor rpivid/bcm2835-codec device nodes found.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     for (const auto& r : resolutions) {
@@ -462,7 +504,14 @@ TestOutput VideoEncodeDecodeTesting::testVariousResolutions()
 
     if (passed)
         data.push_back("PASS: All standard resolutions supported by Pi5 bcm2835-codec/rpivid.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -483,7 +532,14 @@ TestOutput VideoEncodeDecodeTesting::testVariousBitrates()
     if (!encPresent) {
         passed = false;
         data.push_back("FAIL: bcm2835-codec not available – cannot verify bitrate range.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     static const double testBitratesMbps[] = {0.5, 2.0, 8.0, 20.0, 50.0, 100.0, 240.0};
@@ -503,7 +559,14 @@ TestOutput VideoEncodeDecodeTesting::testVariousBitrates()
 
     if (passed)
         data.push_back("PASS: Encoder bitrate range verified for Pi5 bcm2835-codec.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -525,7 +588,14 @@ TestOutput VideoEncodeDecodeTesting::testVariousFrameRates()
     if (!encPresent && !decPresent) {
         passed = false;
         data.push_back("FAIL: Neither bcm2835-codec nor rpivid/bcm2835-codec found.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("Encoder supported frame rates:");
@@ -547,7 +617,14 @@ TestOutput VideoEncodeDecodeTesting::testVariousFrameRates()
 
     if (passed)
         data.push_back("PASS: All target frame rates verified for Pi5 bcm2835-codec/rpivid.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -566,7 +643,14 @@ TestOutput VideoEncodeDecodeTesting::testEncoderQualitySettings()
     if (!encPresent) {
         passed = false;
         data.push_back("FAIL: bcm2835-codec device not found.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Enumerate GStreamer nvv4l2h265enc quality/preset properties
@@ -589,7 +673,14 @@ TestOutput VideoEncodeDecodeTesting::testEncoderQualitySettings()
 
     if (passed)
         data.push_back("PASS: bcm2835-codec quality/rate-control settings verified on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -609,7 +700,14 @@ TestOutput VideoEncodeDecodeTesting::testEncoderLatency()
     if (!encPresent) {
         passed = false;
         data.push_back("FAIL: bcm2835-codec device not found.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Measure device-open latency as a proxy for encoder init time
@@ -632,7 +730,14 @@ TestOutput VideoEncodeDecodeTesting::testEncoderLatency()
 
     if (passed)
         data.push_back("PASS: Encoder latency within acceptable limits on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -680,7 +785,14 @@ TestOutput VideoEncodeDecodeTesting::testEncoderPowerConsumption()
 
     if (passed)
         data.push_back("PASS: Encoder power consumption measurement completed on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -725,7 +837,14 @@ TestOutput VideoEncodeDecodeTesting::testH265Decoding()
 
     if (passed)
         data.push_back("PASS: H.265 decoding hardware verified on Pi5 rpivid/bcm2835-codec.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -757,7 +876,14 @@ TestOutput VideoEncodeDecodeTesting::testH264Decoding()
 
     if (passed)
         data.push_back("PASS: H.264 decoding hardware verified on Pi5 rpivid/bcm2835-codec.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -789,7 +915,14 @@ TestOutput VideoEncodeDecodeTesting::testAv1Decoding()
 
     if (passed)
         data.push_back("PASS: AV1 decoding hardware verified on Pi5 rpivid/bcm2835-codec.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -821,7 +954,14 @@ TestOutput VideoEncodeDecodeTesting::testVp9Decoding()
 
     if (passed)
         data.push_back("PASS: VP9 decoding hardware verified on Pi5 rpivid/bcm2835-codec.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -848,7 +988,14 @@ TestOutput VideoEncodeDecodeTesting::testMultipleStreamDecoding()
     if (!decPresent) {
         passed = false;
         data.push_back("FAIL: rpivid/bcm2835-codec device node missing.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // V4L2 clock for both decoders
@@ -861,7 +1008,14 @@ TestOutput VideoEncodeDecodeTesting::testMultipleStreamDecoding()
 
     if (passed)
         data.push_back("PASS: Multi-stream decoding hardware verified on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -880,7 +1034,14 @@ TestOutput VideoEncodeDecodeTesting::test4k8kDecoding()
     if (!decPresent) {
         passed = false;
         data.push_back("FAIL: rpivid/bcm2835-codec device node missing.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     static const struct
@@ -906,7 +1067,14 @@ TestOutput VideoEncodeDecodeTesting::test4k8kDecoding()
 
     if (passed)
         data.push_back("PASS: 4K/8K decoding hardware capability verified on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -926,7 +1094,14 @@ TestOutput VideoEncodeDecodeTesting::testDecoderLatency()
     if (!decPresent) {
         passed = false;
         data.push_back("FAIL: rpivid/bcm2835-codec device not found.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Measure device-node stat time as a latency proxy
@@ -945,7 +1120,14 @@ TestOutput VideoEncodeDecodeTesting::testDecoderLatency()
 
     if (passed)
         data.push_back("PASS: Decoder latency within acceptable limits on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -964,7 +1146,14 @@ TestOutput VideoEncodeDecodeTesting::testCorruptStreamHandling()
     if (!decPresent) {
         passed = false;
         data.push_back("FAIL: rpivid/bcm2835-codec device node missing.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Attempt to decode /dev/zero as a corrupt stream through GStreamer (expect error, not hang)
@@ -997,7 +1186,14 @@ TestOutput VideoEncodeDecodeTesting::testCorruptStreamHandling()
 
     if (passed)
         data.push_back("PASS: Corrupt-stream handling verified on Pi5 rpivid/bcm2835-codec.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1042,7 +1238,14 @@ TestOutput VideoEncodeDecodeTesting::testJpegCompression()
 
     if (passed)
         data.push_back("PASS: bcm2835-codec MJPEG JPEG compression hardware verified on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1076,7 +1279,14 @@ TestOutput VideoEncodeDecodeTesting::testJpegDecompression()
 
     if (passed)
         data.push_back("PASS: bcm2835-codec MJPEG JPEG decompression hardware verified on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1136,7 +1346,14 @@ TestOutput VideoEncodeDecodeTesting::testImageScalingOperations()
 
     if (passed)
         data.push_back("PASS: VIC image scaling hardware verified on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1178,7 +1395,14 @@ TestOutput VideoEncodeDecodeTesting::testYuvFormatConversions()
 
     if (passed)
         data.push_back("PASS: YUV format conversions verified on Pi5 VIC.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1225,7 +1449,14 @@ TestOutput VideoEncodeDecodeTesting::testColorSpaceConversions()
 
     if (passed)
         data.push_back("PASS: Colour-space conversions verified on Pi5 VIC.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1265,7 +1496,14 @@ TestOutput VideoEncodeDecodeTesting::testJpegQualityLevels()
 
     if (passed)
         data.push_back("PASS: bcm2835-codec MJPEG JPEG quality levels verified on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1286,7 +1524,14 @@ TestOutput VideoEncodeDecodeTesting::testNvjpgThroughput()
     if (!jpgPresent) {
         passed = false;
         data.push_back("FAIL: bcm2835-codec MJPEG device node missing – throughput test skipped.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // V4L2 MJPEG codec clock gives max frequency → estimate peak throughput
@@ -1316,7 +1561,14 @@ TestOutput VideoEncodeDecodeTesting::testNvjpgThroughput()
 
     if (passed)
         data.push_back("PASS: bcm2835-codec MJPEG throughput verified on Pi5.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1337,7 +1589,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testH265Encoding();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testH265Encoding", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testH265Encoding";
+            _tr.test_id = "testH265Encoding";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testH264Encoding
@@ -1346,7 +1605,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testH264Encoding();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testH264Encoding", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testH264Encoding";
+            _tr.test_id = "testH264Encoding";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAv1Encoding
@@ -1355,7 +1621,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testAv1Encoding();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAv1Encoding", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAv1Encoding";
+            _tr.test_id = "testAv1Encoding";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultipleStreamEncoding
@@ -1364,7 +1637,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testMultipleStreamEncoding();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultipleStreamEncoding", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultipleStreamEncoding";
+            _tr.test_id = "testMultipleStreamEncoding";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVariousResolutions
@@ -1373,7 +1653,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testVariousResolutions();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVariousResolutions", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVariousResolutions";
+            _tr.test_id = "testVariousResolutions";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVariousBitrates
@@ -1382,7 +1669,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testVariousBitrates();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVariousBitrates", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVariousBitrates";
+            _tr.test_id = "testVariousBitrates";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVariousFrameRates
@@ -1391,7 +1685,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testVariousFrameRates();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVariousFrameRates", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVariousFrameRates";
+            _tr.test_id = "testVariousFrameRates";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEncoderQualitySettings
@@ -1400,7 +1701,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testEncoderQualitySettings();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEncoderQualitySettings", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEncoderQualitySettings";
+            _tr.test_id = "testEncoderQualitySettings";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEncoderLatency
@@ -1409,7 +1717,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testEncoderLatency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEncoderLatency", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEncoderLatency";
+            _tr.test_id = "testEncoderLatency";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEncoderPowerConsumption
@@ -1418,7 +1733,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testEncoderPowerConsumption();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEncoderPowerConsumption", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEncoderPowerConsumption";
+            _tr.test_id = "testEncoderPowerConsumption";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testH265Decoding
@@ -1427,7 +1749,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testH265Decoding();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testH265Decoding", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testH265Decoding";
+            _tr.test_id = "testH265Decoding";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testH264Decoding
@@ -1436,7 +1765,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testH264Decoding();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testH264Decoding", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testH264Decoding";
+            _tr.test_id = "testH264Decoding";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAv1Decoding
@@ -1445,7 +1781,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testAv1Decoding();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAv1Decoding", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAv1Decoding";
+            _tr.test_id = "testAv1Decoding";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVp9Decoding
@@ -1454,7 +1797,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testVp9Decoding();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVp9Decoding", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVp9Decoding";
+            _tr.test_id = "testVp9Decoding";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultipleStreamDecoding
@@ -1463,7 +1813,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testMultipleStreamDecoding();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultipleStreamDecoding", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultipleStreamDecoding";
+            _tr.test_id = "testMultipleStreamDecoding";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test4k8kDecoding
@@ -1472,7 +1829,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = test4k8kDecoding();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test4k8kDecoding", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test4k8kDecoding";
+            _tr.test_id = "test4k8kDecoding";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDecoderLatency
@@ -1481,7 +1845,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testDecoderLatency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDecoderLatency", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDecoderLatency";
+            _tr.test_id = "testDecoderLatency";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCorruptStreamHandling
@@ -1490,7 +1861,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testCorruptStreamHandling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCorruptStreamHandling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCorruptStreamHandling";
+            _tr.test_id = "testCorruptStreamHandling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testJpegCompression
@@ -1499,7 +1877,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testJpegCompression();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testJpegCompression", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testJpegCompression";
+            _tr.test_id = "testJpegCompression";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testJpegDecompression
@@ -1508,7 +1893,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testJpegDecompression();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testJpegDecompression", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testJpegDecompression";
+            _tr.test_id = "testJpegDecompression";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testImageScalingOperations
@@ -1517,7 +1909,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testImageScalingOperations();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testImageScalingOperations", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testImageScalingOperations";
+            _tr.test_id = "testImageScalingOperations";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testYuvFormatConversions
@@ -1526,7 +1925,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testYuvFormatConversions();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testYuvFormatConversions", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testYuvFormatConversions";
+            _tr.test_id = "testYuvFormatConversions";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testColorSpaceConversions
@@ -1535,7 +1941,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testColorSpaceConversions();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testColorSpaceConversions", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testColorSpaceConversions";
+            _tr.test_id = "testColorSpaceConversions";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testJpegQualityLevels
@@ -1544,7 +1957,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testJpegQualityLevels();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testJpegQualityLevels", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testJpegQualityLevels";
+            _tr.test_id = "testJpegQualityLevels";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testNvjpgThroughput
@@ -1553,7 +1973,14 @@ std::vector<TestResult> VideoEncodeDecodeTesting::runAllTests()
         TestOutput result = testNvjpgThroughput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testNvjpgThroughput", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testNvjpgThroughput";
+            _tr.test_id = "testNvjpgThroughput";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -1601,7 +2028,10 @@ std::vector<std::string> VideoEncodeDecodeTesting::getAvailableTests()
 TestResult VideoEncodeDecodeTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testH265Encoding") {
         result = testH265Encoding();
@@ -1655,10 +2085,26 @@ TestResult VideoEncodeDecodeTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

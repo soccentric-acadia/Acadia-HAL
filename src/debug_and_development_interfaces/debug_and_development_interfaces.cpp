@@ -185,7 +185,14 @@ TestOutput DebugAndDevelopmentInterfaces::testJtagInterface()
 
     // Overall verdict
     data.push_back(std::string("JTAG interface test: ") + (passed ? "PASS" : "FAIL"));
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -208,7 +215,14 @@ TestOutput DebugAndDevelopmentInterfaces::testSerialWireDebug()
     // 1. CoreSight bus must exist
     if (!isDir(CORESIGHT_BUS_PATH)) {
         data.push_back("FAIL: CoreSight sysfs bus (" + std::string(CORESIGHT_BUS_PATH) + ") not found – SWD infrastructure missing.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
     data.push_back("CoreSight bus sysfs: present");
 
@@ -247,7 +261,14 @@ TestOutput DebugAndDevelopmentInterfaces::testSerialWireDebug()
         data.push_back("  " + d);
 
     data.push_back(std::string("SWD interface test: ") + (passed ? "PASS" : "FAIL"));
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -281,7 +302,14 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugUart()
     if (thsDevices.empty()) {
         passed = false;
         data.push_back("FAIL: No /dev/ttyAMA* device found – debug UART driver not loaded.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // 2. Try to open the primary debug UART (ttyAMA0)
@@ -329,7 +357,14 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugUart()
     }
 
     data.push_back(std::string("Debug UART test: ") + (passed ? "PASS" : "FAIL"));
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -358,7 +393,14 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
     // 1. CoreSight bus must exist
     if (!isDir(CORESIGHT_BUS_PATH)) {
         data.push_back("FAIL: CoreSight sysfs bus not present – no trace infrastructure.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
     data.push_back("CoreSight bus sysfs: present (" + std::string(CORESIGHT_BUS_PATH) + ")");
 
@@ -429,7 +471,14 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
     }
 
     data.push_back(std::string("Trace port test: ") + (passed ? "PASS" : "FAIL"));
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -461,7 +510,14 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
     if (paranoidStr.empty()) {
         passed = false;
         data.push_back("FAIL: Cannot read " + std::string(PERF_PARANOID_PATH) + " – perf_event subsystem not available.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
     int paranoid = std::stoi(paranoidStr);
     data.push_back("perf_event_paranoid: " + paranoidStr);
@@ -476,7 +532,14 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
     if (!isDir(PERF_DEVICES_PATH)) {
         passed = false;
         data.push_back("FAIL: " + std::string(PERF_DEVICES_PATH) + " not found.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     auto pmuDevices = listDir(PERF_DEVICES_PATH);
@@ -530,7 +593,14 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
         data.push_back("perf_cpu_time_max_percent: " + maxRate + "%");
 
     data.push_back(std::string("Performance counters test: ") + (passed ? "PASS" : "FAIL"));
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -646,7 +716,14 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
     }
 
     data.push_back(std::string("Debug authentication test: ") + (passed ? "PASS" : "FAIL"));
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -663,7 +740,14 @@ std::vector<TestResult> DebugAndDevelopmentInterfaces::runAllTests()
         TestOutput result = testJtagInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testJtagInterface", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testJtagInterface";
+            _tr.test_id = "testJtagInterface";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSerialWireDebug
@@ -672,7 +756,14 @@ std::vector<TestResult> DebugAndDevelopmentInterfaces::runAllTests()
         TestOutput result = testSerialWireDebug();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSerialWireDebug", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSerialWireDebug";
+            _tr.test_id = "testSerialWireDebug";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDebugUart
@@ -681,7 +772,14 @@ std::vector<TestResult> DebugAndDevelopmentInterfaces::runAllTests()
         TestOutput result = testDebugUart();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDebugUart", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDebugUart";
+            _tr.test_id = "testDebugUart";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testTracePort
@@ -690,7 +788,14 @@ std::vector<TestResult> DebugAndDevelopmentInterfaces::runAllTests()
         TestOutput result = testTracePort();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testTracePort", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testTracePort";
+            _tr.test_id = "testTracePort";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPerformanceCounters
@@ -699,7 +804,14 @@ std::vector<TestResult> DebugAndDevelopmentInterfaces::runAllTests()
         TestOutput result = testPerformanceCounters();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPerformanceCounters", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPerformanceCounters";
+            _tr.test_id = "testPerformanceCounters";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDebugAuthentication
@@ -708,7 +820,14 @@ std::vector<TestResult> DebugAndDevelopmentInterfaces::runAllTests()
         TestOutput result = testDebugAuthentication();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDebugAuthentication", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDebugAuthentication";
+            _tr.test_id = "testDebugAuthentication";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -733,7 +852,10 @@ std::vector<std::string> DebugAndDevelopmentInterfaces::getAvailableTests()
 TestResult DebugAndDevelopmentInterfaces::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testJtagInterface") {
         result = testJtagInterface();
@@ -751,10 +873,26 @@ TestResult DebugAndDevelopmentInterfaces::runSingleTest(const std::string& testN
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

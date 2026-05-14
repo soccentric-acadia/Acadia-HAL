@@ -176,7 +176,14 @@ TestOutput StorageTesting::testEmmc51InterfaceFunctionality()
     if (!devPresent) {
         passed = false;
         data.push_back("FAIL: SD card block device not found. No SD card inserted?");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Check sysfs attributes
@@ -199,7 +206,14 @@ TestOutput StorageTesting::testEmmc51InterfaceFunctionality()
     if (!timing.empty()) data.push_back("MMC timing: " + timing);
 
     data.push_back("PASS: SD card interface detected and accessible.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -244,7 +258,14 @@ TestOutput StorageTesting::testFullCapacityVerification()
         }
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -261,13 +282,27 @@ TestOutput StorageTesting::testSequentialReadPerformance()
 
     if (!pathExists(MMCBLK_DEV)) {
         data.push_back("SKIP: SD card not present.");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     double mbps = measureSeqReadMBps(MMCBLK_DEV);
     if (mbps < 0) {
         data.push_back("FAIL: Could not read from " + std::string(MMCBLK_DEV) + " (permission denied?)");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("Sequential read speed: " + std::to_string(mbps) + " MB/s");
@@ -292,7 +327,14 @@ TestOutput StorageTesting::testSequentialReadPerformance()
         }
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -313,7 +355,14 @@ TestOutput StorageTesting::testSequentialWritePerformance()
     int fd = mkstemp(tmpl);
     if (fd < 0) {
         data.push_back("FAIL: Could not create temp file for write test.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
     (void)tmpFile;
 
@@ -354,7 +403,14 @@ TestOutput StorageTesting::testSequentialWritePerformance()
         data.push_back("PASS: Write throughput test completed.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -370,13 +426,27 @@ TestOutput StorageTesting::testRandomReadIops()
 
     if (!pathExists(MMCBLK_DEV)) {
         data.push_back("SKIP: SD card not present.");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     int iops = measureRandReadIops(MMCBLK_DEV);
     if (iops < 0) {
         data.push_back("FAIL: Could not open device for random read.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("4K random read IOPS: " + std::to_string(iops));
@@ -389,7 +459,14 @@ TestOutput StorageTesting::testRandomReadIops()
         data.push_back("PASS: Random read IOPS meets requirement.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -407,14 +484,28 @@ TestOutput StorageTesting::testRandomWriteIops()
     int fd = mkstemp(tmpl);
     if (fd < 0) {
         data.push_back("FAIL: Cannot create temp file.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Pre-allocate 64 MB
     if (ftruncate(fd, 64 * 1024 * 1024) != 0) {
         close(fd); unlink(tmpl);
         data.push_back("FAIL: Cannot allocate temp file.");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     std::mt19937_64 rng(12345);
@@ -443,7 +534,14 @@ TestOutput StorageTesting::testRandomWriteIops()
         data.push_back("PASS: Random write IOPS test passed.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -476,7 +574,14 @@ TestOutput StorageTesting::testEmmcWearLeveling()
     if (!eraseSize.empty()) data.push_back("Preferred erase size: " + eraseSize + " bytes");
 
     data.push_back("PASS: Wear-leveling check complete (software introspection only on microSD).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -508,7 +613,14 @@ TestOutput StorageTesting::testBadBlockManagement()
     }
 
     if (sdErrors == 0) data.push_back("PASS: No bad block errors detected.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -543,7 +655,14 @@ TestOutput StorageTesting::testPowerLossProtection()
     std::string psu = storReadFile("/sys/class/power_supply/rpi-psu/online");
     if (!psu.empty()) data.push_back("Pi5 PSU online: " + psu);
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -591,7 +710,14 @@ TestOutput StorageTesting::testEmmcTemperatureMonitoring()
     }
 
     data.push_back(passed ? "PASS: Storage temperature within limits." : "FAIL: Temperature issue detected.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -618,7 +744,14 @@ TestOutput StorageTesting::testNvmeSsdDetection()
         data.push_back("      dtparam=pciex1_gen=3  in /boot/firmware/config.txt");
         data.push_back("      Reboot required after config change.");
         // Not a hard failure — NVMe is optional on Pi5
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Read NVMe model name
@@ -636,7 +769,14 @@ TestOutput StorageTesting::testNvmeSsdDetection()
     if (!linkSpd.empty()) data.push_back("PCIe link: " + linkSpd);
 
     data.push_back("PASS: NVMe SSD detected and accessible.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -650,7 +790,14 @@ TestOutput StorageTesting::testNvmeReadwritePerformance()
 
     if (!pathExists(NVME_DEV)) {
         data.push_back("SKIP: NVMe not present — test not applicable.");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("NVMe sequential performance (32 MB sequential read)");
@@ -658,7 +805,14 @@ TestOutput StorageTesting::testNvmeReadwritePerformance()
     double readMbps = measureSeqReadMBps(NVME_DEV);
     if (readMbps < 0) {
         data.push_back("FAIL: Cannot read NVMe device (permissions?).");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
     data.push_back("NVMe sequential read: " + std::to_string(readMbps) + " MB/s");
     data.push_back("Minimum: " + std::to_string(NVME_MIN_SEQ_READ_MBS) + " MB/s");
@@ -691,7 +845,14 @@ TestOutput StorageTesting::testNvmeReadwritePerformance()
         data.push_back("Write benchmark (tmpfs): " + std::to_string(wMbps) + " MB/s");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -705,7 +866,14 @@ TestOutput StorageTesting::testNvmeThermalThrottling()
 
     if (!pathExists(NVME_DEV)) {
         data.push_back("SKIP: NVMe not present.");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("NVMe thermal throttling check");
@@ -741,7 +909,14 @@ TestOutput StorageTesting::testNvmeThermalThrottling()
     if (!throttled.empty()) data.push_back("Throttle status: " + throttled);
 
     data.push_back(passed ? "PASS: NVMe thermal check passed." : "FAIL: NVMe thermal issue.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -775,7 +950,14 @@ TestOutput StorageTesting::testHotplugCapability()
     data.push_back("INFO: Pi5 NVMe/PCIe does not support hot-plug in RP1 implementation.");
     data.push_back("      SD card supports software-initiated remove/insert detection.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -821,7 +1003,14 @@ TestOutput StorageTesting::testStorageEncryptionSupport()
         data.push_back("INFO: Install cryptsetup: sudo apt install cryptsetup");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -838,7 +1027,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testEmmc51InterfaceFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEmmc51InterfaceFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEmmc51InterfaceFunctionality";
+            _tr.test_id = "testEmmc51InterfaceFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testFullCapacityVerification
@@ -847,7 +1043,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testFullCapacityVerification();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testFullCapacityVerification", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testFullCapacityVerification";
+            _tr.test_id = "testFullCapacityVerification";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSequentialReadPerformance
@@ -856,7 +1059,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testSequentialReadPerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSequentialReadPerformance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSequentialReadPerformance";
+            _tr.test_id = "testSequentialReadPerformance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSequentialWritePerformance
@@ -865,7 +1075,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testSequentialWritePerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSequentialWritePerformance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSequentialWritePerformance";
+            _tr.test_id = "testSequentialWritePerformance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRandomReadIops
@@ -874,7 +1091,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testRandomReadIops();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRandomReadIops", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRandomReadIops";
+            _tr.test_id = "testRandomReadIops";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRandomWriteIops
@@ -883,7 +1107,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testRandomWriteIops();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRandomWriteIops", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRandomWriteIops";
+            _tr.test_id = "testRandomWriteIops";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEmmcWearLeveling
@@ -892,7 +1123,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testEmmcWearLeveling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEmmcWearLeveling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEmmcWearLeveling";
+            _tr.test_id = "testEmmcWearLeveling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testBadBlockManagement
@@ -901,7 +1139,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testBadBlockManagement();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testBadBlockManagement", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testBadBlockManagement";
+            _tr.test_id = "testBadBlockManagement";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPowerLossProtection
@@ -910,7 +1155,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testPowerLossProtection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPowerLossProtection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPowerLossProtection";
+            _tr.test_id = "testPowerLossProtection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEmmcTemperatureMonitoring
@@ -919,7 +1171,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testEmmcTemperatureMonitoring();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEmmcTemperatureMonitoring", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEmmcTemperatureMonitoring";
+            _tr.test_id = "testEmmcTemperatureMonitoring";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testNvmeSsdDetection
@@ -928,7 +1187,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testNvmeSsdDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testNvmeSsdDetection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testNvmeSsdDetection";
+            _tr.test_id = "testNvmeSsdDetection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testNvmeReadwritePerformance
@@ -937,7 +1203,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testNvmeReadwritePerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testNvmeReadwritePerformance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testNvmeReadwritePerformance";
+            _tr.test_id = "testNvmeReadwritePerformance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testNvmeThermalThrottling
@@ -946,7 +1219,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testNvmeThermalThrottling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testNvmeThermalThrottling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testNvmeThermalThrottling";
+            _tr.test_id = "testNvmeThermalThrottling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testHotplugCapability
@@ -955,7 +1235,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testHotplugCapability();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testHotplugCapability", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testHotplugCapability";
+            _tr.test_id = "testHotplugCapability";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testStorageEncryptionSupport
@@ -964,7 +1251,14 @@ std::vector<TestResult> StorageTesting::runAllTests()
         TestOutput result = testStorageEncryptionSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testStorageEncryptionSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testStorageEncryptionSupport";
+            _tr.test_id = "testStorageEncryptionSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -1003,7 +1297,10 @@ std::vector<std::string> StorageTesting::getAvailableTests()
 TestResult StorageTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testEmmc51InterfaceFunctionality") {
         result = testEmmc51InterfaceFunctionality();
@@ -1039,10 +1336,26 @@ TestResult StorageTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

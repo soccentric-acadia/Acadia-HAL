@@ -98,7 +98,14 @@ TestOutput EnvironmentalTesting::testTemperatureRange()
     if (!vcTemp.empty())
         data.push_back("[INFO] vcgencmd: " + vcTemp);
 
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -134,7 +141,14 @@ TestOutput EnvironmentalTesting::testHumidityResistance()
     data.push_back(iioHumidity.empty() ? "[INFO] No IIO humidity sensor found (no HAT)"
                                        : "[PASS] Humidity sensor: " + iioHumidity);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -165,7 +179,14 @@ TestOutput EnvironmentalTesting::testVibrationResistance()
     data.push_back(usbDisc == "0" ? "[PASS] No USB disconnect events"
                                   : "[WARN] USB disconnects: " + usbDisc);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -194,7 +215,14 @@ TestOutput EnvironmentalTesting::testShockResistance()
     data.push_back(oomCount == "0" ? "[PASS] No OOM events in dmesg"
                                    : "[WARN] OOM events: " + oomCount);
 
-    return {!pstoreHasCrash, data};
+    {
+        TestOutput _out;
+        _out.status = !pstoreHasCrash ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = !pstoreHasCrash ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -225,7 +253,14 @@ TestOutput EnvironmentalTesting::testEmiemcCompliance()
     data.push_back("[INFO] Device-tree compatible: " + dtComp);
 
     data.push_back("[PASS] Pi5 CM is designed to meet CE/FCC Class B (board-level)");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -256,7 +291,14 @@ TestOutput EnvironmentalTesting::testEsdProtection()
                                  : "[WARN] I2C errors: " + i2cErr);
 
     data.push_back("[INFO] Pi5 header pins have TPD2E2U06 (or equiv) TVS protection");
-    return {gpioPresent, data};
+    {
+        TestOutput _out;
+        _out.status = gpioPresent ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = gpioPresent ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -289,7 +331,14 @@ TestOutput EnvironmentalTesting::testSaltSprayResistance()
     data.push_back(i2cErr == "0" ? "[PASS] No I2C/SPI communication errors detected"
                                  : "[WARN] Bus errors (possible corrosion indicator): " + i2cErr);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -306,7 +355,14 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
         TestOutput result = testTemperatureRange();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testTemperatureRange", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testTemperatureRange";
+            _tr.test_id = "testTemperatureRange";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testHumidityResistance
@@ -315,7 +371,14 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
         TestOutput result = testHumidityResistance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testHumidityResistance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testHumidityResistance";
+            _tr.test_id = "testHumidityResistance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVibrationResistance
@@ -324,7 +387,14 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
         TestOutput result = testVibrationResistance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVibrationResistance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVibrationResistance";
+            _tr.test_id = "testVibrationResistance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testShockResistance
@@ -333,7 +403,14 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
         TestOutput result = testShockResistance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testShockResistance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testShockResistance";
+            _tr.test_id = "testShockResistance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEmiemcCompliance
@@ -342,7 +419,14 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
         TestOutput result = testEmiemcCompliance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEmiemcCompliance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEmiemcCompliance";
+            _tr.test_id = "testEmiemcCompliance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEsdProtection
@@ -351,7 +435,14 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
         TestOutput result = testEsdProtection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEsdProtection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEsdProtection";
+            _tr.test_id = "testEsdProtection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSaltSprayResistance
@@ -360,7 +451,14 @@ std::vector<TestResult> EnvironmentalTesting::runAllTests()
         TestOutput result = testSaltSprayResistance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSaltSprayResistance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSaltSprayResistance";
+            _tr.test_id = "testSaltSprayResistance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -386,7 +484,10 @@ std::vector<std::string> EnvironmentalTesting::getAvailableTests()
 TestResult EnvironmentalTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testTemperatureRange") {
         result = testTemperatureRange();
@@ -406,10 +507,26 @@ TestResult EnvironmentalTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

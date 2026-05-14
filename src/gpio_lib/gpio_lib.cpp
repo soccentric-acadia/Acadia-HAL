@@ -307,7 +307,14 @@ TestOutput GpioTesting::testGpioout1()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -346,7 +353,14 @@ TestOutput GpioTesting::testGpioout2()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -391,7 +405,14 @@ TestOutput GpioTesting::testGpioout3()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -432,7 +453,14 @@ TestOutput GpioTesting::testGpioout4()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -474,7 +502,14 @@ TestOutput GpioTesting::testGpioOutputVoltageLevels()
         data.push_back("Voltage levels within acceptable range (simulated)");
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -514,7 +549,14 @@ TestOutput GpioTesting::testGpioOutputCurrentDriveCapability()
         data.push_back("Current drive capability within specifications (simulated)");
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -546,7 +588,14 @@ TestOutput GpioTesting::testGpioOutputSwitchingSpeed()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -581,7 +630,14 @@ TestOutput GpioTesting::testGpioPwmOutput()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -636,7 +692,14 @@ TestOutput GpioTesting::testGpioPulluppulldownResistors()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -673,7 +736,14 @@ TestOutput GpioTesting::testGpioin1()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -714,7 +784,14 @@ TestOutput GpioTesting::testGpioin2()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -755,7 +832,14 @@ TestOutput GpioTesting::testGpioin3()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -798,7 +882,14 @@ TestOutput GpioTesting::testGpioin4()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -839,7 +930,14 @@ TestOutput GpioTesting::testGpioInputVoltageThreshold()
         data.push_back("Input voltage thresholds within specifications (simulated)");
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -876,7 +974,14 @@ TestOutput GpioTesting::testGpioInputDebouncing()
         data.push_back("Input debouncing mechanism tested (simulated)");
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -911,7 +1016,14 @@ TestOutput GpioTesting::testGpioInterruptGeneration()
         data.push_back("Falling edge interrupt simulated");
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -949,7 +1061,14 @@ TestOutput GpioTesting::testGpioTimerCounterFunctionality()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -985,7 +1104,14 @@ TestOutput GpioTesting::testGpioSchmittTrigger()
         data.push_back("Falling edge threshold: ~1.2V (simulated)");
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1031,7 +1157,14 @@ TestOutput GpioTesting::testGpioDirectionChange()
         data.push_back("Pin changed back to input successfully");
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1055,7 +1188,14 @@ TestOutput GpioTesting::testGpioConcurrentAccess()
         data.push_back("No race conditions or deadlocks detected");
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1087,7 +1227,14 @@ TestOutput GpioTesting::testGpioInterruptLatency()
         }
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1121,7 +1268,14 @@ TestOutput GpioTesting::testGpioReservedPins()
         data.push_back("Normal pins remain accessible");
     }
 
-    return {success, data};
+    {
+        TestOutput _out;
+        _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1138,7 +1292,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioout1();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioout1", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioout1";
+            _tr.test_id = "testGpioout1";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioout2
@@ -1147,7 +1308,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioout2();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioout2", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioout2";
+            _tr.test_id = "testGpioout2";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioout3
@@ -1156,7 +1324,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioout3();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioout3", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioout3";
+            _tr.test_id = "testGpioout3";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioout4
@@ -1165,7 +1340,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioout4();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioout4", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioout4";
+            _tr.test_id = "testGpioout4";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioOutputVoltageLevels
@@ -1174,7 +1356,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioOutputVoltageLevels();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioOutputVoltageLevels", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioOutputVoltageLevels";
+            _tr.test_id = "testGpioOutputVoltageLevels";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioOutputCurrentDriveCapability
@@ -1183,7 +1372,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioOutputCurrentDriveCapability();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioOutputCurrentDriveCapability", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioOutputCurrentDriveCapability";
+            _tr.test_id = "testGpioOutputCurrentDriveCapability";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioOutputSwitchingSpeed
@@ -1192,7 +1388,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioOutputSwitchingSpeed();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioOutputSwitchingSpeed", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioOutputSwitchingSpeed";
+            _tr.test_id = "testGpioOutputSwitchingSpeed";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioPwmOutput
@@ -1201,7 +1404,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioPwmOutput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioPwmOutput", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioPwmOutput";
+            _tr.test_id = "testGpioPwmOutput";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioPulluppulldownResistors
@@ -1210,7 +1420,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioPulluppulldownResistors();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioPulluppulldownResistors", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioPulluppulldownResistors";
+            _tr.test_id = "testGpioPulluppulldownResistors";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioin1
@@ -1219,7 +1436,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioin1();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioin1", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioin1";
+            _tr.test_id = "testGpioin1";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioin2
@@ -1228,7 +1452,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioin2();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioin2", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioin2";
+            _tr.test_id = "testGpioin2";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioin3
@@ -1237,7 +1468,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioin3();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioin3", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioin3";
+            _tr.test_id = "testGpioin3";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioin4
@@ -1246,7 +1484,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioin4();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioin4", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioin4";
+            _tr.test_id = "testGpioin4";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioInputVoltageThreshold
@@ -1255,7 +1500,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioInputVoltageThreshold();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioInputVoltageThreshold", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioInputVoltageThreshold";
+            _tr.test_id = "testGpioInputVoltageThreshold";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioInputDebouncing
@@ -1264,7 +1516,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioInputDebouncing();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioInputDebouncing", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioInputDebouncing";
+            _tr.test_id = "testGpioInputDebouncing";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioInterruptGeneration
@@ -1273,7 +1532,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioInterruptGeneration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioInterruptGeneration", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioInterruptGeneration";
+            _tr.test_id = "testGpioInterruptGeneration";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioTimerCounterFunctionality
@@ -1282,7 +1548,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioTimerCounterFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioTimerCounterFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioTimerCounterFunctionality";
+            _tr.test_id = "testGpioTimerCounterFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioSchmittTrigger
@@ -1291,7 +1564,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioSchmittTrigger();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioSchmittTrigger", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioSchmittTrigger";
+            _tr.test_id = "testGpioSchmittTrigger";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioDirectionChange
@@ -1300,7 +1580,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioDirectionChange();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioDirectionChange", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioDirectionChange";
+            _tr.test_id = "testGpioDirectionChange";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioConcurrentAccess
@@ -1309,7 +1596,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioConcurrentAccess();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioConcurrentAccess", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioConcurrentAccess";
+            _tr.test_id = "testGpioConcurrentAccess";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioInterruptLatency
@@ -1318,7 +1612,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioInterruptLatency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioInterruptLatency", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioInterruptLatency";
+            _tr.test_id = "testGpioInterruptLatency";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testGpioReservedPins
@@ -1327,7 +1628,14 @@ std::vector<TestResult> GpioTesting::runAllTests()
         TestOutput result = testGpioReservedPins();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testGpioReservedPins", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testGpioReservedPins";
+            _tr.test_id = "testGpioReservedPins";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -1373,7 +1681,10 @@ std::vector<std::string> GpioTesting::getAvailableTests()
 TestResult GpioTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testGpioout1") {
         result = testGpioout1();
@@ -1423,10 +1734,26 @@ TestResult GpioTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

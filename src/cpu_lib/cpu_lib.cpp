@@ -169,7 +169,14 @@ TestOutput CpuTesting::testAll12CpuCoresFunctionality()
 
     if (passed)
         data.push_back("All " + std::to_string(CPU_CORES) + " Cortex-A76 cores are online and functional.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -216,7 +223,14 @@ TestOutput CpuTesting::testCpuCoreFrequencyScaling()
         passed = false;
         data.push_back("FAIL: No cpufreq data available for any core.");
     }
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -266,7 +280,14 @@ TestOutput CpuTesting::testIndividualCoreStressTesting()
         total += r.timeSec;
     }
     data.push_back("Aggregate compute time: " + std::to_string(total) + " s");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -316,7 +337,14 @@ TestOutput CpuTesting::testMulticoreSynchronization()
         if (sorted[i] != i)
             passed = false;
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -361,7 +389,14 @@ TestOutput CpuTesting::testCpuClusterCommunication()
 
     if (passed)
         data.push_back("Inter-core communication verified (BCM2712 unified cache domain).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -399,7 +434,14 @@ TestOutput CpuTesting::testCoreAffinityAndThreadMigration()
     if (passed)
         data.push_back("Core affinity and thread migration verified for all " +
                        std::to_string(CPU_CORES) + " Cortex-A76 cores.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -447,7 +489,14 @@ TestOutput CpuTesting::testCpuThermalThrottling()
     else
         data.push_back("Thermal check complete. No throttling condition detected.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -486,7 +535,14 @@ TestOutput CpuTesting::testCpuPowerStatesAndTransitions()
     if (coresWithIdle == 0)
         data.push_back("WARNING: No cpuidle states found - may require kernel config.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -532,7 +588,14 @@ TestOutput CpuTesting::testL1Cache()
         if (!level.empty())
             data.push_back("Cache index" + std::to_string(i) + ": L" + level + " " + type + " = " + size);
     }
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -572,7 +635,14 @@ TestOutput CpuTesting::testL2Cache()
     else
         data.push_back("L2 cache latency within expected range (<50 ns).");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -610,7 +680,14 @@ TestOutput CpuTesting::testL3Cache()
     else
         data.push_back("Memory (beyond L2) latency within expected range (<200 ns).");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -652,7 +729,14 @@ TestOutput CpuTesting::testSystemCache()
     if (!foundL2)
         data.push_back("WARNING: L2 cache not found in sysfs topology.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -694,7 +778,14 @@ TestOutput CpuTesting::testCacheCoherencyBetweenClusters()
                    "  (BCM2712 unified AMBA coherency domain)");
     data.push_back(passed ? "All rounds passed - cache coherency verified."
                           : "FAIL: Cache coherency violation detected.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -750,7 +841,14 @@ TestOutput CpuTesting::testCacheLineInvalidation()
     else
         data.push_back("Cache line invalidation test completed.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -788,7 +886,14 @@ TestOutput CpuTesting::testCacheBandwidthAndLatency()
     } else {
         data.push_back("Memory bandwidth is acceptable (Pi5 LPDDR4X-4267 theoretical: ~17 GB/s).");
     }
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -830,7 +935,14 @@ TestOutput CpuTesting::testSinglethreadedPerformance()
     } else {
         data.push_back("Single-threaded performance within expected range.");
     }
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -875,7 +987,14 @@ TestOutput CpuTesting::testMultithreadedPerformance()
     } else {
         data.push_back("Multi-threaded performance within expected range.");
     }
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -890,7 +1009,13 @@ TestOutput CpuTesting::testContextSwitchingPerformance()
     const int ROUNDS = 10'000;
     int pipeAB[2], pipeBA[2];
     if (pipe(pipeAB) != 0 || pipe(pipeBA) != 0)
-        return {false, {"FAIL: Could not create pipes for context switch test."}};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            _out.reason["detail_0"] = "FAIL: Could not create pipes for context switch test.";
+            return _out;
+        }
 
     std::atomic<bool> ready{false};
     std::thread pinger([&]() {
@@ -932,7 +1057,14 @@ TestOutput CpuTesting::testContextSwitchingPerformance()
     else
         data.push_back("Context switch latency within expected range.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -980,7 +1112,14 @@ TestOutput CpuTesting::testInterruptLatency()
     } else {
         data.push_back("Interrupt/timer latency within acceptable range.");
     }
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1036,7 +1175,14 @@ TestOutput CpuTesting::testDmaOperations()
     } else {
         data.push_back("DMA/memcpy operation test completed successfully.");
     }
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1053,7 +1199,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testAll12CpuCoresFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAll12CpuCoresFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAll12CpuCoresFunctionality";
+            _tr.test_id = "testAll12CpuCoresFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCpuCoreFrequencyScaling
@@ -1062,7 +1215,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testCpuCoreFrequencyScaling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCpuCoreFrequencyScaling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCpuCoreFrequencyScaling";
+            _tr.test_id = "testCpuCoreFrequencyScaling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testIndividualCoreStressTesting
@@ -1071,7 +1231,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testIndividualCoreStressTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testIndividualCoreStressTesting", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testIndividualCoreStressTesting";
+            _tr.test_id = "testIndividualCoreStressTesting";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMulticoreSynchronization
@@ -1080,7 +1247,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testMulticoreSynchronization();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMulticoreSynchronization", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMulticoreSynchronization";
+            _tr.test_id = "testMulticoreSynchronization";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCpuClusterCommunication
@@ -1089,7 +1263,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testCpuClusterCommunication();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCpuClusterCommunication", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCpuClusterCommunication";
+            _tr.test_id = "testCpuClusterCommunication";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCoreAffinityAndThreadMigration
@@ -1098,7 +1279,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testCoreAffinityAndThreadMigration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCoreAffinityAndThreadMigration", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCoreAffinityAndThreadMigration";
+            _tr.test_id = "testCoreAffinityAndThreadMigration";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCpuThermalThrottling
@@ -1107,7 +1295,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testCpuThermalThrottling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCpuThermalThrottling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCpuThermalThrottling";
+            _tr.test_id = "testCpuThermalThrottling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCpuPowerStatesAndTransitions
@@ -1116,7 +1311,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testCpuPowerStatesAndTransitions();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCpuPowerStatesAndTransitions", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCpuPowerStatesAndTransitions";
+            _tr.test_id = "testCpuPowerStatesAndTransitions";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testL1Cache
@@ -1125,7 +1327,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testL1Cache();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testL1Cache", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testL1Cache";
+            _tr.test_id = "testL1Cache";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testL2Cache
@@ -1134,7 +1343,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testL2Cache();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testL2Cache", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testL2Cache";
+            _tr.test_id = "testL2Cache";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testL3Cache
@@ -1143,7 +1359,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testL3Cache();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testL3Cache", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testL3Cache";
+            _tr.test_id = "testL3Cache";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSystemCache
@@ -1152,7 +1375,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testSystemCache();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSystemCache", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSystemCache";
+            _tr.test_id = "testSystemCache";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCacheCoherencyBetweenClusters
@@ -1161,7 +1391,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testCacheCoherencyBetweenClusters();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCacheCoherencyBetweenClusters", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCacheCoherencyBetweenClusters";
+            _tr.test_id = "testCacheCoherencyBetweenClusters";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCacheLineInvalidation
@@ -1170,7 +1407,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testCacheLineInvalidation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCacheLineInvalidation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCacheLineInvalidation";
+            _tr.test_id = "testCacheLineInvalidation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCacheBandwidthAndLatency
@@ -1179,7 +1423,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testCacheBandwidthAndLatency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCacheBandwidthAndLatency", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCacheBandwidthAndLatency";
+            _tr.test_id = "testCacheBandwidthAndLatency";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSinglethreadedPerformance
@@ -1188,7 +1439,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testSinglethreadedPerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSinglethreadedPerformance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSinglethreadedPerformance";
+            _tr.test_id = "testSinglethreadedPerformance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultithreadedPerformance
@@ -1197,7 +1455,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testMultithreadedPerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultithreadedPerformance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultithreadedPerformance";
+            _tr.test_id = "testMultithreadedPerformance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testContextSwitchingPerformance
@@ -1206,7 +1471,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testContextSwitchingPerformance();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testContextSwitchingPerformance", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testContextSwitchingPerformance";
+            _tr.test_id = "testContextSwitchingPerformance";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testInterruptLatency
@@ -1215,7 +1487,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testInterruptLatency();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testInterruptLatency", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testInterruptLatency";
+            _tr.test_id = "testInterruptLatency";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDmaOperations
@@ -1224,7 +1503,14 @@ std::vector<TestResult> CpuTesting::runAllTests()
         TestOutput result = testDmaOperations();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDmaOperations", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDmaOperations";
+            _tr.test_id = "testDmaOperations";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -1268,7 +1554,10 @@ std::vector<std::string> CpuTesting::getAvailableTests()
 TestResult CpuTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testAll12CpuCoresFunctionality") {
         result = testAll12CpuCoresFunctionality();
@@ -1314,10 +1603,26 @@ TestResult CpuTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

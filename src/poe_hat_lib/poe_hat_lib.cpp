@@ -118,7 +118,15 @@ TestOutput PoeHatTesting::testPoeHatDetection()
     else
         data.push_back("[INFO] HAT EEPROM not readable at /proc/device-tree/hat/");
 
-    return {fanCtrl || inaPresent || !eeprom.empty(), data};
+    {
+        TestOutput _out;
+        const bool _ok = fanCtrl || inaPresent || !eeprom.empty();
+        _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -155,7 +163,14 @@ TestOutput PoeHatTesting::testPoePowerNegotiation()
                                " (possible under-voltage from PoE)"
                              : "[PASS] No throttle — PoE power delivery adequate");
 
-    return {linkUp, data};
+    {
+        TestOutput _out;
+        _out.status = linkUp ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = linkUp ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -198,7 +213,14 @@ TestOutput PoeHatTesting::testPowerMonitoring()
     }
 
     data.push_back("[INFO] PoE+ budget: 25.5 W input, ~5V × 5A = 25 W to Pi5 GPIO header");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -249,7 +271,14 @@ TestOutput PoeHatTesting::testFanControl()
         }
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -278,7 +307,14 @@ TestOutput PoeHatTesting::testFanSpeed()
         data.push_back("[INFO] Official PoE+ HAT fan: 25×25 mm, ~5000 RPM max");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -309,7 +345,14 @@ TestOutput PoeHatTesting::testThermalProtection()
     data.push_back(ok ? "[PASS] No throttle (temps within limits)"
                       : "[INFO] Throttle status: " + throttle);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -341,7 +384,14 @@ TestOutput PoeHatTesting::testVoltageRegulator()
         ? "[WARN] Under-voltage detected — check PoE injector / cable quality"
         : "[PASS] No under-voltage — 5V regulator output stable");
 
-    return {!underVolt, data};
+    {
+        TestOutput _out;
+        _out.status = !underVolt ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = !underVolt ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -377,7 +427,14 @@ TestOutput PoeHatTesting::testPowerDelivery()
                    (tempAfter.empty() ? "N/A" : std::to_string(std::stod(tempAfter) / 1000.0) + " °C"));
 
     data.push_back("[INFO] PoE+ HAT rated for Pi5 maximum load (~8-9 W CPU full load)");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -391,7 +448,14 @@ std::vector<TestResult> PoeHatTesting::runAllTests()
         auto start = std::chrono::high_resolution_clock::now();
         TestOutput out = (this->*fn)();
         auto end = std::chrono::high_resolution_clock::now();
-        results.push_back({name, out, end - start});
+        {
+            TestResult _tr;
+            _tr.name = name;
+            _tr.test_id = name;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+            _tr.output = out;
+            results.push_back(_tr);
+        }
     };
     run("testPoeHatDetection",     &PoeHatTesting::testPoeHatDetection);
     run("testPoePowerNegotiation", &PoeHatTesting::testPoePowerNegotiation);
@@ -421,7 +485,10 @@ std::vector<std::string> PoeHatTesting::getAvailableTests()
 TestResult PoeHatTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if      (testName == "testPoeHatDetection")     result = testPoeHatDetection();
     else if (testName == "testPoePowerNegotiation") result = testPoePowerNegotiation();
@@ -433,9 +500,25 @@ TestResult PoeHatTesting::runSingleTest(const std::string& testName)
     else if (testName == "testPowerDelivery")       result = testPowerDelivery();
     else {
         auto end = std::chrono::high_resolution_clock::now();
-        return {testName + " (UNKNOWN)", {false, {}}, end - start};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
-    return {testName, result, end - start};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        _tr.output = result;
+        return _tr;
+    }
 }

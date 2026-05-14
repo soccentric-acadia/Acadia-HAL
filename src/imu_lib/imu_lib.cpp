@@ -116,7 +116,14 @@ TestOutput ImuTesting::test3axisAccelerometer()
         data.push_back("[WARN] No IIO accelerometer found (connect external IMU via I2C/SPI)");
 
     data.push_back("[INFO] Typical Pi5 IMU wiring: ICM-42688 on /dev/i2c-1 (GPIO 2/3)");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -150,7 +157,14 @@ TestOutput ImuTesting::test3axisGyroscope()
     if (!found)
         data.push_back("[WARN] No IIO gyroscope found");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -184,7 +198,14 @@ TestOutput ImuTesting::test3axisMagnetometer()
     if (!found)
         data.push_back("[WARN] No IIO magnetometer found (external compass HAT required)");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -214,7 +235,14 @@ TestOutput ImuTesting::testImuDataRate()
         data.push_back("[WARN] No IIO device with sampling_frequency found");
 
     data.push_back("[INFO] ICM-42688 supports up to 32 kHz ODR; typical HAT: 200–1000 Hz");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -251,7 +279,14 @@ TestOutput ImuTesting::testImuAccuracy()
         data.push_back("[WARN] No IIO device found for accuracy assessment");
 
     data.push_back("[INFO] Accuracy characterisation requires Allan variance analysis");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -286,7 +321,14 @@ TestOutput ImuTesting::testImuCalibration()
         data.push_back("[WARN] No IIO IMU found for calibration test");
 
     data.push_back("[INFO] Full 6-axis calibration requires known motion fixture");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -319,7 +361,14 @@ TestOutput ImuTesting::testImuTemperatureCompensation()
         data.push_back("[WARN] No IIO temperature channel found (no IMU connected)");
 
     data.push_back("[INFO] On-die temperature used by IMU firmware for TC correction");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -360,7 +409,14 @@ TestOutput ImuTesting::testImuToOrinInterface()
     auto iioDevs = imuListIioDevices();
     data.push_back("[INFO] IIO devices enumerated: " + std::to_string(iioDevs.size()));
 
-    return {i2c1, data};
+    {
+        TestOutput _out;
+        _out.status = i2c1 ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = i2c1 ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -377,7 +433,14 @@ std::vector<TestResult> ImuTesting::runAllTests()
         TestOutput result = test3axisAccelerometer();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test3axisAccelerometer", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test3axisAccelerometer";
+            _tr.test_id = "test3axisAccelerometer";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test3axisGyroscope
@@ -386,7 +449,14 @@ std::vector<TestResult> ImuTesting::runAllTests()
         TestOutput result = test3axisGyroscope();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test3axisGyroscope", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test3axisGyroscope";
+            _tr.test_id = "test3axisGyroscope";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test3axisMagnetometer
@@ -395,7 +465,14 @@ std::vector<TestResult> ImuTesting::runAllTests()
         TestOutput result = test3axisMagnetometer();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test3axisMagnetometer", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test3axisMagnetometer";
+            _tr.test_id = "test3axisMagnetometer";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testImuDataRate
@@ -404,7 +481,14 @@ std::vector<TestResult> ImuTesting::runAllTests()
         TestOutput result = testImuDataRate();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testImuDataRate", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testImuDataRate";
+            _tr.test_id = "testImuDataRate";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testImuAccuracy
@@ -413,7 +497,14 @@ std::vector<TestResult> ImuTesting::runAllTests()
         TestOutput result = testImuAccuracy();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testImuAccuracy", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testImuAccuracy";
+            _tr.test_id = "testImuAccuracy";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testImuCalibration
@@ -422,7 +513,14 @@ std::vector<TestResult> ImuTesting::runAllTests()
         TestOutput result = testImuCalibration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testImuCalibration", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testImuCalibration";
+            _tr.test_id = "testImuCalibration";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testImuTemperatureCompensation
@@ -431,7 +529,14 @@ std::vector<TestResult> ImuTesting::runAllTests()
         TestOutput result = testImuTemperatureCompensation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testImuTemperatureCompensation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testImuTemperatureCompensation";
+            _tr.test_id = "testImuTemperatureCompensation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testImuToOrinInterface
@@ -440,7 +545,14 @@ std::vector<TestResult> ImuTesting::runAllTests()
         TestOutput result = testImuToOrinInterface();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testImuToOrinInterface", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testImuToOrinInterface";
+            _tr.test_id = "testImuToOrinInterface";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -465,7 +577,10 @@ std::vector<std::string> ImuTesting::getAvailableTests()
 TestResult ImuTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testImuDataRate") {
         result = testImuDataRate();
@@ -481,10 +596,26 @@ TestResult ImuTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

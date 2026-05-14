@@ -9,7 +9,7 @@
 // All 35 module Config messages share the same structure:
 //   message Config { repeated string test_names = 1; }
 // and all Result messages share:
-//   message Result { repeated hal.common.TestResultEntry test_results = 1; }
+//   message Result { repeated hal.common.TestResult results = 2; }
 //
 // Usage (in module_registry_all.cpp):
 //   registry->Register("cpu",
@@ -22,6 +22,7 @@
 #include "common.pb.h"
 #include "lib_base.h"
 
+#include <google/protobuf/duration.pb.h>
 #include <google/protobuf/timestamp.pb.h>
 #include <grpcpp/grpcpp.h>
 
@@ -36,21 +37,88 @@ namespace hal {
 namespace server {
 
 // ============================================================
-// Proto conversion helpers (used from TypedModuleHandler)
+// Proto conversion helpers — new canonical shape
 // ============================================================
 
-inline hal::common::TestOutput ToProto(const ::TestOutput& o) {
+inline hal::common::TestStatus ToProtoStatus(::hal::Status s) {
+    switch (s) {
+        case ::hal::Status::PASS:    return hal::common::TestStatus::TEST_STATUS_PASS;
+        case ::hal::Status::FAIL:    return hal::common::TestStatus::TEST_STATUS_FAIL;
+        case ::hal::Status::ERROR:   return hal::common::TestStatus::TEST_STATUS_ERROR;
+        case ::hal::Status::TIMEOUT: return hal::common::TestStatus::TEST_STATUS_TIMEOUT;
+        case ::hal::Status::SKIPPED: return hal::common::TestStatus::TEST_STATUS_SKIPPED;
+        case ::hal::Status::ABORTED: return hal::common::TestStatus::TEST_STATUS_ABORTED;
+        default:                     return hal::common::TestStatus::TEST_STATUS_ERROR;
+    }
+}
+
+inline hal::common::TestSeverity ToProtoSeverity(::hal::Severity sv) {
+    switch (sv) {
+        case ::hal::Severity::INFO:     return hal::common::TestSeverity::TEST_SEVERITY_INFO;
+        case ::hal::Severity::WARNING:  return hal::common::TestSeverity::TEST_SEVERITY_WARNING;
+        case ::hal::Severity::ERROR:    return hal::common::TestSeverity::TEST_SEVERITY_ERROR;
+        case ::hal::Severity::CRITICAL: return hal::common::TestSeverity::TEST_SEVERITY_CRITICAL;
+        default:                        return hal::common::TestSeverity::TEST_SEVERITY_INFO;
+    }
+}
+
+inline hal::common::TypedValue ToProtoTypedValue(const ::hal::Value& v) {
+    hal::common::TypedValue tv;
+    if (const bool* b = std::get_if<bool>(&v)) {
+        tv.set_bool_value(*b);
+    } else if (const int64_t* i = std::get_if<int64_t>(&v)) {
+        tv.set_int_value(*i);
+    } else if (const double* d = std::get_if<double>(&v)) {
+        tv.set_double_value(*d);
+    } else if (const std::string* s = std::get_if<std::string>(&v)) {
+        tv.set_string_value(*s);
+    } else {
+        // [SERIALIZER-FALLBACK] Unknown variant index — encoding as empty string.
+        tv.set_string_value("");
+    }
+    return tv;
+}
+
+inline hal::common::TestOutput ToProtoTestOutput(const ::hal::TestOutput& o) {
     hal::common::TestOutput p;
-    p.set_passed(o.passed);
-    for (const auto& d : o.data) p.add_data(d);
+    p.set_status(ToProtoStatus(o.status));
+    p.set_severity(ToProtoSeverity(o.severity));
+    for (const auto& [k, v] : o.reason)     (*p.mutable_reason())[k]     = v;
+    for (const auto& [k, v] : o.metrics)    (*p.mutable_metrics())[k]    = ToProtoTypedValue(v);
+    for (const auto& [k, v] : o.monitoring) (*p.mutable_monitoring())[k] = ToProtoTypedValue(v);
+    for (const auto& [k, v] : o.event)      (*p.mutable_event())[k]      = ToProtoTypedValue(v);
+    if (!o.error_message.empty()) p.set_error_message(o.error_message);
     return p;
 }
 
-inline hal::common::TestResultEntry ToProto(const ::TestResult& r) {
-    hal::common::TestResultEntry p;
+// Forward declaration for recursive subtests.
+inline hal::common::TestResult ToProtoTestResult(const ::hal::TestResult& r);
+
+inline hal::common::TestResult ToProtoTestResult(const ::hal::TestResult& r) {
+    hal::common::TestResult p;
+    p.set_module_id(r.module_id);
+    p.set_test_id(r.test_id);
     p.set_name(r.name);
-    *p.mutable_output() = ToProto(r.output);
-    p.set_duration_sec(r.duration.count());
+    p.set_sequence(r.sequence);
+    // timestamp
+    {
+        auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            r.timestamp.time_since_epoch());
+        google::protobuf::Timestamp ts;
+        ts.set_seconds(static_cast<int64_t>(ns.count() / 1'000'000'000LL));
+        ts.set_nanos(static_cast<int32_t>(ns.count() % 1'000'000'000LL));
+        *p.mutable_timestamp() = ts;
+    }
+    // duration
+    {
+        google::protobuf::Duration dur;
+        dur.set_seconds(static_cast<int64_t>(r.duration.count() / 1'000'000'000LL));
+        dur.set_nanos(static_cast<int32_t>(r.duration.count() % 1'000'000'000LL));
+        *p.mutable_duration() = dur;
+    }
+    *p.mutable_output() = ToProtoTestOutput(r.output);
+    for (const auto& sub : r.subtests)
+        *p.add_subtests() = ToProtoTestResult(sub);
     return p;
 }
 
@@ -82,15 +150,30 @@ inline void FillEnvelope(hal::common::ResultEnvelope*  env,
 
 inline hal::common::TestStatus ComputeStatus(
     const std::vector<::TestResult>& results) {
-    if (results.empty()) return hal::common::TestStatus::ERROR;
+    if (results.empty()) return hal::common::TestStatus::TEST_STATUS_ERROR;
     bool all_pass = true, any_pass = false;
     for (const auto& r : results) {
-        if (r.output.passed) any_pass = true;
-        else                 all_pass = false;
+        if (r.output.status == ::hal::Status::PASS) any_pass = true;
+        else                                         all_pass = false;
     }
-    if (all_pass) return hal::common::TestStatus::PASS;
-    if (any_pass) return hal::common::TestStatus::PARTIAL;
-    return hal::common::TestStatus::FAIL;
+    if (all_pass) return hal::common::TestStatus::TEST_STATUS_PASS;
+    if (any_pass) return hal::common::TestStatus::PARTIAL;  // envelope-level aggregate
+    return hal::common::TestStatus::TEST_STATUS_FAIL;
+}
+
+// Stamp module_id, timestamp (if not already set), and sequence onto a results
+// vector. Called by RunTests() after the HAL module's tests have executed.
+inline void StampResults(std::vector<::TestResult>& results,
+                          const std::string&          module_id,
+                          uint64_t                    sequence) {
+    auto now = std::chrono::system_clock::now();
+    for (auto& r : results) {
+        r.module_id = module_id;
+        r.sequence  = sequence;
+        if (r.timestamp == std::chrono::system_clock::time_point{})
+            r.timestamp = now;
+        if (r.test_id.empty()) r.test_id = r.name;
+    }
 }
 
 // ============================================================
@@ -116,10 +199,10 @@ class TypedModuleHandler : public IModuleHandler {
         TryUnpack(module_config, cfg);
 
         HalClass hal_module;
-        auto results = RunTests(hal_module, cfg);
+        auto results = RunAndStamp(hal_module, cfg, /*sequence=*/0);
 
         ResultProto rp;
-        for (const auto& r : results) *rp.add_test_results() = ToProto(r);
+        for (const auto& r : results) *rp.add_results() = ToProtoTestResult(r);
 
         FillEnvelope(out, module_id_, version_,
                      hal::common::ExecutionMode::SINGLE_SHOT,
@@ -146,12 +229,15 @@ class TypedModuleHandler : public IModuleHandler {
         StoreActive(hal_module);
 
         std::mutex write_mu;
+        uint64_t   seq = 0;
         hal_module->runLongTerm(
             interval_ms, dur_ms,
-            [&](const std::vector<::TestResult>& results, int /*cycle*/) {
+            [&](const std::vector<::TestResult>& raw_results, int /*cycle*/) {
+                auto results = raw_results;
+                StampResults(results, module_id_, seq++);
                 hal::common::ResultEnvelope env;
                 ResultProto rp;
-                for (const auto& r : results) *rp.add_test_results() = ToProto(r);
+                for (const auto& r : results) *rp.add_results() = ToProtoTestResult(r);
                 FillEnvelope(&env, module_id_, version_,
                              hal::common::ExecutionMode::LONG_TERM,
                              ComputeStatus(results));
@@ -180,9 +266,6 @@ class TypedModuleHandler : public IModuleHandler {
         int     interval_ms = std::max(common.interval_ms(), 100);
         int64_t dur_ms      = common.run_forever() ? 0LL : common.duration_ms();
 
-        // Build MonitorItems from the requested names.
-        // The server-side reader callable returns the name as a placeholder;
-        // real deployments should inject a monitor item registry.
         std::vector<::MonitorItem> monitor_items;
         for (const auto& name : monitoring.monitor_item_names()) {
             ::MonitorItem item;
@@ -195,15 +278,26 @@ class TypedModuleHandler : public IModuleHandler {
         StoreActive(hal_module);
 
         std::mutex write_mu;
+        uint64_t   seq = 0;
         hal_module->runMonitoringTest(
             interval_ms, dur_ms, monitor_items,
             [&](const ::MonitoringSnapshot& snap) {
+                auto results = snap.testResults;
+                // Stamp monitoring data into each result's monitoring map.
+                for (auto& r : results) {
+                    for (const auto& kv : snap.monitorData) {
+                        r.output.monitoring[kv.first] =
+                            ::hal::Value{std::string(kv.second)};
+                    }
+                }
+                StampResults(results, module_id_, seq++);
+
                 hal::common::ResultEnvelope   env;
                 hal::common::MonitoringSnapshot proto_snap;
                 proto_snap.set_cycle(snap.cycle);
                 *proto_snap.mutable_timestamp() = NowTimestamp();
-                for (const auto& r : snap.testResults)
-                    *proto_snap.add_test_results() = ToProto(r);
+                for (const auto& r : results)
+                    *proto_snap.add_test_results() = ToProtoTestResult(r);
                 for (const auto& kv : snap.monitorData) {
                     auto* pair = proto_snap.add_monitor_data();
                     pair->set_key(kv.first);
@@ -211,7 +305,7 @@ class TypedModuleHandler : public IModuleHandler {
                 }
                 FillEnvelope(&env, module_id_, version_,
                              hal::common::ExecutionMode::MONITORING,
-                             ComputeStatus(snap.testResults));
+                             ComputeStatus(results));
                 env.mutable_payload()->PackFrom(proto_snap);
                 std::lock_guard<std::mutex> wlk(write_mu);
                 writer->Write(env);
@@ -248,7 +342,8 @@ class TypedModuleHandler : public IModuleHandler {
         criteria.predicate   = [tname, exp_pass](const std::vector<::TestResult>& res) {
             if (tname.empty()) return false;
             for (const auto& r : res)
-                if (r.name == tname) return r.output.passed == exp_pass;
+                if (r.name == tname)
+                    return (r.output.status == ::hal::Status::PASS) == exp_pass;
             return false;
         };
 
@@ -256,12 +351,22 @@ class TypedModuleHandler : public IModuleHandler {
         StoreActive(hal_module);
 
         std::mutex write_mu;
+        uint64_t   seq = 0;
         hal_module->runEventTest(
             poll_ms, criteria,
-            [&](const std::vector<::TestResult>& results) {
+            [&](const std::vector<::TestResult>& raw_results) {
+                auto results = raw_results;
+                // Populate event map with trigger info.
+                for (auto& r : results) {
+                    r.output.event["trigger_test"]     = ::hal::Value{tname};
+                    r.output.event["expected_pass"]    = ::hal::Value{exp_pass};
+                    r.output.event["observed_pass"]    =
+                        ::hal::Value{r.output.status == ::hal::Status::PASS};
+                }
+                StampResults(results, module_id_, seq++);
                 hal::common::ResultEnvelope env;
                 ResultProto rp;
-                for (const auto& r : results) *rp.add_test_results() = ToProto(r);
+                for (const auto& r : results) *rp.add_results() = ToProtoTestResult(r);
                 FillEnvelope(&env, module_id_, version_,
                              hal::common::ExecutionMode::EVENT_BASED,
                              ComputeStatus(results));
@@ -300,12 +405,19 @@ class TypedModuleHandler : public IModuleHandler {
     }
 
   private:
-    // Run selected tests, or all tests when test_names is empty.
-    static std::vector<::TestResult> RunTests(HalClass& m, const ConfigProto& cfg) {
+    // Run selected tests, stamp results, and return them.
+    std::vector<::TestResult> RunAndStamp(HalClass& m, const ConfigProto& cfg,
+                                           uint64_t sequence) {
+        std::vector<::TestResult> results;
         if (cfg.test_names_size() == 0)
-            return m.runSelectedTests(m.getAvailableTests());
-        std::vector<std::string> names(cfg.test_names().begin(), cfg.test_names().end());
-        return m.runSelectedTests(names);
+            results = m.runSelectedTests(m.getAvailableTests());
+        else {
+            std::vector<std::string> names(cfg.test_names().begin(),
+                                           cfg.test_names().end());
+            results = m.runSelectedTests(names);
+        }
+        StampResults(results, module_id_, sequence);
+        return results;
     }
 
     // Unpack google.protobuf.Any → ConfigProto; silently skips if the Any is empty.

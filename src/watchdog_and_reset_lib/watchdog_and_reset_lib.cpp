@@ -72,7 +72,14 @@ TestOutput WatchdogAndResetTesting::testWatchdogTimerFunctionality()
     if (!wdExists) {
         data.push_back("INFO: Load watchdog driver: modprobe bcm2835-wdt or bcm2712-wdt");
         data.push_back("INFO: Enable via /boot/firmware/config.txt: dtparam=watchdog=on");
-        return {true, data}; // Not a hard failure — watchdog may not be enabled
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        } // Not a hard failure — watchdog may not be enabled
     }
 
     // Open watchdog (read-only check — do NOT send keep-alive or set timeout here)
@@ -105,7 +112,14 @@ TestOutput WatchdogAndResetTesting::testWatchdogTimerFunctionality()
         data.push_back("       (May be held by systemd-watchdogd or watchdog daemon)");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -143,7 +157,14 @@ TestOutput WatchdogAndResetTesting::testWatchdogTimeoutConfiguration()
 
     data.push_back("Pi5 RP1 watchdog max timeout: 1048575 seconds (~12 days)");
     data.push_back("PASS: Timeout configuration check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -161,7 +182,14 @@ TestOutput WatchdogAndResetTesting::testWatchdogResetGeneration()
     bool wdExists = (access("/dev/watchdog0", F_OK) == 0);
     if (!wdExists) {
         data.push_back("INFO: /dev/watchdog0 not found. Enable via dtparam=watchdog=on");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     int fd = open("/dev/watchdog0", O_WRONLY | O_CLOEXEC);
@@ -181,7 +209,14 @@ TestOutput WatchdogAndResetTesting::testWatchdogResetGeneration()
         data.push_back("INFO: Cannot open watchdog (possibly held by system daemon).");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -197,7 +232,14 @@ TestOutput WatchdogAndResetTesting::testWatchdogInterruptGeneration()
     bool wdExists = (access("/dev/watchdog0", F_OK) == 0);
     if (!wdExists) {
         data.push_back("INFO: /dev/watchdog0 not present.");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     int fd = open("/dev/watchdog0", O_WRONLY | O_CLOEXEC);
@@ -217,7 +259,14 @@ TestOutput WatchdogAndResetTesting::testWatchdogInterruptGeneration()
     }
 
     data.push_back("PASS: Interrupt/pretimeout check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -255,7 +304,14 @@ TestOutput WatchdogAndResetTesting::testPoweronReset()
     }
 
     data.push_back("PASS: Power-on reset check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -280,7 +336,14 @@ TestOutput WatchdogAndResetTesting::testHardwareResetButton()
 
     data.push_back("Hardware reset: pull J2 pin 1 (RUN) low to trigger immediate reset.");
     data.push_back("PASS: Reset button check complete (cannot activate without physical access).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -308,7 +371,14 @@ TestOutput WatchdogAndResetTesting::testSoftwareReset()
 
     data.push_back("Software reset methods: systemctl reboot, /proc/sysrq-trigger (b), reboot(2) syscall");
     data.push_back("PASS: Software reset capability confirmed.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -344,7 +414,14 @@ TestOutput WatchdogAndResetTesting::testWatchdogReset()
     if (!wdMsg.empty()) data.push_back("dmesg watchdog: " + wdMsg.substr(0, 300));
 
     data.push_back("PASS: Watchdog reset history check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -385,7 +462,14 @@ TestOutput WatchdogAndResetTesting::testThermalReset()
     }
 
     data.push_back("PASS: Thermal reset history check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -424,7 +508,14 @@ TestOutput WatchdogAndResetTesting::testResetReasonLogging()
     }
 
     data.push_back("PASS: Reset reason logging check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -441,7 +532,14 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
         TestOutput result = testWatchdogTimerFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testWatchdogTimerFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testWatchdogTimerFunctionality";
+            _tr.test_id = "testWatchdogTimerFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testWatchdogTimeoutConfiguration
@@ -450,7 +548,14 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
         TestOutput result = testWatchdogTimeoutConfiguration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testWatchdogTimeoutConfiguration", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testWatchdogTimeoutConfiguration";
+            _tr.test_id = "testWatchdogTimeoutConfiguration";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testWatchdogResetGeneration
@@ -459,7 +564,14 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
         TestOutput result = testWatchdogResetGeneration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testWatchdogResetGeneration", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testWatchdogResetGeneration";
+            _tr.test_id = "testWatchdogResetGeneration";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testWatchdogInterruptGeneration
@@ -468,7 +580,14 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
         TestOutput result = testWatchdogInterruptGeneration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testWatchdogInterruptGeneration", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testWatchdogInterruptGeneration";
+            _tr.test_id = "testWatchdogInterruptGeneration";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPoweronReset
@@ -477,7 +596,14 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
         TestOutput result = testPoweronReset();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPoweronReset", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPoweronReset";
+            _tr.test_id = "testPoweronReset";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testHardwareResetButton
@@ -486,7 +612,14 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
         TestOutput result = testHardwareResetButton();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testHardwareResetButton", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testHardwareResetButton";
+            _tr.test_id = "testHardwareResetButton";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSoftwareReset
@@ -495,7 +628,14 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
         TestOutput result = testSoftwareReset();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSoftwareReset", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSoftwareReset";
+            _tr.test_id = "testSoftwareReset";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testWatchdogReset
@@ -504,7 +644,14 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
         TestOutput result = testWatchdogReset();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testWatchdogReset", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testWatchdogReset";
+            _tr.test_id = "testWatchdogReset";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testThermalReset
@@ -513,7 +660,14 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
         TestOutput result = testThermalReset();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testThermalReset", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testThermalReset";
+            _tr.test_id = "testThermalReset";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testResetReasonLogging
@@ -522,7 +676,14 @@ std::vector<TestResult> WatchdogAndResetTesting::runAllTests()
         TestOutput result = testResetReasonLogging();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testResetReasonLogging", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testResetReasonLogging";
+            _tr.test_id = "testResetReasonLogging";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -556,7 +717,10 @@ std::vector<std::string> WatchdogAndResetTesting::getAvailableTests()
 TestResult WatchdogAndResetTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testWatchdogTimerFunctionality") {
         result = testWatchdogTimerFunctionality();
@@ -582,10 +746,26 @@ TestResult WatchdogAndResetTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

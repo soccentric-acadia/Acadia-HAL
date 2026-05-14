@@ -98,7 +98,14 @@ TestOutput ReliabilityTesting::testBurninTesting()
     data.push_back(uvDetected ? "[WARN] Throttle flag set — check power supply"
                               : "[PASS] No throttle flags after stress");
     data.push_back("[INFO] Full burn-in (hours) requires dedicated test fixture");
-    return {!uvDetected, data};
+    {
+        TestOutput _out;
+        _out.status = !uvDetected ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = !uvDetected ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -128,7 +135,14 @@ TestOutput ReliabilityTesting::testPowerCycling()
                                 : "[WARN] FS error count: " + fsErr);
 
     data.push_back("[INFO] Physical power-cycle test requires external controller");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -155,7 +169,14 @@ TestOutput ReliabilityTesting::testThermalCycling()
     }
 
     data.push_back("[INFO] Active thermal cycling requires HALT/HASS chamber");
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -182,7 +203,14 @@ TestOutput ReliabilityTesting::testMtbf()
     data.push_back(aerErr.empty() ? "[PASS] No PCIe AER errors"
                                   : "[WARN] PCIe AER errors:\n" + aerErr);
 
-    return {!pstoreOops, data};
+    {
+        TestOutput _out;
+        _out.status = !pstoreOops ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = !pstoreOops ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -213,7 +241,14 @@ TestOutput ReliabilityTesting::testComponentAging()
                        std::to_string(mf / 1000) + " MHz (" + std::to_string(static_cast<int>(p)) + "%)");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -240,7 +275,14 @@ TestOutput ReliabilityTesting::testSolderJointIntegrity()
     data.push_back(mmcErr == "0" ? "[PASS] No eMMC/SD errors in dmesg"
                                  : "[WARN] eMMC/SD errors: " + mmcErr);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -257,7 +299,14 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
         TestOutput result = testBurninTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testBurninTesting", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testBurninTesting";
+            _tr.test_id = "testBurninTesting";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPowerCycling
@@ -266,7 +315,14 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
         TestOutput result = testPowerCycling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPowerCycling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPowerCycling";
+            _tr.test_id = "testPowerCycling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testThermalCycling
@@ -275,7 +331,14 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
         TestOutput result = testThermalCycling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testThermalCycling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testThermalCycling";
+            _tr.test_id = "testThermalCycling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMtbf
@@ -284,7 +347,14 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
         TestOutput result = testMtbf();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMtbf", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMtbf";
+            _tr.test_id = "testMtbf";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testComponentAging
@@ -293,7 +363,14 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
         TestOutput result = testComponentAging();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testComponentAging", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testComponentAging";
+            _tr.test_id = "testComponentAging";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSolderJointIntegrity
@@ -302,7 +379,14 @@ std::vector<TestResult> ReliabilityTesting::runAllTests()
         TestOutput result = testSolderJointIntegrity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSolderJointIntegrity", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSolderJointIntegrity";
+            _tr.test_id = "testSolderJointIntegrity";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -327,7 +411,10 @@ std::vector<std::string> ReliabilityTesting::getAvailableTests()
 TestResult ReliabilityTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testBurninTesting") {
         result = testBurninTesting();
@@ -345,10 +432,26 @@ TestResult ReliabilityTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

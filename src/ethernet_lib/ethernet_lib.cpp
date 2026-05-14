@@ -106,7 +106,14 @@ TestOutput EthernetTesting::test10GigabitLinkEstablishment()
     if (!ifaceExists(ETH_IFACE)) {
         passed = false;
         data.push_back("FAIL: Interface " + std::string(ETH_IFACE) + " not found.");
-        return {passed, data};
+        {
+            TestOutput _out;
+            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     std::string state = getLinkState(ETH_IFACE);
@@ -129,7 +136,14 @@ TestOutput EthernetTesting::test10GigabitLinkEstablishment()
         data.push_back("INFO: Ethernet link not up — ensure cable is connected.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -145,7 +159,14 @@ TestOutput EthernetTesting::test10gbeTransmitThroughput()
 
     if (!ifaceExists(ETH_IFACE)) {
         data.push_back("SKIP: Interface not present.");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Check TX bytes counter from sysfs (delta would need two reads)
@@ -168,7 +189,14 @@ TestOutput EthernetTesting::test10gbeTransmitThroughput()
         data.push_back("PASS: No TX errors. Run 'iperf3 -s' on peer for live throughput test.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -184,7 +212,14 @@ TestOutput EthernetTesting::test10gbeReceiveThroughput()
 
     if (!ifaceExists(ETH_IFACE)) {
         data.push_back("SKIP: Interface not present.");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     long long rxBytes   = ethReadInt("/sys/class/net/" + std::string(ETH_IFACE) + "/statistics/rx_bytes");
@@ -204,7 +239,14 @@ TestOutput EthernetTesting::test10gbeReceiveThroughput()
         data.push_back("PASS: No significant RX errors.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -220,7 +262,14 @@ TestOutput EthernetTesting::testFullduplexOperation()
 
     if (!ifaceExists(ETH_IFACE)) {
         data.push_back("SKIP: Interface not present.");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     std::string duplex = ethReadFile("/sys/class/net/" + std::string(ETH_IFACE) + "/duplex");
@@ -238,7 +287,14 @@ TestOutput EthernetTesting::testFullduplexOperation()
         data.push_back("INFO: Duplex mode not readable (interface may not be connected).");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -254,7 +310,14 @@ TestOutput EthernetTesting::testJumboFramesSupport()
 
     if (!ifaceExists(ETH_IFACE)) {
         data.push_back("SKIP: Interface not present.");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     long long mtu = ethReadInt("/sys/class/net/" + std::string(ETH_IFACE) + "/mtu");
@@ -278,7 +341,14 @@ TestOutput EthernetTesting::testJumboFramesSupport()
         data.push_back("FAIL: MTU below standard 1500 bytes.");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -306,7 +376,14 @@ TestOutput EthernetTesting::testFlowControl()
     data.push_back("Flow control: check with ethtool -a eth0 when link is up.");
     data.push_back("PASS: Flow control check complete.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -336,7 +413,14 @@ TestOutput EthernetTesting::testVlanTagging()
     data.push_back("Pi5 supports software VLAN via 8021q kernel module.");
     data.push_back("PASS: VLAN capability check complete.");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -360,7 +444,14 @@ TestOutput EthernetTesting::testChecksumOffload()
     }
 
     data.push_back("PASS: Checksum offload check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -392,7 +483,14 @@ TestOutput EthernetTesting::testIeee8021asTimeSynchronization()
     }
 
     data.push_back("PASS: PTP/gPTP check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -411,7 +509,14 @@ TestOutput EthernetTesting::testIeee8021qbv()
     data.push_back("TAPRIO qdisc active: " + (taprio.empty() ? "no" : "YES — " + taprio));
 
     data.push_back("PASS: TAS check complete (software-only on Pi5).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -426,7 +531,14 @@ TestOutput EthernetTesting::testIeee8021qbu()
     data.push_back("Pi5 bcmgenet: frame preemption NOT supported in hardware.");
     data.push_back("      Frame preemption requires TSN-capable NIC (Intel I225, Microchip LAN9668, etc.).");
     data.push_back("PASS: Frame preemption check complete (N/A on Pi5).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -444,7 +556,14 @@ TestOutput EthernetTesting::testIeee8021qav()
 
     data.push_back("CBS available via Linux TC cbs qdisc (software implementation).");
     data.push_back("PASS: CBS check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -463,7 +582,14 @@ TestOutput EthernetTesting::testTsnTrafficScheduling()
     data.push_back("Pi5 supports software TSN: TAPRIO, CBS, ETF qdiscs.");
     data.push_back("Hardware TSN requires dedicated TSN-MAC NIC.");
     data.push_back("PASS: TSN scheduling check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -489,7 +615,14 @@ TestOutput EthernetTesting::testTsnLatencyGuarantees()
     }
     data.push_back("RT kernel (PREEMPT_RT): " + std::string(rtKernel ? "YES" : "no (use rpi-realtime kernel for TSN)"));
     data.push_back("PASS: TSN latency check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -509,7 +642,14 @@ TestOutput EthernetTesting::testTsnTimePrecision()
     std::string ptp = ethRunCmd("ptp4l -i eth0 -q -2 --summary_interval=0 2>/dev/null &");
     data.push_back("Time sync method: chrony/NTP for software-only Pi5 TSN.");
     data.push_back("PASS: Time precision check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -553,7 +693,14 @@ TestOutput EthernetTesting::test1gPhyFunctionality()
         data.push_back("PASS: 1G PHY functional." + (spd > 0 ? " Speed: " + std::to_string(spd) + " Mbps" : ""));
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -577,7 +724,14 @@ TestOutput EthernetTesting::testLinkSpeedNegotiation()
     data.push_back("Negotiated speed: " + (spd > 0 ? std::to_string(spd) + " Mbps" : "(link down)"));
 
     data.push_back("PASS: Link speed negotiation check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -597,7 +751,14 @@ TestOutput EthernetTesting::testAutomdimdix()
     else data.push_back("MDI-X: configurable via ethtool -s eth0 mdix auto");
 
     data.push_back("PASS: Auto-MDIX supported by BCM54213PE.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -632,7 +793,14 @@ TestOutput EthernetTesting::testEthernetCableDiagnostics()
     }
 
     data.push_back("PASS: Cable diagnostics check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -649,7 +817,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = test10GigabitLinkEstablishment();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test10GigabitLinkEstablishment", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test10GigabitLinkEstablishment";
+            _tr.test_id = "test10GigabitLinkEstablishment";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test10gbeTransmitThroughput
@@ -658,7 +833,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = test10gbeTransmitThroughput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test10gbeTransmitThroughput", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test10gbeTransmitThroughput";
+            _tr.test_id = "test10gbeTransmitThroughput";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test10gbeReceiveThroughput
@@ -667,7 +849,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = test10gbeReceiveThroughput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test10gbeReceiveThroughput", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test10gbeReceiveThroughput";
+            _tr.test_id = "test10gbeReceiveThroughput";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testFullduplexOperation
@@ -676,7 +865,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testFullduplexOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testFullduplexOperation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testFullduplexOperation";
+            _tr.test_id = "testFullduplexOperation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testJumboFramesSupport
@@ -685,7 +881,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testJumboFramesSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testJumboFramesSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testJumboFramesSupport";
+            _tr.test_id = "testJumboFramesSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testFlowControl
@@ -694,7 +897,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testFlowControl();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testFlowControl", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testFlowControl";
+            _tr.test_id = "testFlowControl";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVlanTagging
@@ -703,7 +913,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testVlanTagging();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVlanTagging", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVlanTagging";
+            _tr.test_id = "testVlanTagging";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testChecksumOffload
@@ -712,7 +929,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testChecksumOffload();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testChecksumOffload", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testChecksumOffload";
+            _tr.test_id = "testChecksumOffload";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testIeee8021asTimeSynchronization
@@ -721,7 +945,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testIeee8021asTimeSynchronization();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testIeee8021asTimeSynchronization", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testIeee8021asTimeSynchronization";
+            _tr.test_id = "testIeee8021asTimeSynchronization";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testIeee8021qbv
@@ -730,7 +961,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testIeee8021qbv();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testIeee8021qbv", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testIeee8021qbv";
+            _tr.test_id = "testIeee8021qbv";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testIeee8021qbu
@@ -739,7 +977,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testIeee8021qbu();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testIeee8021qbu", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testIeee8021qbu";
+            _tr.test_id = "testIeee8021qbu";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testIeee8021qav
@@ -748,7 +993,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testIeee8021qav();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testIeee8021qav", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testIeee8021qav";
+            _tr.test_id = "testIeee8021qav";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testTsnTrafficScheduling
@@ -757,7 +1009,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testTsnTrafficScheduling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testTsnTrafficScheduling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testTsnTrafficScheduling";
+            _tr.test_id = "testTsnTrafficScheduling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testTsnLatencyGuarantees
@@ -766,7 +1025,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testTsnLatencyGuarantees();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testTsnLatencyGuarantees", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testTsnLatencyGuarantees";
+            _tr.test_id = "testTsnLatencyGuarantees";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testTsnTimePrecision
@@ -775,7 +1041,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testTsnTimePrecision();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testTsnTimePrecision", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testTsnTimePrecision";
+            _tr.test_id = "testTsnTimePrecision";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run test1gPhyFunctionality
@@ -784,7 +1057,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = test1gPhyFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"test1gPhyFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "test1gPhyFunctionality";
+            _tr.test_id = "test1gPhyFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testLinkSpeedNegotiation
@@ -793,7 +1073,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testLinkSpeedNegotiation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testLinkSpeedNegotiation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testLinkSpeedNegotiation";
+            _tr.test_id = "testLinkSpeedNegotiation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAutomdimdix
@@ -802,7 +1089,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testAutomdimdix();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAutomdimdix", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAutomdimdix";
+            _tr.test_id = "testAutomdimdix";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEthernetCableDiagnostics
@@ -811,7 +1105,14 @@ std::vector<TestResult> EthernetTesting::runAllTests()
         TestOutput result = testEthernetCableDiagnostics();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEthernetCableDiagnostics", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEthernetCableDiagnostics";
+            _tr.test_id = "testEthernetCableDiagnostics";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -840,7 +1141,10 @@ std::vector<std::string> EthernetTesting::getAvailableTests()
 TestResult EthernetTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testFullduplexOperation") {
         result = testFullduplexOperation();
@@ -876,10 +1180,26 @@ TestResult EthernetTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

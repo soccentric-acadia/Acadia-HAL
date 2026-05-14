@@ -81,7 +81,14 @@ TestOutput SecurityFeaturesTesting::testBootRomExecution()
     if (!dmesgBoot.empty()) data.push_back("dmesg boot: " + dmesgBoot.substr(0, 400));
 
     data.push_back("PASS: Boot ROM execution check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -115,7 +122,14 @@ TestOutput SecurityFeaturesTesting::testBootloaderSignatureVerification()
     data.push_back("Default Pi5: secure boot is DISABLED (unsigned bootloader).");
     data.push_back("Enable via: rpi-eeprom-config SIGNED_BOOT=1 and OTP fuse.");
     data.push_back("PASS: Bootloader signature check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +160,14 @@ TestOutput SecurityFeaturesTesting::testKernelSignatureVerification()
 
     data.push_back("NOTE: Default Raspberry Pi OS does not enforce signed kernels.");
     data.push_back("PASS: Kernel signature check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -179,7 +200,14 @@ TestOutput SecurityFeaturesTesting::testSecureBootChainOfTrust()
     data.push_back("Pi5 default: no full secure boot chain (bootloader unsigned by default).");
     data.push_back("Full secure boot possible with Pi5 HAT+SPI TPM and signed bootloader.");
     data.push_back("PASS: Chain of trust check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -210,7 +238,14 @@ TestOutput SecurityFeaturesTesting::testHardwareRootOfTrust()
     data.push_back("OP-TEE TrustZone (/dev/tee0): " + std::string(optee ? "present" : "not found (not default on Pi5)"));
 
     data.push_back("PASS: Hardware RoT check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -239,7 +274,14 @@ TestOutput SecurityFeaturesTesting::testSecureStorage()
     data.push_back("Pi5 OTP rows 17-24: customer RSA-2048 public key storage");
 
     data.push_back("PASS: Secure storage check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -281,7 +323,14 @@ TestOutput SecurityFeaturesTesting::testCryptographicAccelerators()
         data.push_back("INFO: ARM crypto extensions availability limited (check kernel config).");
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -338,7 +387,14 @@ TestOutput SecurityFeaturesTesting::testHardwareRandomNumberGenerator()
     data.push_back("rng-tools: " + (rngd.empty() ? "not installed" : rngd));
 
     data.push_back("PASS: HWRNG check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -367,7 +423,14 @@ TestOutput SecurityFeaturesTesting::testMemoryEncryption()
     data.push_back("Software memory protection: dm-crypt/LUKS for at-rest encryption.");
 
     data.push_back("PASS: Memory encryption check complete (software-only on Pi5).");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -402,7 +465,14 @@ TestOutput SecurityFeaturesTesting::testDebugPortSecurity()
     data.push_back("perf_event_paranoid: " + (devMem.empty() ? "not set" : devMem));
 
     data.push_back("PASS: Debug port security check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -429,7 +499,14 @@ TestOutput SecurityFeaturesTesting::testJtagSecurity()
     data.push_back("To permanently disable JTAG: set OTP JTAG_DISABLED fuse.");
     data.push_back("Enable JTAG (development): dtoverlay=enable-jtag in config.txt");
     data.push_back("PASS: JTAG security check complete.");
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -446,7 +523,14 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
         TestOutput result = testBootRomExecution();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testBootRomExecution", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testBootRomExecution";
+            _tr.test_id = "testBootRomExecution";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testBootloaderSignatureVerification
@@ -455,7 +539,14 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
         TestOutput result = testBootloaderSignatureVerification();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testBootloaderSignatureVerification", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testBootloaderSignatureVerification";
+            _tr.test_id = "testBootloaderSignatureVerification";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testKernelSignatureVerification
@@ -464,7 +555,14 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
         TestOutput result = testKernelSignatureVerification();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testKernelSignatureVerification", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testKernelSignatureVerification";
+            _tr.test_id = "testKernelSignatureVerification";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSecureBootChainOfTrust
@@ -473,7 +571,14 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
         TestOutput result = testSecureBootChainOfTrust();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSecureBootChainOfTrust", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSecureBootChainOfTrust";
+            _tr.test_id = "testSecureBootChainOfTrust";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testHardwareRootOfTrust
@@ -482,7 +587,14 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
         TestOutput result = testHardwareRootOfTrust();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testHardwareRootOfTrust", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testHardwareRootOfTrust";
+            _tr.test_id = "testHardwareRootOfTrust";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSecureStorage
@@ -491,7 +603,14 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
         TestOutput result = testSecureStorage();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSecureStorage", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSecureStorage";
+            _tr.test_id = "testSecureStorage";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCryptographicAccelerators
@@ -500,7 +619,14 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
         TestOutput result = testCryptographicAccelerators();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCryptographicAccelerators", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCryptographicAccelerators";
+            _tr.test_id = "testCryptographicAccelerators";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testHardwareRandomNumberGenerator
@@ -509,7 +635,14 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
         TestOutput result = testHardwareRandomNumberGenerator();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testHardwareRandomNumberGenerator", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testHardwareRandomNumberGenerator";
+            _tr.test_id = "testHardwareRandomNumberGenerator";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMemoryEncryption
@@ -518,7 +651,14 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
         TestOutput result = testMemoryEncryption();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMemoryEncryption", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMemoryEncryption";
+            _tr.test_id = "testMemoryEncryption";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDebugPortSecurity
@@ -527,7 +667,14 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
         TestOutput result = testDebugPortSecurity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDebugPortSecurity", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDebugPortSecurity";
+            _tr.test_id = "testDebugPortSecurity";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testJtagSecurity
@@ -536,7 +683,14 @@ std::vector<TestResult> SecurityFeaturesTesting::runAllTests()
         TestOutput result = testJtagSecurity();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testJtagSecurity", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testJtagSecurity";
+            _tr.test_id = "testJtagSecurity";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -571,7 +725,10 @@ std::vector<std::string> SecurityFeaturesTesting::getAvailableTests()
 TestResult SecurityFeaturesTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testBootRomExecution") {
         result = testBootRomExecution();
@@ -599,10 +756,26 @@ TestResult SecurityFeaturesTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

@@ -146,7 +146,14 @@ TestOutput ClockAndTimingTesting::testSystemClockAccuracy()
     }, tMono1{};
     if (::clock_gettime(CLOCK_REALTIME, &tReal1) != 0 || ::clock_gettime(CLOCK_MONOTONIC, &tMono1) != 0) {
         data.push_back("FAIL: clock_gettime() returned error: " + std::string(::strerror(errno)));
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     long resNsReal = clockResNs(CLOCK_REALTIME);
@@ -195,7 +202,14 @@ TestOutput ClockAndTimingTesting::testSystemClockAccuracy()
         }
     }
 
-    return {driftOk, data};
+    {
+        TestOutput _out;
+        _out.status = driftOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = driftOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -238,7 +252,14 @@ TestOutput ClockAndTimingTesting::testPcieReferenceClock()
         const unsigned long minHz = 99'000'000UL, maxHz = 101'000'000UL;
         if (rateHz > 0 && (rateHz < minHz || rateHz > maxHz)) {
             data.push_back("FAIL: PCIe ref clock rate out of range [99, 101] MHz");
-            return {false, data};
+            {
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                for (size_t _i = 0; _i < data.size(); ++_i)
+                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                return _out;
+            }
         }
         break; // use first match
     }
@@ -251,7 +272,14 @@ TestOutput ClockAndTimingTesting::testPcieReferenceClock()
         DIR* dir = ::opendir(pciBusPath.c_str());
         if (!dir) {
             data.push_back("FAIL: PCIe sysfs clock and bus unavailable");
-            return {false, data};
+            {
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                for (size_t _i = 0; _i < data.size(); ++_i)
+                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                return _out;
+            }
         }
         int devCount = 0;
         struct dirent* entry;
@@ -263,11 +291,25 @@ TestOutput ClockAndTimingTesting::testPcieReferenceClock()
         data.push_back("PCIe devices enumerated: " + std::to_string(devCount));
         if (devCount == 0) {
             data.push_back("FAIL: No PCIe devices found; reference clock may be absent");
-            return {false, data};
+            {
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                for (size_t _i = 0; _i < data.size(); ++_i)
+                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                return _out;
+            }
         }
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -331,10 +373,24 @@ TestOutput ClockAndTimingTesting::testUsbReferenceClock()
 
     if (!anyFound) {
         data.push_back("FAIL: No USB clock or device evidence found");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -373,7 +429,14 @@ TestOutput ClockAndTimingTesting::testEthernetReferenceClock()
     DIR* dir = ::opendir(netPath.c_str());
     if (!dir) {
         data.push_back("FAIL: /sys/class/net not accessible");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     std::vector<std::string> ifaces;
@@ -403,7 +466,14 @@ TestOutput ClockAndTimingTesting::testEthernetReferenceClock()
         }
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -455,7 +525,14 @@ TestOutput ClockAndTimingTesting::testCameraClockOutput()
         // Treat as pass — the hardware interface exists on the SoC regardless
     }
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -511,7 +588,14 @@ TestOutput ClockAndTimingTesting::testAudioClock()
         data.push_back("WARN: No audio clock or device evidence found");
 
     // Pass as long as no hard error — audio peripherals may not be populated
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -582,7 +666,14 @@ TestOutput ClockAndTimingTesting::testPllLockStatus()
         }
     }
 
-    return {allRequiredOk, data};
+    {
+        TestOutput _out;
+        _out.status = allRequiredOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allRequiredOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -663,7 +754,14 @@ TestOutput ClockAndTimingTesting::testClockJitterMeasurements()
     if (!passed)
         data.push_back("FAIL: Jitter " + std::to_string(jitterNs) + " ns exceeds threshold " + std::to_string(thresholdNs) + " ns");
 
-    return {passed, data};
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -695,10 +793,24 @@ TestOutput ClockAndTimingTesting::testRtcAccuracy()
         bool timeOk = readSysFile("/sys/class/rtc/rtc0/time", rtcTime);
         if (!dateOk || !timeOk) {
             data.push_back("FAIL: RTC not accessible via /dev/rtc0 or sysfs");
-            return {false, data};
+            {
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                for (size_t _i = 0; _i < data.size(); ++_i)
+                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                return _out;
+            }
         }
         data.push_back("RTC (sysfs) date: " + rtcDate + "  time: " + rtcTime);
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     struct rtc_time rtcTm
@@ -707,7 +819,14 @@ TestOutput ClockAndTimingTesting::testRtcAccuracy()
     if (::ioctl(fd, RTC_RD_TIME, &rtcTm) < 0) {
         ::close(fd);
         data.push_back("FAIL: RTC_RD_TIME ioctl failed: " + std::string(::strerror(errno)));
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
     ::close(fd);
 
@@ -737,10 +856,24 @@ TestOutput ClockAndTimingTesting::testRtcAccuracy()
     const long threshSec = 5;
     if (diffSec > threshSec) {
         data.push_back("FAIL: RTC / system time discrepancy > " + std::to_string(threshSec) + " s");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -769,7 +902,14 @@ TestOutput ClockAndTimingTesting::testRtcBatteryBackup()
     }
     if (rtcDev.empty()) {
         data.push_back("FAIL: No /dev/rtc0 or /dev/rtc1 found");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // 2. Check sysfs attributes
@@ -787,7 +927,14 @@ TestOutput ClockAndTimingTesting::testRtcBatteryBackup()
     int fd = ::open(rtcDev.c_str(), O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
         data.push_back("WARN: Cannot open " + rtcDev + " for oscillator check (" + std::string(::strerror(errno)) + ")");
-        return {true, data}; // device exists, treat as pass
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        } // device exists, treat as pass
     }
 
     struct rtc_time t1
@@ -802,7 +949,14 @@ TestOutput ClockAndTimingTesting::testRtcBatteryBackup()
 
     if (!ioOk) {
         data.push_back("FAIL: Could not read RTC twice for oscillator check");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Compute delta via mktime
@@ -830,11 +984,25 @@ TestOutput ClockAndTimingTesting::testRtcBatteryBackup()
         data.push_back("FAIL: RTC counter did not advance as expected "
                        "(expected ~2 s, got " +
                        std::to_string(delta) + " s)");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("RTC oscillator alive — battery backup functional");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -854,7 +1022,14 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
         // If we can't open the device, skip but do not hard-fail so that the
         // test suite can run without root on a development host as well.
         data.push_back("SKIP: RTC alarm test requires read-write access to /dev/rtc0");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Read current RTC time
@@ -864,7 +1039,14 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
     if (::ioctl(fd, RTC_RD_TIME, &curTm) < 0) {
         ::close(fd);
         data.push_back("FAIL: RTC_RD_TIME ioctl failed: " + std::string(::strerror(errno)));
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Set alarm 5 seconds ahead
@@ -895,7 +1077,14 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
     if (::ioctl(fd, RTC_ALM_SET, &alarmTm) < 0) {
         ::close(fd);
         data.push_back("FAIL: RTC_ALM_SET ioctl failed: " + std::string(::strerror(errno)));
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Read back the alarm
@@ -905,7 +1094,14 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
     if (::ioctl(fd, RTC_ALM_READ, &readBackTm) < 0) {
         ::close(fd);
         data.push_back("FAIL: RTC_ALM_READ ioctl failed: " + std::string(::strerror(errno)));
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     ::close(fd);
@@ -922,11 +1118,25 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
 
     if (!alarmOk) {
         data.push_back("FAIL: RTC alarm read-back does not match programmed value");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("RTC alarm functionality verified");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -950,7 +1160,14 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
         std::string ep1, ep2;
         if (!readSysFile("/sys/class/rtc/rtc0/since_epoch", ep1)) {
             data.push_back("FAIL: RTC not accessible");
-            return {false, data};
+            {
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                for (size_t _i = 0; _i < data.size(); ++_i)
+                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                return _out;
+            }
         }
 
         struct timespec sysStart
@@ -973,7 +1190,14 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
         bool ok = (std::abs(rtcDelta - sysDelta) <= 1);
         if (!ok)
             data.push_back("FAIL: RTC delta differs from system delta by > 1 s");
-        return {ok, data};
+        {
+            TestOutput _out;
+            _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // ioctl path
@@ -983,7 +1207,14 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
     if (::ioctl(fd, RTC_RD_TIME, &t1) < 0) {
         ::close(fd);
         data.push_back("FAIL: RTC_RD_TIME ioctl failed");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     struct timespec sysStart
@@ -1001,7 +1232,14 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
     if (::ioctl(fd, RTC_RD_TIME, &t2) < 0) {
         ::close(fd);
         data.push_back("FAIL: Second RTC_RD_TIME ioctl failed");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
     ::close(fd);
 
@@ -1034,7 +1272,14 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
     else
         data.push_back("RTC time persistence verified");
 
-    return {ok, data};
+    {
+        TestOutput _out;
+        _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1051,7 +1296,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testSystemClockAccuracy();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSystemClockAccuracy", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSystemClockAccuracy";
+            _tr.test_id = "testSystemClockAccuracy";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPcieReferenceClock
@@ -1060,7 +1312,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testPcieReferenceClock();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPcieReferenceClock", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPcieReferenceClock";
+            _tr.test_id = "testPcieReferenceClock";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUsbReferenceClock
@@ -1069,7 +1328,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testUsbReferenceClock();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUsbReferenceClock", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUsbReferenceClock";
+            _tr.test_id = "testUsbReferenceClock";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEthernetReferenceClock
@@ -1078,7 +1344,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testEthernetReferenceClock();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEthernetReferenceClock", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEthernetReferenceClock";
+            _tr.test_id = "testEthernetReferenceClock";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCameraClockOutput
@@ -1087,7 +1360,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testCameraClockOutput();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCameraClockOutput", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCameraClockOutput";
+            _tr.test_id = "testCameraClockOutput";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAudioClock
@@ -1096,7 +1376,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testAudioClock();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAudioClock", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAudioClock";
+            _tr.test_id = "testAudioClock";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testPllLockStatus
@@ -1105,7 +1392,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testPllLockStatus();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testPllLockStatus", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testPllLockStatus";
+            _tr.test_id = "testPllLockStatus";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testClockJitterMeasurements
@@ -1114,7 +1408,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testClockJitterMeasurements();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testClockJitterMeasurements", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testClockJitterMeasurements";
+            _tr.test_id = "testClockJitterMeasurements";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRtcAccuracy
@@ -1123,7 +1424,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testRtcAccuracy();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRtcAccuracy", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRtcAccuracy";
+            _tr.test_id = "testRtcAccuracy";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRtcBatteryBackup
@@ -1132,7 +1440,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testRtcBatteryBackup();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRtcBatteryBackup", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRtcBatteryBackup";
+            _tr.test_id = "testRtcBatteryBackup";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRtcAlarmFunctionality
@@ -1141,7 +1456,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testRtcAlarmFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRtcAlarmFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRtcAlarmFunctionality";
+            _tr.test_id = "testRtcAlarmFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRtcTimePersistence
@@ -1150,7 +1472,14 @@ std::vector<TestResult> ClockAndTimingTesting::runAllTests()
         TestOutput result = testRtcTimePersistence();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRtcTimePersistence", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRtcTimePersistence";
+            _tr.test_id = "testRtcTimePersistence";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -1177,7 +1506,10 @@ std::vector<std::string> ClockAndTimingTesting::getAvailableTests()
 TestResult ClockAndTimingTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testSystemClockAccuracy") {
         result = testSystemClockAccuracy();
@@ -1207,10 +1539,26 @@ TestResult ClockAndTimingTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

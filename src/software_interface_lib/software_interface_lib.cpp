@@ -88,7 +88,14 @@ TestOutput SoftwareInterfaceTesting::testLinuxKernelBoot()
     if (kver.empty())
     {
         data.push_back("[FAIL] /proc/version not readable");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
     data.push_back("[PASS] Kernel: " + kver.substr(0, 120));
 
@@ -121,7 +128,14 @@ TestOutput SoftwareInterfaceTesting::testLinuxKernelBoot()
     else
         data.push_back("[WARN] /proc/device-tree/model not readable");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -174,7 +188,14 @@ TestOutput SoftwareInterfaceTesting::testDeviceDriverLoading()
     std::string totalMods = swRunCmd("wc -l < /proc/modules 2>/dev/null");
     data.push_back("[INFO] Total loaded modules: " + totalMods);
 
-    return {anyLoaded, data};
+    {
+        TestOutput _out;
+        _out.status = anyLoaded ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = anyLoaded ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -221,7 +242,15 @@ TestOutput SoftwareInterfaceTesting::testSystemServiceStartup()
     std::string sysdState = swRunCmd("systemctl is-system-running 2>/dev/null");
     data.push_back("[INFO] system-running state: " + sysdState);
 
-    return {active > 0 || sysdState == "running" || sysdState == "degraded", data};
+    {
+        TestOutput _out;
+        const bool _ok = active > 0 || sysdState == "running" || sysdState == "degraded";
+        _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -263,7 +292,14 @@ TestOutput SoftwareInterfaceTesting::testApplicationFramework()
     else
         data.push_back("[INFO] vcgencmd not found (rpi-userland not installed)");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -296,7 +332,14 @@ TestOutput SoftwareInterfaceTesting::testMultiuserSupport()
     std::string who = swRunCmd("who 2>/dev/null | wc -l");
     data.push_back("[INFO] Currently logged-in sessions: " + who);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -330,7 +373,14 @@ TestOutput SoftwareInterfaceTesting::testCudaRuntime()
     else
         data.push_back("[INFO] eglinfo not found (mesa-utils may not be installed)");
 
-    return {v3dLoaded, data};
+    {
+        TestOutput _out;
+        _out.status = v3dLoaded ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = v3dLoaded ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -363,7 +413,14 @@ TestOutput SoftwareInterfaceTesting::testCudnnLibrary()
     if (!ortLib.empty())
         data.push_back("[PASS] libonnxruntime found: " + ortLib);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -392,7 +449,14 @@ TestOutput SoftwareInterfaceTesting::testTensorrtInference()
     data.push_back(neon ? "[PASS] ARM NEON/ASIMD available for XNNPACK acceleration"
                         : "[WARN] NEON/ASIMD not detected in /proc/cpuinfo");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -423,7 +487,14 @@ TestOutput SoftwareInterfaceTesting::testVpi()
     std::string v4l2Count = swRunCmd("ls /dev/video* 2>/dev/null | wc -l");
     data.push_back("[INFO] V4L2 video devices: " + v4l2Count);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -462,7 +533,14 @@ TestOutput SoftwareInterfaceTesting::testMultimediaApi()
     data.push_back(gstTest == "1" ? "[PASS] GStreamer fakesrc→fakesink pipeline OK"
                                   : "[INFO] GStreamer test skipped (not installed)");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -500,7 +578,14 @@ TestOutput SoftwareInterfaceTesting::testSensorDriverFramework()
 
     bool hasSensors = (std::stoi(hwmonCount.empty() ? "0" : hwmonCount) > 0) ||
                       (std::stoi(tzCount.empty() ? "0" : tzCount) > 0);
-    return {hasSensors, data};
+    {
+        TestOutput _out;
+        _out.status = hasSensors ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = hasSensors ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -517,7 +602,14 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
         TestOutput result = testLinuxKernelBoot();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testLinuxKernelBoot", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testLinuxKernelBoot";
+            _tr.test_id = "testLinuxKernelBoot";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDeviceDriverLoading
@@ -526,7 +618,14 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
         TestOutput result = testDeviceDriverLoading();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDeviceDriverLoading", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDeviceDriverLoading";
+            _tr.test_id = "testDeviceDriverLoading";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSystemServiceStartup
@@ -535,7 +634,14 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
         TestOutput result = testSystemServiceStartup();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSystemServiceStartup", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSystemServiceStartup";
+            _tr.test_id = "testSystemServiceStartup";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testApplicationFramework
@@ -544,7 +650,14 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
         TestOutput result = testApplicationFramework();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testApplicationFramework", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testApplicationFramework";
+            _tr.test_id = "testApplicationFramework";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultiuserSupport
@@ -553,7 +666,14 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
         TestOutput result = testMultiuserSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultiuserSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultiuserSupport";
+            _tr.test_id = "testMultiuserSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCudaRuntime
@@ -562,7 +682,14 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
         TestOutput result = testCudaRuntime();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCudaRuntime", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCudaRuntime";
+            _tr.test_id = "testCudaRuntime";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCudnnLibrary
@@ -571,7 +698,14 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
         TestOutput result = testCudnnLibrary();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCudnnLibrary", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCudnnLibrary";
+            _tr.test_id = "testCudnnLibrary";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testTensorrtInference
@@ -580,7 +714,14 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
         TestOutput result = testTensorrtInference();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testTensorrtInference", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testTensorrtInference";
+            _tr.test_id = "testTensorrtInference";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVpi
@@ -589,7 +730,14 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
         TestOutput result = testVpi();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVpi", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVpi";
+            _tr.test_id = "testVpi";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultimediaApi
@@ -598,7 +746,14 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
         TestOutput result = testMultimediaApi();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultimediaApi", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultimediaApi";
+            _tr.test_id = "testMultimediaApi";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSensorDriverFramework
@@ -607,7 +762,14 @@ std::vector<TestResult> SoftwareInterfaceTesting::runAllTests()
         TestOutput result = testSensorDriverFramework();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSensorDriverFramework", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSensorDriverFramework";
+            _tr.test_id = "testSensorDriverFramework";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -635,7 +797,10 @@ std::vector<std::string> SoftwareInterfaceTesting::getAvailableTests()
 TestResult SoftwareInterfaceTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testLinuxKernelBoot") {
         result = testLinuxKernelBoot();
@@ -663,10 +828,26 @@ TestResult SoftwareInterfaceTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

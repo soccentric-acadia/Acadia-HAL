@@ -97,7 +97,14 @@ TestOutput FunctionalSafetyTesting::testLockstepCpuOperation()
     std::string cpuTopology = fsRunCmd("grep -m1 'CPU part' /proc/cpuinfo 2>/dev/null");
     data.push_back("[INFO] " + cpuTopology + " (Cortex-A76 part 0xD0B)");
 
-    return {wdPresent, data};
+    {
+        TestOutput _out;
+        _out.status = wdPresent ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = wdPresent ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -130,7 +137,14 @@ TestOutput FunctionalSafetyTesting::testEccOnMemories()
     data.push_back(memtest.empty() ? "[INFO] memtester not installed (install for software ECC simulation)"
                                    : "[PASS] memtester available: " + memtest);
 
-    return {cleanPstore, data};
+    {
+        TestOutput _out;
+        _out.status = cleanPstore ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = cleanPstore ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -168,7 +182,14 @@ TestOutput FunctionalSafetyTesting::testRedundantPowerSupplies()
                         : "[INFO] Throttle: " + throttle);
 
     data.push_back("[INFO] Redundancy requires UPS HAT (e.g. Pisugar, UPS-HAT) + firmware");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -203,7 +224,14 @@ TestOutput FunctionalSafetyTesting::testSafetyMonitoring()
         "cat /sys/class/thermal/thermal_zone0/trip_point_*_type 2>/dev/null | grep -c critical");
     data.push_back("[INFO] Critical trip points defined: " + critTemp);
 
-    return {wdOk, data};
+    {
+        TestOutput _out;
+        _out.status = wdOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = wdOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -238,7 +266,15 @@ TestOutput FunctionalSafetyTesting::testDiagnosticCoverage()
                    std::to_string(static_cast<int>(coverage)) + "% (" +
                    std::to_string(present) + "/" + std::to_string(checks.size()) + ")");
 
-    return {present >= static_cast<int>(checks.size()) / 2, data};
+    {
+        TestOutput _out;
+        const bool _ok = present >= static_cast<int>(checks.size()) / 2;
+        _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -282,7 +318,14 @@ TestOutput FunctionalSafetyTesting::testFaultInjectionTesting()
     data.push_back(ubsan == "1" ? "[PASS] UBSAN undefined-behavior detection enabled"
                                 : "[INFO] UBSAN not enabled");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -318,7 +361,14 @@ TestOutput FunctionalSafetyTesting::testFailsafeBehavior()
     data.push_back(rebootTarget ? "[PASS] systemd reboot.target available (fail-safe reboot path)"
                                 : "[INFO] systemd reboot.target not found");
 
-    return {wdPresent, data};
+    {
+        TestOutput _out;
+        _out.status = wdPresent ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = wdPresent ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -351,7 +401,14 @@ TestOutput FunctionalSafetyTesting::testAsilQsLAndRRailIsolation()
             data.push_back("[INFO] " + rail + ": " + v);
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -368,7 +425,14 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
         TestOutput result = testLockstepCpuOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testLockstepCpuOperation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testLockstepCpuOperation";
+            _tr.test_id = "testLockstepCpuOperation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testEccOnMemories
@@ -377,7 +441,14 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
         TestOutput result = testEccOnMemories();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testEccOnMemories", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testEccOnMemories";
+            _tr.test_id = "testEccOnMemories";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRedundantPowerSupplies
@@ -386,7 +457,14 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
         TestOutput result = testRedundantPowerSupplies();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRedundantPowerSupplies", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRedundantPowerSupplies";
+            _tr.test_id = "testRedundantPowerSupplies";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSafetyMonitoring
@@ -395,7 +473,14 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
         TestOutput result = testSafetyMonitoring();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSafetyMonitoring", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSafetyMonitoring";
+            _tr.test_id = "testSafetyMonitoring";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testDiagnosticCoverage
@@ -404,7 +489,14 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
         TestOutput result = testDiagnosticCoverage();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testDiagnosticCoverage", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testDiagnosticCoverage";
+            _tr.test_id = "testDiagnosticCoverage";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testFaultInjectionTesting
@@ -413,7 +505,14 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
         TestOutput result = testFaultInjectionTesting();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testFaultInjectionTesting", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testFaultInjectionTesting";
+            _tr.test_id = "testFaultInjectionTesting";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testFailsafeBehavior
@@ -422,7 +521,14 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
         TestOutput result = testFailsafeBehavior();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testFailsafeBehavior", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testFailsafeBehavior";
+            _tr.test_id = "testFailsafeBehavior";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAsilQsLAndRRailIsolation
@@ -431,7 +537,14 @@ std::vector<TestResult> FunctionalSafetyTesting::runAllTests()
         TestOutput result = testAsilQsLAndRRailIsolation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAsilQsLAndRRailIsolation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAsilQsLAndRRailIsolation";
+            _tr.test_id = "testAsilQsLAndRRailIsolation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -457,7 +570,10 @@ std::vector<std::string> FunctionalSafetyTesting::getAvailableTests()
 TestResult FunctionalSafetyTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testLockstepCpuOperation") {
         result = testLockstepCpuOperation();
@@ -479,10 +595,26 @@ TestResult FunctionalSafetyTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

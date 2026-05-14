@@ -124,7 +124,14 @@ TestOutput EthernetSwitchTesting::testSwitchPortFunctionality()
     data.push_back(eth0Up ? "[PASS] eth0 GbE uplink present"
                           : "[WARN] eth0 not found");
 
-    return {eth0Up, data};
+    {
+        TestOutput _out;
+        _out.status = eth0Up ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = eth0Up ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -156,7 +163,14 @@ TestOutput EthernetSwitchTesting::testSwitchForwardingTable()
     std::string arp = swRunCmd("arp -n 2>/dev/null | grep -v 'incomplete' | head -5");
     data.push_back(arp.empty() ? "[INFO] ARP table empty" : "[INFO] ARP table:\n" + arp);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -183,7 +197,14 @@ TestOutput EthernetSwitchTesting::testSwitchVlanSupport()
     data.push_back(bridgeVlan.empty() ? "[INFO] No bridge VLAN database"
                                       : "[PASS] Bridge VLANs:\n" + bridgeVlan);
 
-    return {mod8021q, data};
+    {
+        TestOutput _out;
+        _out.status = mod8021q ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = mod8021q ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -210,7 +231,14 @@ TestOutput EthernetSwitchTesting::testSwitchQos()
                                : "[PASS] Priority qdisc active");
 
     data.push_back("[INFO] For 802.1Q CoS use: tc qdisc replace dev eth0 root mqprio num_tc 8");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -233,7 +261,14 @@ TestOutput EthernetSwitchTesting::testSwitchPortMirroring()
     data.push_back("[INFO] Active mirror filters on eth0: " + mirrors);
 
     data.push_back("[INFO] Setup: tc filter add dev eth0 parent ffff: matchall action mirred egress mirror dev eth1");
-    return {mirredMod, data};
+    {
+        TestOutput _out;
+        _out.status = mirredMod ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = mirredMod ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -267,7 +302,14 @@ TestOutput EthernetSwitchTesting::testSwitchStatistics()
         data.push_back("[WARN] Cannot read eth0 statistics");
     }
 
-    return {!rxPackets.empty(), data};
+    {
+        TestOutput _out;
+        _out.status = !rxPackets.empty() ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = !rxPackets.empty() ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -291,7 +333,14 @@ TestOutput EthernetSwitchTesting::testRedundantSwitchOperation()
                                   : "[PASS] Secondary NIC(s): " + usbNet);
 
     data.push_back("[INFO] For LACP/802.3ad redundancy: modprobe bonding && ip link add bond0 type bond mode 802.3ad");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -318,7 +367,14 @@ TestOutput EthernetSwitchTesting::testSwitchFailover()
                                     : "[INFO] STP state: " + stpState);
 
     data.push_back("[INFO] True failover test requires triggering eth0 link-down event");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -335,7 +391,14 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
         TestOutput result = testSwitchPortFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSwitchPortFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSwitchPortFunctionality";
+            _tr.test_id = "testSwitchPortFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSwitchForwardingTable
@@ -344,7 +407,14 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
         TestOutput result = testSwitchForwardingTable();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSwitchForwardingTable", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSwitchForwardingTable";
+            _tr.test_id = "testSwitchForwardingTable";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSwitchVlanSupport
@@ -353,7 +423,14 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
         TestOutput result = testSwitchVlanSupport();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSwitchVlanSupport", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSwitchVlanSupport";
+            _tr.test_id = "testSwitchVlanSupport";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSwitchQos
@@ -362,7 +439,14 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
         TestOutput result = testSwitchQos();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSwitchQos", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSwitchQos";
+            _tr.test_id = "testSwitchQos";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSwitchPortMirroring
@@ -371,7 +455,14 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
         TestOutput result = testSwitchPortMirroring();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSwitchPortMirroring", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSwitchPortMirroring";
+            _tr.test_id = "testSwitchPortMirroring";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSwitchStatistics
@@ -380,7 +471,14 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
         TestOutput result = testSwitchStatistics();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSwitchStatistics", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSwitchStatistics";
+            _tr.test_id = "testSwitchStatistics";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testRedundantSwitchOperation
@@ -389,7 +487,14 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
         TestOutput result = testRedundantSwitchOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testRedundantSwitchOperation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testRedundantSwitchOperation";
+            _tr.test_id = "testRedundantSwitchOperation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSwitchFailover
@@ -398,7 +503,14 @@ std::vector<TestResult> EthernetSwitchTesting::runAllTests()
         TestOutput result = testSwitchFailover();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSwitchFailover", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSwitchFailover";
+            _tr.test_id = "testSwitchFailover";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -424,7 +536,10 @@ std::vector<std::string> EthernetSwitchTesting::getAvailableTests()
 TestResult EthernetSwitchTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testSwitchPortFunctionality") {
         result = testSwitchPortFunctionality();
@@ -446,10 +561,26 @@ TestResult EthernetSwitchTesting::runSingleTest(const std::string& testName)
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

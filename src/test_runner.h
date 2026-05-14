@@ -136,7 +136,7 @@ static EventCriteria trMakeCriteria(const std::string& spec)
         return {"any test fails",
                 [](const std::vector<TestResult>& r) {
                     for (const auto& t : r) {
-                        if (!t.output.passed) return true;
+                        if (t.output.status != hal::Status::PASS) return true;
                     }
                     return false;
                 }};
@@ -145,7 +145,7 @@ static EventCriteria trMakeCriteria(const std::string& spec)
         return {"all tests fail",
                 [](const std::vector<TestResult>& r) {
                     for (const auto& t : r) {
-                        if (t.output.passed) return false;
+                        if (t.output.status == hal::Status::PASS) return false;
                     }
                     return !r.empty();
                 }};
@@ -154,7 +154,7 @@ static EventCriteria trMakeCriteria(const std::string& spec)
         return {"all tests pass",
                 [](const std::vector<TestResult>& r) {
                     for (const auto& t : r) {
-                        if (!t.output.passed) return false;
+                        if (t.output.status != hal::Status::PASS) return false;
                     }
                     return !r.empty();
                 }};
@@ -167,7 +167,7 @@ static EventCriteria trMakeCriteria(const std::string& spec)
                     if (r.empty()) return false;
                     int fails = 0;
                     for (const auto& t : r) {
-                        if (!t.output.passed) ++fails;
+                        if (t.output.status != hal::Status::PASS) ++fails;
                     }
                     return (fails * 100 / static_cast<int>(r.size())) > threshold;
                 }};
@@ -191,13 +191,18 @@ static void trPrintTable(const std::vector<TestResult>& results)
               << "Duration(s)\n"
               << std::string(64, '-') << "\n";
     for (const auto& r : results) {
+        bool ok = (r.output.status == hal::Status::PASS);
         std::cout << std::left << std::setw(42) << r.name
-                  << std::setw(8) << (r.output.passed ? "PASS" : "FAIL")
-                  << std::fixed << std::setprecision(6) << r.duration.count() << "\n";
-        for (const auto& d : r.output.data) {
-            std::cout << "    " << d << "\n";
+                  << std::setw(8) << (ok ? "PASS" : "FAIL")
+                  << std::fixed << std::setprecision(6)
+                  << std::chrono::duration<double>(r.duration).count() << "\n";
+        for (const auto& kv : r.output.reason) {
+            std::cout << "    [" << kv.first << "] " << kv.second << "\n";
         }
-        r.output.passed ? ++passed : ++failed;
+        if (!r.output.error_message.empty()) {
+            std::cout << "    [error] " << r.output.error_message << "\n";
+        }
+        ok ? ++passed : ++failed;
         total += r.duration;
     }
     std::cout << std::string(64, '-') << "\n"

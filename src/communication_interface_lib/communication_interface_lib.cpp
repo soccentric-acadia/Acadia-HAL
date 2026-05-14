@@ -144,7 +144,14 @@ TestOutput CommunicationInterfaceTesting::testAllUartPortsFunctionality()
         data.push_back("[WARN] No UART devices found under /dev/ttyAMA* or /dev/ttyS*");
         data.push_back("[INFO] Ensure Pi5 UART nodes are enabled in device tree");
         // Pass with warning – hardware may simply not have external UARTs wired up
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool allOk = true;
@@ -171,7 +178,14 @@ TestOutput CommunicationInterfaceTesting::testAllUartPortsFunctionality()
     }
 
     data.push_back("Summary: " + std::to_string(openCount) + "/" + std::to_string(thsPorts.size()) + " UART ports accessible");
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -214,7 +228,14 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
                 allSymbolsOk = false;
             }
         }
-        return {allSymbolsOk, data};
+        {
+            TestOutput _out;
+            _out.status = allSymbolsOk ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = allSymbolsOk ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool allOk = true;
@@ -231,7 +252,14 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
             if (rc != 0)
                 allOk = false;
         }
-        return {allOk, data};
+        {
+            TestOutput _out;
+            _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+            _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("[INFO] Using " + port + " for baud-rate tests");
@@ -259,7 +287,14 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
     tcsetattr(fd, TCSANOW, &origTio);
     close(fd);
 
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -284,9 +319,23 @@ TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
         }(CRTSCTS) + ")");
 #else
         data.push_back("[FAIL] CRTSCTS flag not defined");
-        return {false, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
 #endif
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool allOk = true;
@@ -326,7 +375,14 @@ TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
     }
 
     data.push_back("[INFO] Pi5 RP1 UART supports RTS/CTS on ttyAMA0–ttyAMA3");
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -356,7 +412,14 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
         data.push_back("[INFO] No ttyAMA ports; validating termios flag definitions");
         data.push_back("[PASS] PARENB defined");
         data.push_back("[PASS] PARODD defined");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool allOk = true;
@@ -365,7 +428,14 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
     if (fd < 0) {
         data.push_back("[WARN] " + port + ": cannot open – flag validation only");
         data.push_back("[PASS] PARENB and PARODD flags defined in termios");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     struct termios orig
@@ -392,7 +462,14 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
     close(fd);
 
     data.push_back("[INFO] Pi5 RP1 UART supports 8N1, 8E1, 8O1, and 7-bit variants");
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -408,7 +485,14 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
     if (ports.empty()) {
         data.push_back("[INFO] No ttyAMA ports; CSTOPB flag present in kernel headers");
         data.push_back("[PASS] 1-stop-bit (default) and 2-stop-bit (CSTOPB) supported");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool allOk = true;
@@ -416,7 +500,14 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
     int fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd < 0) {
         data.push_back("[WARN] " + port + ": cannot open – flag validation only");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     struct termios orig
@@ -450,7 +541,14 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
     close(fd);
 
     data.push_back("[INFO] Pi5 RP1 UART supports 1 and 2 stop bit configurations");
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -518,7 +616,14 @@ TestOutput CommunicationInterfaceTesting::testUartDmaOperation()
                        " with DMA DT property");
     }
 
-    return {true, data}; // DMA may be driver-configured; not a hard failure
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    } // DMA may be driver-configured; not a hard failure
 }
 
 /**
@@ -553,7 +658,14 @@ TestOutput CommunicationInterfaceTesting::testUartInterruptHandling()
     }
 
     data.push_back("[INFO] Pi5 RP1 UART uses level-triggered GIC interrupts");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -609,7 +721,14 @@ TestOutput CommunicationInterfaceTesting::testConsoledebugUart()
         data.push_back("[INFO] /dev/ttyAMA0 not present in current environment");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ===========================================================================
@@ -675,7 +794,14 @@ TestOutput CommunicationInterfaceTesting::testAllSpiControllers()
     if (!passed) {
         data.push_back("[INFO] SPI controllers may be in use by other drivers or not enabled in DT");
     }
-    return {true, data}; // Informational; spidev may not be configured
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    } // Informational; spidev may not be configured
 }
 
 /**
@@ -694,7 +820,14 @@ TestOutput CommunicationInterfaceTesting::testSpiMasterMode()
     if (spiDevs.empty()) {
         data.push_back("[INFO] No spidev nodes available; Pi5 SPI always operates in master mode");
         data.push_back("[INFO] Load spidev module and configure DT to expose /dev/spidev nodes");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool allOk = true;
@@ -720,7 +853,14 @@ TestOutput CommunicationInterfaceTesting::testSpiMasterMode()
     }
 
     data.push_back("[INFO] Pi5 RP1 SPI/QSPI controllers support master mode only");
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -769,7 +909,14 @@ TestOutput CommunicationInterfaceTesting::testSpiSlaveMode()
         data.push_back("[PASS] " + std::to_string(slaveCount) + " SPI controller(s) in slave mode");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -794,7 +941,14 @@ TestOutput CommunicationInterfaceTesting::testVariousSpiClockSpeeds()
         for (const auto& sp : speeds) {
             data.push_back("[INFO] " + sp.first + " (" + std::to_string(sp.second) + " Hz): supported");
         }
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool allOk = true;
@@ -822,7 +976,14 @@ TestOutput CommunicationInterfaceTesting::testVariousSpiClockSpeeds()
         close(fd);
     }
 
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -847,7 +1008,14 @@ TestOutput CommunicationInterfaceTesting::testSpiModes()
         for (const auto& m : modes) {
             data.push_back("[INFO] " + m.first + ": supported by hardware");
         }
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool allOk = true;
@@ -855,7 +1023,14 @@ TestOutput CommunicationInterfaceTesting::testSpiModes()
     int fd = open(dev.c_str(), O_RDWR);
     if (fd < 0) {
         data.push_back("[WARN] " + dev + ": cannot open – documenting hardware capability");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
 #ifdef SPI_IOC_WR_MODE
@@ -878,7 +1053,14 @@ TestOutput CommunicationInterfaceTesting::testSpiModes()
 #endif
     close(fd);
 
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -934,7 +1116,14 @@ TestOutput CommunicationInterfaceTesting::testChipSelectFunctionality()
     if (!passed) {
         data.push_back("[INFO] No SPI devices found; CS test requires spidev or SPI slave device");
     }
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -980,7 +1169,14 @@ TestOutput CommunicationInterfaceTesting::testSpiDmaTransfers()
         data.push_back("[INFO] Pi5 RP1 SPI uses DMA for transfers > 64 bytes");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -998,7 +1194,14 @@ TestOutput CommunicationInterfaceTesting::testMultipleSpiDevices()
     if (devs.empty()) {
         data.push_back("[INFO] No SPI slave devices registered in /sys/bus/spi/devices");
         data.push_back("[INFO] Connect SPI peripherals and load appropriate drivers to populate this list");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Group by bus number
@@ -1026,7 +1229,14 @@ TestOutput CommunicationInterfaceTesting::testMultipleSpiDevices()
         }
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ===========================================================================
@@ -1049,7 +1259,14 @@ TestOutput CommunicationInterfaceTesting::testAllI2cBuses()
     if (i2cDevs.empty()) {
         data.push_back("[INFO] No /dev/i2c-* devices found");
         data.push_back("[INFO] Ensure i2c-dev module is loaded: modprobe i2c-dev");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     data.push_back("[INFO] Found " + std::to_string(i2cDevs.size()) + " I2C bus(es)");
@@ -1069,7 +1286,14 @@ TestOutput CommunicationInterfaceTesting::testAllI2cBuses()
     std::vector<std::string> sysBusDevs = listDevNodes("/sys/bus/i2c/devices", "i2c-");
     data.push_back("[INFO] I2C clients in sysfs: " + std::to_string(sysBusDevs.size()));
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1084,7 +1308,14 @@ TestOutput CommunicationInterfaceTesting::testI2cMasterMode()
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
     if (i2cDevs.empty()) {
         data.push_back("[INFO] No I2C buses found; Pi5 I2C always operates in master mode");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool allOk = true;
@@ -1114,7 +1345,14 @@ TestOutput CommunicationInterfaceTesting::testI2cMasterMode()
     }
 
     data.push_back("[INFO] Pi5 I2C controllers (RP1194/BCM2712) are master-only by default");
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1158,7 +1396,14 @@ TestOutput CommunicationInterfaceTesting::testI2cSlaveMode()
         data.push_back("[INFO] Enable via: echo eeprom 0x64 > /sys/bus/i2c/devices/i2c-N/new_device");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1216,7 +1461,14 @@ TestOutput CommunicationInterfaceTesting::testStandardMode()
         }
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1257,7 +1509,14 @@ TestOutput CommunicationInterfaceTesting::testFastMode()
         data.push_back("[INFO] Configure via clock-frequency = <400000> in device tree");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1302,7 +1561,14 @@ TestOutput CommunicationInterfaceTesting::testFastModePlus()
                        "Fast Mode Plus capability is hardware-supported");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1348,7 +1614,14 @@ TestOutput CommunicationInterfaceTesting::testHighspeedMode()
         data.push_back("[INFO] High-speed mode availability confirmed by BCM2712 hardware spec");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1390,7 +1663,14 @@ TestOutput CommunicationInterfaceTesting::testI2cClockStretching()
         data.push_back("[PASS] Clock stretching supported by hardware design");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1420,7 +1700,14 @@ TestOutput CommunicationInterfaceTesting::testMultimasterArbitration()
     data.push_back("[INFO] Lost arbitration causes NAK and controller backs off per I2C spec");
     data.push_back("[INFO] Arbitration-lost counter available via kernel I2C statistics");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1461,7 +1748,14 @@ TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
     }
 
     data.push_back("[INFO] Use struct i2c_rdwr_ioctl_data with I2C_M_NOSTART=0 for repeated-start");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ===========================================================================
@@ -1484,7 +1778,14 @@ TestOutput CommunicationInterfaceTesting::testCan20a()
         data.push_back("[INFO] No CAN interfaces found in /sys/class/net/can*");
         data.push_back("[INFO] Ensure CAN controllers are enabled and mttcan driver is loaded");
         data.push_back("[INFO] Pi5 has up to 4 Mira CAN (mttcan) controllers");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool allOk = true;
@@ -1497,7 +1798,14 @@ TestOutput CommunicationInterfaceTesting::testCan20a()
     }
 
     data.push_back("[INFO] Configure with: ip link set " + canIfaces[0].substr(canIfaces[0].rfind('/') + 1) + " type can bitrate 500000");
-    return {allOk, data};
+    {
+        TestOutput _out;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1514,7 +1822,14 @@ TestOutput CommunicationInterfaceTesting::testCan20b()
     if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found");
         data.push_back("[INFO] Pi5 mttcan supports CAN 2.0B extended 29-bit IDs");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     for (const auto& iface : canIfaces) {
@@ -1524,7 +1839,14 @@ TestOutput CommunicationInterfaceTesting::testCan20b()
         data.push_back("       Use CAN_EFF_FLAG (0x80000000U) in can_id for extended frames");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1542,7 +1864,14 @@ TestOutput CommunicationInterfaceTesting::testCanFd()
     if (canIfaces.empty()) {
         data.push_back("[INFO] No CAN interfaces found");
         data.push_back("[INFO] Pi5 mttcan supports CAN FD with up to 8 Mbps data phase");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     bool anyFd = false;
@@ -1581,7 +1910,14 @@ TestOutput CommunicationInterfaceTesting::testCanFd()
         data.push_back("[INFO] CAN FD may need interface to be brought up with 'fd on'");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1605,7 +1941,14 @@ TestOutput CommunicationInterfaceTesting::testVariousCanBitrates()
         for (const auto& br : supportedBitrates) {
             data.push_back("[INFO] " + br + " bps: supported by mttcan");
         }
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     for (const auto& iface : canIfaces) {
@@ -1622,7 +1965,14 @@ TestOutput CommunicationInterfaceTesting::testVariousCanBitrates()
         data.push_back("[PASS] " + ifName + ": bitrate configuration supported by mttcan driver");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1641,7 +1991,14 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
         data.push_back("[INFO] No CAN interfaces found");
         data.push_back("[INFO] Pi5 mttcan detects: bit, stuff, CRC, form, and ACK errors");
         data.push_back("[INFO] Error frames enabled with: ip link set canX type can berr-reporting on");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     for (const auto& iface : canIfaces) {
@@ -1673,7 +2030,14 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
         }
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1693,7 +2057,14 @@ TestOutput CommunicationInterfaceTesting::testCanBusoffRecovery()
         data.push_back("[INFO] No CAN interfaces found");
         data.push_back("[INFO] Pi5 mttcan supports automatic bus-off recovery");
         data.push_back("[INFO] Manual: ip link set canX type can restart-ms 100");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     for (const auto& iface : canIfaces) {
@@ -1712,7 +2083,14 @@ TestOutput CommunicationInterfaceTesting::testCanBusoffRecovery()
         data.push_back("  Manual: ip link set " + ifName + " type can restart");
     }
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1765,7 +2143,14 @@ TestOutput CommunicationInterfaceTesting::testCanMessageFiltering()
     data.push_back("[INFO] Pi5 mttcan hardware supports 128-entry Rx acceptance filter");
     data.push_back("[INFO] Hardware filters: standard (11-bit) and extended (29-bit) ID ranges");
     data.push_back("[INFO] Software filters: via CAN_RAW_FILTER on CAN_RAW socket");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -1782,7 +2167,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testAllUartPortsFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAllUartPortsFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAllUartPortsFunctionality";
+            _tr.test_id = "testAllUartPortsFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVariousBaudRates
@@ -1791,7 +2183,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testVariousBaudRates();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVariousBaudRates", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVariousBaudRates";
+            _tr.test_id = "testVariousBaudRates";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testHardwareFlowControl
@@ -1800,7 +2199,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testHardwareFlowControl();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testHardwareFlowControl", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testHardwareFlowControl";
+            _tr.test_id = "testHardwareFlowControl";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testParityChecking
@@ -1809,7 +2215,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testParityChecking();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testParityChecking", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testParityChecking";
+            _tr.test_id = "testParityChecking";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testStopBitConfiguration
@@ -1818,7 +2231,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testStopBitConfiguration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testStopBitConfiguration", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testStopBitConfiguration";
+            _tr.test_id = "testStopBitConfiguration";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUartDmaOperation
@@ -1827,7 +2247,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testUartDmaOperation();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUartDmaOperation", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUartDmaOperation";
+            _tr.test_id = "testUartDmaOperation";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testUartInterruptHandling
@@ -1836,7 +2263,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testUartInterruptHandling();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testUartInterruptHandling", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testUartInterruptHandling";
+            _tr.test_id = "testUartInterruptHandling";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testConsoledebugUart
@@ -1845,7 +2279,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testConsoledebugUart();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testConsoledebugUart", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testConsoledebugUart";
+            _tr.test_id = "testConsoledebugUart";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAllSpiControllers
@@ -1854,7 +2295,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testAllSpiControllers();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAllSpiControllers", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAllSpiControllers";
+            _tr.test_id = "testAllSpiControllers";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSpiMasterMode
@@ -1863,7 +2311,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testSpiMasterMode();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSpiMasterMode", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSpiMasterMode";
+            _tr.test_id = "testSpiMasterMode";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSpiSlaveMode
@@ -1872,7 +2327,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testSpiSlaveMode();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSpiSlaveMode", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSpiSlaveMode";
+            _tr.test_id = "testSpiSlaveMode";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVariousSpiClockSpeeds
@@ -1881,7 +2343,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testVariousSpiClockSpeeds();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVariousSpiClockSpeeds", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVariousSpiClockSpeeds";
+            _tr.test_id = "testVariousSpiClockSpeeds";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSpiModes
@@ -1890,7 +2359,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testSpiModes();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSpiModes", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSpiModes";
+            _tr.test_id = "testSpiModes";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testChipSelectFunctionality
@@ -1899,7 +2375,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testChipSelectFunctionality();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testChipSelectFunctionality", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testChipSelectFunctionality";
+            _tr.test_id = "testChipSelectFunctionality";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testSpiDmaTransfers
@@ -1908,7 +2391,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testSpiDmaTransfers();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testSpiDmaTransfers", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testSpiDmaTransfers";
+            _tr.test_id = "testSpiDmaTransfers";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultipleSpiDevices
@@ -1917,7 +2407,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testMultipleSpiDevices();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultipleSpiDevices", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultipleSpiDevices";
+            _tr.test_id = "testMultipleSpiDevices";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testAllI2cBuses
@@ -1926,7 +2423,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testAllI2cBuses();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testAllI2cBuses", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testAllI2cBuses";
+            _tr.test_id = "testAllI2cBuses";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testI2cMasterMode
@@ -1935,7 +2439,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testI2cMasterMode();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testI2cMasterMode", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testI2cMasterMode";
+            _tr.test_id = "testI2cMasterMode";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testI2cSlaveMode
@@ -1944,7 +2455,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testI2cSlaveMode();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testI2cSlaveMode", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testI2cSlaveMode";
+            _tr.test_id = "testI2cSlaveMode";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testStandardMode
@@ -1953,7 +2471,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testStandardMode();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testStandardMode", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testStandardMode";
+            _tr.test_id = "testStandardMode";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testFastMode
@@ -1962,7 +2487,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testFastMode();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testFastMode", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testFastMode";
+            _tr.test_id = "testFastMode";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testFastModePlus
@@ -1971,7 +2503,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testFastModePlus();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testFastModePlus", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testFastModePlus";
+            _tr.test_id = "testFastModePlus";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testHighspeedMode
@@ -1980,7 +2519,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testHighspeedMode();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testHighspeedMode", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testHighspeedMode";
+            _tr.test_id = "testHighspeedMode";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testI2cClockStretching
@@ -1989,7 +2535,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testI2cClockStretching();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testI2cClockStretching", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testI2cClockStretching";
+            _tr.test_id = "testI2cClockStretching";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testMultimasterArbitration
@@ -1998,7 +2551,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testMultimasterArbitration();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testMultimasterArbitration", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testMultimasterArbitration";
+            _tr.test_id = "testMultimasterArbitration";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testI2cRepeatedStart
@@ -2007,7 +2567,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testI2cRepeatedStart();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testI2cRepeatedStart", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testI2cRepeatedStart";
+            _tr.test_id = "testI2cRepeatedStart";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCan20a
@@ -2016,7 +2583,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testCan20a();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCan20a", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCan20a";
+            _tr.test_id = "testCan20a";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCan20b
@@ -2025,7 +2599,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testCan20b();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCan20b", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCan20b";
+            _tr.test_id = "testCan20b";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCanFd
@@ -2034,7 +2615,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testCanFd();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCanFd", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCanFd";
+            _tr.test_id = "testCanFd";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testVariousCanBitrates
@@ -2043,7 +2631,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testVariousCanBitrates();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testVariousCanBitrates", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testVariousCanBitrates";
+            _tr.test_id = "testVariousCanBitrates";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCanErrorDetection
@@ -2052,7 +2647,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testCanErrorDetection();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCanErrorDetection", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCanErrorDetection";
+            _tr.test_id = "testCanErrorDetection";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCanBusoffRecovery
@@ -2061,7 +2663,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testCanBusoffRecovery();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCanBusoffRecovery", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCanBusoffRecovery";
+            _tr.test_id = "testCanBusoffRecovery";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     // Run testCanMessageFiltering
@@ -2070,7 +2679,14 @@ std::vector<TestResult> CommunicationInterfaceTesting::runAllTests()
         TestOutput result = testCanMessageFiltering();
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        results.push_back({"testCanMessageFiltering", result, duration});
+        {
+            TestResult _tr;
+            _tr.name = "testCanMessageFiltering";
+            _tr.test_id = "testCanMessageFiltering";
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            _tr.output = result;
+            results.push_back(_tr);
+        }
     }
 
     return results;
@@ -2127,7 +2743,10 @@ std::vector<std::string> CommunicationInterfaceTesting::getAvailableTests()
 TestResult CommunicationInterfaceTesting::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if (testName == "testAllUartPortsFunctionality") {
         result = testAllUartPortsFunctionality();
@@ -2199,10 +2818,26 @@ TestResult CommunicationInterfaceTesting::runSingleTest(const std::string& testN
         // Unknown test name
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
-        return {testName + " (UNKNOWN)", {false, {}}, duration};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    return {testName, result, duration};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+        _tr.output = result;
+        return _tr;
+    }
 }

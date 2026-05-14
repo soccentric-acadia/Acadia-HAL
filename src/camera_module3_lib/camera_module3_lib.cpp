@@ -98,7 +98,14 @@ TestOutput CameraModule3Testing::testCameraDetection()
     data.push_back(unicam ? "[PASS] RP1 Unicam sysfs entry present"
                           : "[INFO] Unicam sysfs not found");
 
-    return {imx708Found || vid0, data};
+    {
+        TestOutput _out;
+        _out.status = (imx708Found || vid0) ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = (imx708Found || vid0) ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -120,7 +127,14 @@ TestOutput CameraModule3Testing::testSensorResolution()
                        fmts.find("2592") != std::string::npos;
         data.push_back(fullRes ? "[PASS] Full 4608×2592 resolution advertised"
                                : "[INFO] 4608×2592 not found in format list");
-        return {true, data};
+        {
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            for (size_t _i = 0; _i < data.size(); ++_i)
+                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            return _out;
+        }
     }
 
     // Fallback: libcamera-hello --list-cameras is more verbose
@@ -129,7 +143,14 @@ TestOutput CameraModule3Testing::testSensorResolution()
     data.push_back(fullRes ? "[PASS] 4608 found in libcamera camera info"
                            : "[INFO] Resolution info not available without camera");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -162,7 +183,14 @@ TestOutput CameraModule3Testing::testAutofocus()
     if (!afTest.empty())
         data.push_back("[INFO] AF capture: " + afTest);
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -187,7 +215,14 @@ TestOutput CameraModule3Testing::testHdrMode()
         data.push_back("[INFO] HDR capture output: " + hdrTest);
 
     data.push_back("[INFO] HDR tonemapping done in bcm2835-isp (not on-sensor)");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -212,7 +247,14 @@ TestOutput CameraModule3Testing::testStillCapture()
         data.push_back("[PASS] /tmp/cm3_still.jpg written (" +
                        std::to_string(st.st_size / 1024) + " KB)");
 
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -239,7 +281,14 @@ TestOutput CameraModule3Testing::testMipiCsiInterface()
         ? "[PASS] bcm2835-isp module loaded"
         : "[INFO] bcm2835-isp not in /proc/modules");
 
-    return {unicam, data};
+    {
+        TestOutput _out;
+        _out.status = unicam ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = unicam ? hal::Severity::INFO : hal::Severity::ERROR;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -263,12 +312,26 @@ TestOutput CameraModule3Testing::testPixelFormats()
                          fmts.find("SRGGB10") != std::string::npos;
             data.push_back(raw10 ? "[PASS] RAW10 format available"
                                  : "[INFO] RAW10 format not found");
-            return {true, data};
+            {
+                TestOutput _out;
+                _out.status = hal::Status::PASS;
+                _out.severity = hal::Severity::INFO;
+                for (size_t _i = 0; _i < data.size(); ++_i)
+                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                return _out;
+            }
         }
     }
 
     data.push_back("[INFO] /dev/video0 not present; pixel format list unavailable");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 /**
@@ -293,7 +356,14 @@ TestOutput CameraModule3Testing::testVideoStreaming()
                        std::to_string(st.st_size / 1024) + " KB)");
 
     data.push_back("[INFO] Pi5 H.264 encoding via V4L2 m2m (bcm2835-codec)");
-    return {true, data};
+    {
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        for (size_t _i = 0; _i < data.size(); ++_i)
+            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        return _out;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -307,7 +377,14 @@ std::vector<TestResult> CameraModule3Testing::runAllTests()
         auto start = std::chrono::high_resolution_clock::now();
         TestOutput out = (this->*fn)();
         auto end = std::chrono::high_resolution_clock::now();
-        results.push_back({name, out, end - start});
+        {
+            TestResult _tr;
+            _tr.name = name;
+            _tr.test_id = name;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+            _tr.output = out;
+            results.push_back(_tr);
+        }
     };
     run("testCameraDetection",   &CameraModule3Testing::testCameraDetection);
     run("testSensorResolution",  &CameraModule3Testing::testSensorResolution);
@@ -337,7 +414,10 @@ std::vector<std::string> CameraModule3Testing::getAvailableTests()
 TestResult CameraModule3Testing::runSingleTest(const std::string& testName)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    TestOutput result = {false, {}};
+    TestOutput result;
+    result.status = hal::Status::ERROR;
+    result.severity = hal::Severity::ERROR;
+    result.error_message = "test not dispatched";
 
     if      (testName == "testCameraDetection")   result = testCameraDetection();
     else if (testName == "testSensorResolution")   result = testSensorResolution();
@@ -349,9 +429,25 @@ TestResult CameraModule3Testing::runSingleTest(const std::string& testName)
     else if (testName == "testVideoStreaming")      result = testVideoStreaming();
     else {
         auto end = std::chrono::high_resolution_clock::now();
-        return {testName + " (UNKNOWN)", {false, {}}, end - start};
+        {
+            TestResult _tr;
+            _tr.name = testName + " (UNKNOWN)";
+            _tr.test_id = testName;
+            _tr.output.status = hal::Status::ERROR;
+            _tr.output.severity = hal::Severity::ERROR;
+            _tr.output.error_message = "Unknown test name: " + testName;
+            _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+            return _tr;
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
-    return {testName, result, end - start};
+    {
+        TestResult _tr;
+        _tr.name = testName;
+        _tr.test_id = testName;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        _tr.output = result;
+        return _tr;
+    }
 }
