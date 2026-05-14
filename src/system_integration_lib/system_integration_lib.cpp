@@ -179,15 +179,7 @@ TestOutput SystemIntegrationTesting::testSystemBottleneckIdentification()
         std::string cpu;
         long long user, nice, system, idle;
         f >> cpu >> user >> nice >> system >> idle;
-        {
-            TestOutput _out;
-            const bool _ok = (user, nice, system);
-            _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < idle.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = idle[_i];
-            return _out;
-        }
+        return {user, nice, system, idle};
     };
     auto s1 = readCpuStat();
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
