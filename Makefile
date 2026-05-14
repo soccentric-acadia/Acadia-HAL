@@ -8,6 +8,9 @@
 # Build directories (separate to avoid CMake cache conflicts)
 NATIVE_BUILD_DIR := build/native
 CROSS_BUILD_DIR := build/cross
+
+# Parallel jobs (override with make JOBS=N)
+JOBS := $(shell nproc)
 DOCKER_IMAGE := acadia
 DOCKER_CROSS_BUILD_DIR := /workspace/build/cross
 
@@ -80,7 +83,7 @@ configure:
 
 build: configure
 	@echo "Building project with Ninja..."
-	cd $(NATIVE_BUILD_DIR) && ninja
+	cd $(NATIVE_BUILD_DIR) && ninja -j$(JOBS)
 
 run: build
 	$(call run_local)
@@ -130,7 +133,7 @@ docker-configure: docker-image
 
 docker-build: docker-image
 	@echo "Building project with Docker/Ninja..."
-	$(DOCKER_RUN) "if [ ! -f $(DOCKER_CROSS_BUILD_DIR)/build.ninja ]; then mkdir -p $(DOCKER_CROSS_BUILD_DIR) && cd $(DOCKER_CROSS_BUILD_DIR) && cmake -GNinja /workspace; fi && cd $(DOCKER_CROSS_BUILD_DIR) && ninja -j2"
+	$(DOCKER_RUN) "if [ ! -f $(DOCKER_CROSS_BUILD_DIR)/build.ninja ]; then mkdir -p $(DOCKER_CROSS_BUILD_DIR) && cd $(DOCKER_CROSS_BUILD_DIR) && cmake -GNinja /workspace; fi && cd $(DOCKER_CROSS_BUILD_DIR) && ninja -j$(JOBS)"
 
 docker-clean: docker-image
 	@echo "Cleaning Docker build directory..."
