@@ -8,10 +8,13 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <functional>
+#include <map>
 #include <string>
 #include <thread>
 #include <utility>
+#include <variant>
 #include <vector>
 
 /**
@@ -20,32 +23,77 @@
  */
 enum class TestMode
 {
-    ONE_SHOT,   ///< Run all tests once (synchronous)
-    MONITORING, ///< Run tests repeatedly at an interval until stop() is called
-    LONG_TERM,  ///< Run tests at an interval for a fixed duration, then stop
-    EVENT       ///< Run tests continuously, fire a callback when criteria are met
+    ONE_SHOT    = 0,  ///< Alias kept for backward compat
+    SINGLE_SHOT = 0,  ///< Run all tests once (synchronous)
+    MONITORING  = 2,  ///< Run tests repeatedly at an interval until stop() is called
+    LONG_TERM   = 1,  ///< Run tests at an interval for a fixed duration, then stop
+    EVENT       = 3,  ///< Alias kept for backward compat
+    EVENT_BASED = 3   ///< Run tests continuously, fire a callback when criteria are met
 };
 
-/**
- * @struct TestOutput
- * @brief Structure to hold test output information
- */
-struct TestOutput
-{
-    bool passed;                   ///< Whether the test passed
-    std::vector<std::string> data; ///< Additional data returned by the test
+// ============================================================
+// Canonical result types (hal namespace)
+// ============================================================
+
+namespace hal {
+
+/// Typed value used for metrics, monitoring readings, and event payloads.
+/// Strings remain available for non-numeric data; numeric/bool data must NOT
+/// be stringified — downstream consumers (charting, thresholds) rely on type.
+using Value = std::variant<bool, int64_t, double, std::string>;
+
+/// Terminal outcome of a single test execution.
+enum class Status {
+    PASS,
+    FAIL,
+    ERROR,
+    TIMEOUT,
+    SKIPPED,
+    ABORTED,
 };
 
-/**
- * @struct TestResult
- * @brief Structure to hold test result information
- */
-struct TestResult
-{
-    std::string name;                       ///< Name of the test
-    TestOutput output;                      ///< Test output (passed and data)
-    std::chrono::duration<double> duration; ///< Time taken for the test
+/// Severity classifies how serious a non-PASS outcome is, or how informational
+/// a PASS is.
+enum class Severity {
+    INFO,
+    WARNING,
+    ERROR,
+    CRITICAL,
 };
+
+/// Output of a single test execution.
+struct TestOutput {
+    Status status{Status::ERROR};
+    Severity severity{Severity::INFO};
+    std::map<std::string, std::string> reason;
+    std::map<std::string, Value> metrics;
+    std::map<std::string, Value> monitoring;
+    std::map<std::string, Value> event;
+    std::string error_message;
+};
+
+/// Result of a single test execution.
+struct TestResult {
+    std::string module_id;
+    std::string test_id;
+    std::string name;
+    uint64_t sequence{0};
+    std::chrono::system_clock::time_point timestamp;
+    std::chrono::nanoseconds duration{0};
+    TestOutput output;
+    std::vector<TestResult> subtests;
+};
+
+} // namespace hal
+
+// Bring canonical types into the global namespace for backward compatibility
+// with all module headers and implementations.
+using hal::TestResult;
+using hal::TestOutput;
+using hal::Status;
+using hal::Severity;
+using hal::Value;
+
 
 /**
  * @struct MonitorItem
@@ -159,9 +207,26 @@ class TestBase
     void stop();
 
     /**
+     * @brief Pause execution of an active background test loop.
+     * The current cycle completes; the next cycle is held until resume() is called.
+     * Has no effect on ONE_SHOT / SINGLE_SHOT tests (they are already synchronous).
+     */
+    virtual void pause();
+
+    /**
+     * @brief Resume a paused background test loop.
+     */
+    virtual void resume();
+
+    /**
      * @brief Returns true while a background test thread is running
      */
     bool isRunning() const;
+
+    /**
+     * @brief Returns true if the test loop is paused (between cycles).
+     */
+    bool isPaused() const;
 
   protected:
     virtual std::vector<TestResult> runAllTests() = 0;
@@ -169,6 +234,7 @@ class TestBase
 
   private:
     std::atomic<bool> stopped_;
+    std::atomic<bool> paused_{false};
     std::thread monitoring_thread_;
 };
 

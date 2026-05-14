@@ -182,6 +182,21 @@ bool TestBase::isRunning() const
     return !stopped_;
 }
 
+void TestBase::pause()
+{
+    paused_.store(true);
+}
+
+void TestBase::resume()
+{
+    paused_.store(false);
+}
+
+bool TestBase::isPaused() const
+{
+    return paused_.load();
+}
+
 std::vector<TestResult> TestBase::runSelectedTests(const std::vector<std::string>& testNames)
 {
     std::vector<TestResult> results;
