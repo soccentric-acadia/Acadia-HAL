@@ -21,7 +21,7 @@ void signal_handler(int signal)
 
 int main(int argc, char* argv[])
 {
-    TestMode mode = TestMode::ONE_SHOT;
+    TestMode mode = TestMode::SINGLE_SHOT;
     if (argc > 1) {
         std::string arg = argv[1];
         if (arg == "monitoring") {
@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
     };
 
     GpuTesting tester;
-    std::cout << "GpuTesting test started in " << (mode == TestMode::ONE_SHOT ? "ONE_SHOT" : "MONITORING") << " mode." << std::endl;
+    std::cout << "GpuTesting test started in " << (mode == TestMode::SINGLE_SHOT ? "SINGLE_SHOT" : "MONITORING") << " mode." << std::endl;
 
     if (mode == TestMode::MONITORING) {
         std::signal(SIGINT, signal_handler);

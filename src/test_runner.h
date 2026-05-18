@@ -272,10 +272,10 @@ int runTestApp(const std::string& appName, int argc, char* argv[])
     }
 
     // ---- ONE SHOT ----------------------------------------------------------
-    if (mode_str == "one-shot" || mode_str == "ONE_SHOT") {
+    if (mode_str == "one-shot" || mode_str == "SINGLE_SHOT") {
         T tester;
         std::cout << appName << " [one-shot]\n";
-        tester.runTests(TestMode::ONE_SHOT,
+        tester.runTests(TestMode::SINGLE_SHOT,
                         [](const std::vector<TestResult>& r) { trPrintTable(r); });
         std::cout << appName << " completed.\n";
         return 0;
@@ -381,7 +381,7 @@ int runTestApp(const std::string& appName, int argc, char* argv[])
     std::cerr << "[WARNING] Unknown mode '" << mode_str << "'. Running one-shot.\n";
     trPrintUsage(appName);
     T tester;
-    tester.runTests(TestMode::ONE_SHOT,
+    tester.runTests(TestMode::SINGLE_SHOT,
                     [](const std::vector<TestResult>& r) { trPrintTable(r); });
     return 0;
 }

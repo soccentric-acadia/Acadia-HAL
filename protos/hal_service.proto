@@ -60,6 +60,28 @@ message StopResponse {
   string message  = 2;
 }
 
+// Pause an active background session.
+message PauseRequest {
+  string module_id  = 1;
+  string session_id = 2;
+}
+
+message PauseResponse {
+  bool   accepted = 1;
+  string message  = 2;
+}
+
+// Resume a paused background session.
+message ResumeRequest {
+  string module_id  = 1;
+  string session_id = 2;
+}
+
+message ResumeResponse {
+  bool   accepted = 1;
+  string message  = 2;
+}
+
 // ============================================================
 // Module registry messages (returned by ListModules)
 // ============================================================
@@ -88,7 +110,7 @@ message ListModulesResponse {
 // The single, stable gRPC service contract.
 // Adding or removing a HAL module never modifies this file.
 service HalService {
-  // Run tests once (TestBase::ONE_SHOT).
+  // Run tests once (TestBase::SINGLE_SHOT).
   rpc RunSingleShot(SingleShotRequest)   returns (hal.common.ResultEnvelope);
 
   // Run tests repeatedly for a fixed duration (TestBase::LONG_TERM).
@@ -97,11 +119,17 @@ service HalService {
   // Run tests indefinitely, sampling monitor items each cycle (TestBase::MONITORING).
   rpc StartMonitoring(MonitoringRequest) returns (stream hal.common.ResultEnvelope);
 
-  // Poll tests continuously and stream results when the condition fires (TestBase::EVENT).
+  // Poll tests continuously and stream results when the condition fires (TestBase::EVENT_BASED).
   rpc StartEventBased(EventBasedRequest) returns (stream hal.common.ResultEnvelope);
 
   // Stop any active background session for a module.
   rpc Stop(StopRequest)                  returns (StopResponse);
+
+  // Pause any active background session for a module.
+  rpc Pause(PauseRequest)                returns (PauseResponse);
+
+  // Resume any paused background session for a module.
+  rpc Resume(ResumeRequest)              returns (ResumeResponse);
 
   // Return the server-side module registry.
   rpc ListModules(ListModulesRequest)    returns (ListModulesResponse);

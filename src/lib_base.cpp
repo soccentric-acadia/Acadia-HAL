@@ -19,14 +19,14 @@ TestBase::~TestBase()
 }
 
 // ---------------------------------------------------------------------------
-// ONE_SHOT / MONITORING (backward-compatible)
+// SINGLE_SHOT / MONITORING (backward-compatible)
 // ---------------------------------------------------------------------------
 
 void TestBase::runTests(TestMode mode,
                         std::function<void(const std::vector<TestResult>&)> callback,
                         int interval_ms)
 {
-    if (mode == TestMode::ONE_SHOT) {
+    if (mode == TestMode::SINGLE_SHOT) {
         auto results = runAllTests();
         if (callback) {
             callback(results);

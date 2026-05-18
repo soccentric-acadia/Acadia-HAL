@@ -23,11 +23,11 @@
  */
 enum class TestMode
 {
-    ONE_SHOT    = 0,  ///< Alias kept for backward compat
+    
     SINGLE_SHOT = 0,  ///< Run all tests once (synchronous)
     MONITORING  = 2,  ///< Run tests repeatedly at an interval until stop() is called
     LONG_TERM   = 1,  ///< Run tests at an interval for a fixed duration, then stop
-    EVENT       = 3,  ///< Alias kept for backward compat
+    
     EVENT_BASED = 3   ///< Run tests continuously, fire a callback when criteria are met
 };
 
@@ -131,7 +131,7 @@ struct EventCriteria
  * @class TestBase
  * @brief Base class for all testing classes
  * @details Provides four test modes:
- *   ONE_SHOT       — run all tests once (synchronous)
+ *   SINGLE_SHOT       — run all tests once (synchronous)
  *   MONITORING     — run indefinitely at a fixed interval (background thread)
  *   LONG_TERM      — run for a fixed total duration at a fixed interval (background thread)
  *   EVENT          — run continuously, fire a callback when criteria are met (background thread)
@@ -145,8 +145,8 @@ class TestBase
     virtual ~TestBase();
 
     /**
-     * @brief Run tests in ONE_SHOT or MONITORING mode (backward-compatible entry point)
-     * @param mode        ONE_SHOT (synchronous) or MONITORING (starts background thread)
+     * @brief Run tests in SINGLE_SHOT or MONITORING mode (backward-compatible entry point)
+     * @param mode        SINGLE_SHOT (synchronous) or MONITORING (starts background thread)
      * @param callback    Called with results each cycle
      * @param interval_ms Cycle interval for MONITORING mode (default 1000 ms)
      */
@@ -209,7 +209,7 @@ class TestBase
     /**
      * @brief Pause execution of an active background test loop.
      * The current cycle completes; the next cycle is held until resume() is called.
-     * Has no effect on ONE_SHOT / SINGLE_SHOT tests (they are already synchronous).
+     * Has no effect on SINGLE_SHOT / SINGLE_SHOT tests (they are already synchronous).
      */
     virtual void pause();
 
