@@ -233,6 +233,13 @@ class TestBase
     virtual TestResult runSingleTest(const std::string& testName) = 0;
 
   private:
+    // Exception-safe wrapper: any exception from runAllTests() is caught and
+    // returned as a single ERROR TestResult instead of crashing the thread.
+    std::vector<TestResult> runAllTestsSafe();
+
+    // Block the calling thread while paused_ is set (honours stopped_ to exit early).
+    void waitWhilePaused();
+
     std::atomic<bool> stopped_;
     std::atomic<bool> paused_{false};
     std::thread monitoring_thread_;

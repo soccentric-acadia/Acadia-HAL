@@ -21,9 +21,13 @@ HOST_ARCH := $(shell uname -m | sed 's/x86_64/x86-64/')
 IP_A := 192.168.1.3
 IP_B := 192.168.1.13
 
-# User/Password for SSH/SCP
-USER := nvidia
-PASS := nvidia
+# User and password for SSH/SCP.
+# Override on the command line or via environment variables:
+#   make deploy USER=pi PASS=<password>
+#   HAL_SSH_USER=pi HAL_SSH_PASS=<password> make deploy
+# Do NOT commit real credentials here.
+USER := $(or $(HAL_SSH_USER),nvidia)
+PASS := $(or $(HAL_SSH_PASS),nvidia)
 SSHPASS := sshpass -p $(PASS)
 SSH := $(SSHPASS) ssh -o StrictHostKeyChecking=no
 SCP := $(SSHPASS) scp -o StrictHostKeyChecking=no

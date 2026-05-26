@@ -67,7 +67,7 @@ make run
 
 ### Docker-based Cross-Compilation
 
-The Docker image is based on `ubuntu:24.04` (ARM64) and is named `rpi5-builder`.
+The Docker image is based on `ubuntu:22.04` (ARM64) and is named `acadia`.
 
 #### Build Process
 
@@ -81,7 +81,7 @@ The Docker image is based on `ubuntu:24.04` (ARM64) and is named `rpi5-builder`.
    make docker-image
    ```
 
-   This creates a Docker image named `rpi5-builder` based on `ubuntu:24.04` with all necessary ARM64 build dependencies pre-installed.
+   This creates a Docker image named `acadia` based on `ubuntu:22.04` with all necessary ARM64 build dependencies pre-installed.
 
 3. **Build**
    ```bash

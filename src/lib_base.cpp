@@ -8,6 +8,7 @@
 #include "platform_rpi5.h"
 #include <chrono>
 #include <iostream>
+#include <stdexcept>
 
 TestBase::TestBase() : stopped_(true)
 {
@@ -19,6 +20,43 @@ TestBase::~TestBase()
 }
 
 // ---------------------------------------------------------------------------
+// Internal: exception-safe wrapper around runAllTests().
+// Returns a single ERROR result if any exception escapes the derived class.
+// ---------------------------------------------------------------------------
+std::vector<TestResult> TestBase::runAllTestsSafe()
+{
+    try {
+        return runAllTests();
+    } catch (const std::exception& ex) {
+        TestResult err;
+        err.name    = "runAllTests_exception";
+        err.test_id = err.name;
+        err.output.status        = hal::Status::ERROR;
+        err.output.severity      = hal::Severity::CRITICAL;
+        err.output.error_message = std::string("Exception in runAllTests: ") + ex.what();
+        std::cerr << "[TestBase] " << err.output.error_message << "\n";
+        return {err};
+    } catch (...) {
+        TestResult err;
+        err.name    = "runAllTests_exception";
+        err.test_id = err.name;
+        err.output.status        = hal::Status::ERROR;
+        err.output.severity      = hal::Severity::CRITICAL;
+        err.output.error_message = "Unknown exception in runAllTests";
+        std::cerr << "[TestBase] " << err.output.error_message << "\n";
+        return {err};
+    }
+}
+
+// Internal: wait while paused (checked at the start of each background cycle).
+void TestBase::waitWhilePaused()
+{
+    while (paused_.load() && !stopped_.load()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+}
+
+// ---------------------------------------------------------------------------
 // SINGLE_SHOT / MONITORING (backward-compatible)
 // ---------------------------------------------------------------------------
 
@@ -27,7 +65,7 @@ void TestBase::runTests(TestMode mode,
                         int interval_ms)
 {
     if (mode == TestMode::SINGLE_SHOT) {
-        auto results = runAllTests();
+        auto results = runAllTestsSafe();
         if (callback) {
             callback(results);
         }
@@ -36,7 +74,9 @@ void TestBase::runTests(TestMode mode,
         stopped_ = false;
         monitoring_thread_ = std::thread([this, callback, interval_ms]() {
             while (!stopped_) {
-                auto results = runAllTests();
+                waitWhilePaused();
+                if (stopped_) break;
+                auto results = runAllTestsSafe();
                 if (callback) {
                     callback(results);
                 }
@@ -62,6 +102,8 @@ void TestBase::runLongTerm(int interval_ms, long long duration_ms,
         auto start = std::chrono::steady_clock::now();
         int cycle = 0;
         while (!stopped_) {
+            waitWhilePaused();
+            if (stopped_) break;
             if (duration_ms > 0) {
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - start).count();
@@ -69,7 +111,7 @@ void TestBase::runLongTerm(int interval_ms, long long duration_ms,
                     break;
                 }
             }
-            auto results = runAllTests();
+            auto results = runAllTestsSafe();
             ++cycle;
             if (callback) {
                 callback(results, cycle);
@@ -97,6 +139,8 @@ void TestBase::runMonitoringTest(int interval_ms, long long duration_ms,
         auto start = std::chrono::steady_clock::now();
         int cycle = 0;
         while (!stopped_) {
+            waitWhilePaused();
+            if (stopped_) break;
             if (duration_ms > 0) {
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - start).count();
@@ -107,7 +151,7 @@ void TestBase::runMonitoringTest(int interval_ms, long long duration_ms,
             MonitoringSnapshot snap;
             snap.cycle = ++cycle;
             snap.timestamp = std::chrono::system_clock::now();
-            snap.testResults = runAllTests();
+            snap.testResults = runAllTestsSafe();
             for (const auto& item : monitorItems) {
                 std::string val;
                 try {
@@ -143,6 +187,8 @@ void TestBase::runEventTest(int poll_interval_ms, const EventCriteria& criteria,
                                        criteria, event_callback]() {
         auto start = std::chrono::steady_clock::now();
         while (!stopped_) {
+            waitWhilePaused();
+            if (stopped_) break;
             if (max_duration_ms > 0) {
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - start).count();
@@ -150,7 +196,7 @@ void TestBase::runEventTest(int poll_interval_ms, const EventCriteria& criteria,
                     break;
                 }
             }
-            auto results = runAllTests();
+            auto results = runAllTestsSafe();
             if (criteria.predicate && criteria.predicate(results)) {
                 if (event_callback) {
                     event_callback(results);
@@ -199,9 +245,43 @@ bool TestBase::isPaused() const
 
 std::vector<TestResult> TestBase::runSelectedTests(const std::vector<std::string>& testNames)
 {
+    const auto available = getAvailableTests();
     std::vector<TestResult> results;
+    results.reserve(testNames.size());
     for (const auto& name : testNames) {
-        results.push_back(runSingleTest(name));
+        bool found = false;
+        for (const auto& avail : available) {
+            if (avail == name) { found = true; break; }
+        }
+        if (!found) {
+            TestResult err;
+            err.name    = name;
+            err.test_id = name;
+            err.output.status        = hal::Status::ERROR;
+            err.output.severity      = hal::Severity::ERROR;
+            err.output.error_message = "Unknown test name: \"" + name + "\"";
+            results.push_back(std::move(err));
+            continue;
+        }
+        try {
+            results.push_back(runSingleTest(name));
+        } catch (const std::exception& ex) {
+            TestResult err;
+            err.name    = name;
+            err.test_id = name;
+            err.output.status        = hal::Status::ERROR;
+            err.output.severity      = hal::Severity::CRITICAL;
+            err.output.error_message = std::string("Exception in runSingleTest(\"") + name + "\"): " + ex.what();
+            results.push_back(std::move(err));
+        } catch (...) {
+            TestResult err;
+            err.name    = name;
+            err.test_id = name;
+            err.output.status        = hal::Status::ERROR;
+            err.output.severity      = hal::Severity::CRITICAL;
+            err.output.error_message = "Unknown exception in runSingleTest(\"" + name + "\")";
+            results.push_back(std::move(err));
+        }
     }
     return results;
 }

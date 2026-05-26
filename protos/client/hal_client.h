@@ -2,9 +2,14 @@
 
 // hal_client.h — synchronous gRPC client wrapper for HalService.
 //
-// Usage:
+// Usage (insecure — development only):
 //   auto channel = grpc::CreateChannel("localhost:50051",
 //                                      grpc::InsecureChannelCredentials());
+//   hal::client::HalClient client(channel);
+//
+// Usage (TLS — production):
+//   auto channel_creds = grpc::SslCredentials(grpc::SslCredentialsOptions{});
+//   auto channel = grpc::CreateChannel("hal-server.example.com:50051", channel_creds);
 //   hal::client::HalClient client(channel);
 //
 //   hal::modules::cpu::Config cfg;

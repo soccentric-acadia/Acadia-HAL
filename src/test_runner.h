@@ -69,20 +69,26 @@ static std::string trReadSysfs(const std::string& path)
 
 // Parse human-friendly duration string to milliseconds.
 // Accepted: "500ms"  "30s"  "5m"  "2h"  "1d"  or plain integer (treated as ms).
+// Returns -1 if the input cannot be parsed.
 static long long trParseDuration(const std::string& s)
 {
-    if (s.size() >= 3 && s.substr(s.size() - 2) == "ms") {
-        return std::stoll(s.substr(0, s.size() - 2));
+    try {
+        if (s.size() >= 3 && s.substr(s.size() - 2) == "ms") {
+            return std::stoll(s.substr(0, s.size() - 2));
+        }
+        if (s.size() >= 2) {
+            char u = s.back();
+            std::string n = s.substr(0, s.size() - 1);
+            if (u == 's') return std::stoll(n) * 1000LL;
+            if (u == 'm') return std::stoll(n) * 60000LL;
+            if (u == 'h') return std::stoll(n) * 3600000LL;
+            if (u == 'd') return std::stoll(n) * 86400000LL;
+        }
+        return std::stoll(s); // plain integer → ms
+    } catch (...) {
+        std::cerr << "[ERROR] Invalid duration string: \"" << s << "\"\n";
+        return -1LL;
     }
-    if (s.size() >= 2) {
-        char u = s.back();
-        std::string n = s.substr(0, s.size() - 1);
-        if (u == 's') return std::stoll(n) * 1000LL;
-        if (u == 'm') return std::stoll(n) * 60000LL;
-        if (u == 'h') return std::stoll(n) * 3600000LL;
-        if (u == 'd') return std::stoll(n) * 86400000LL;
-    }
-    return std::stoll(s); // plain integer → ms
 }
 
 // ---------------------------------------------------------------------------
@@ -161,7 +167,17 @@ static EventCriteria trMakeCriteria(const std::string& spec)
     }
     // fail-rate-above-N  (N is integer percentage 0–100)
     if (spec.rfind("fail-rate-above-", 0) == 0) {
-        int threshold = std::stoi(spec.substr(16));
+        int threshold = 0;
+        try {
+            threshold = std::stoi(spec.substr(16));
+        } catch (...) {
+            std::cerr << "[ERROR] Invalid fail-rate threshold in '" << spec << "'\n";
+            return {spec, [](const std::vector<TestResult>&) { return false; }};
+        }
+        if (threshold < 0 || threshold > 100) {
+            std::cerr << "[ERROR] fail-rate-above-N threshold must be 0–100, got " << threshold << "\n";
+            return {spec, [](const std::vector<TestResult>&) { return false; }};
+        }
         return {"fail rate above " + std::to_string(threshold) + "%",
                 [threshold](const std::vector<TestResult>& r) {
                     if (r.empty()) return false;
@@ -283,7 +299,11 @@ int runTestApp(const std::string& appName, int argc, char* argv[])
 
     // ---- MONITORING (indefinite) -------------------------------------------
     if (mode_str == "monitoring") {
-        int interval_ms = (argc > 2) ? std::stoi(argv[2]) : 1000;
+        int interval_ms = 1000;
+        if (argc > 2) {
+            try { interval_ms = std::stoi(argv[2]); }
+            catch (...) { std::cerr << "[ERROR] Invalid interval_ms: " << argv[2] << "\n"; return 1; }
+        }
         T tester;
         int cycle = 0;
         std::cout << appName << " [monitoring] interval=" << interval_ms << "ms"
@@ -306,8 +326,11 @@ int runTestApp(const std::string& appName, int argc, char* argv[])
             std::cerr << "Usage: " << appName << " long-term <interval_ms> <duration>\n";
             return 1;
         }
-        int interval_ms        = std::stoi(argv[2]);
+        int interval_ms = 0;
+        try { interval_ms = std::stoi(argv[2]); }
+        catch (...) { std::cerr << "[ERROR] Invalid interval_ms: " << argv[2] << "\n"; return 1; }
         long long duration_ms  = trParseDuration(argv[3]);
+        if (duration_ms < 0) return 1;
         T tester;
         std::cout << appName << " [long-term] interval=" << interval_ms
                   << "ms  duration=" << duration_ms << "ms"
@@ -329,8 +352,11 @@ int runTestApp(const std::string& appName, int argc, char* argv[])
             std::cerr << "Usage: " << appName << " monitor-test <interval_ms> <duration>\n";
             return 1;
         }
-        int interval_ms        = std::stoi(argv[2]);
+        int interval_ms = 0;
+        try { interval_ms = std::stoi(argv[2]); }
+        catch (...) { std::cerr << "[ERROR] Invalid interval_ms: " << argv[2] << "\n"; return 1; }
         long long duration_ms  = trParseDuration(argv[3]);
+        if (duration_ms < 0) return 1;
         T tester;
         std::cout << appName << " [monitor-test] interval=" << interval_ms
                   << "ms  duration=" << duration_ms << "ms"
@@ -354,9 +380,15 @@ int runTestApp(const std::string& appName, int argc, char* argv[])
             trPrintUsage(appName);
             return 1;
         }
-        int poll_ms              = std::stoi(argv[2]);
+        int poll_ms = 0;
+        try { poll_ms = std::stoi(argv[2]); }
+        catch (...) { std::cerr << "[ERROR] Invalid poll_ms: " << argv[2] << "\n"; return 1; }
         EventCriteria criteria   = trMakeCriteria(argv[3]);
-        long long max_dur_ms     = (argc > 4) ? trParseDuration(argv[4]) : 0;
+        long long max_dur_ms = 0;
+        if (argc > 4) {
+            max_dur_ms = trParseDuration(argv[4]);
+            if (max_dur_ms < 0) return 1;
+        }
         T tester;
         int event_count = 0;
         std::cout << appName << " [event] poll=" << poll_ms << "ms"
