@@ -106,6 +106,46 @@ grpc::Status HalServiceImpl::Stop(grpc::ServerContext*    /*ctx*/,
     return grpc::Status::OK;
 }
 
+grpc::Status HalServiceImpl::Pause(grpc::ServerContext*     /*ctx*/,
+                                    const hal::PauseRequest* req,
+                                    hal::PauseResponse*      resp) {
+    if (req->module_id().empty()) {
+        for (const auto& info : registry_->ListAll()) {
+            auto* h = registry_->Find(info.id());
+            if (h) h->Pause();
+        }
+        resp->set_accepted(true);
+        resp->set_message("All modules paused");
+        return grpc::Status::OK;
+    }
+    IModuleHandler* h = nullptr;
+    if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
+    h->Pause();
+    resp->set_accepted(true);
+    resp->set_message("Paused " + req->module_id());
+    return grpc::Status::OK;
+}
+
+grpc::Status HalServiceImpl::Resume(grpc::ServerContext*      /*ctx*/,
+                                     const hal::ResumeRequest* req,
+                                     hal::ResumeResponse*      resp) {
+    if (req->module_id().empty()) {
+        for (const auto& info : registry_->ListAll()) {
+            auto* h = registry_->Find(info.id());
+            if (h) h->Resume();
+        }
+        resp->set_accepted(true);
+        resp->set_message("All modules resumed");
+        return grpc::Status::OK;
+    }
+    IModuleHandler* h = nullptr;
+    if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
+    h->Resume();
+    resp->set_accepted(true);
+    resp->set_message("Resumed " + req->module_id());
+    return grpc::Status::OK;
+}
+
 grpc::Status HalServiceImpl::ListModules(grpc::ServerContext*           /*ctx*/,
                                           const hal::ListModulesRequest* /*req*/,
                                           hal::ListModulesResponse*       resp) {

@@ -91,6 +91,28 @@ grpc::Status HalClient::Stop(const std::string& module_id,
     return stub_->Stop(&ctx, req, &resp);
 }
 
+grpc::Status HalClient::Pause(const std::string& module_id,
+                               const std::string& session_id) {
+    hal::PauseRequest req;
+    req.set_module_id(module_id);
+    req.set_session_id(session_id);
+
+    grpc::ClientContext ctx;
+    hal::PauseResponse resp;
+    return stub_->Pause(&ctx, req, &resp);
+}
+
+grpc::Status HalClient::Resume(const std::string& module_id,
+                                const std::string& session_id) {
+    hal::ResumeRequest req;
+    req.set_module_id(module_id);
+    req.set_session_id(session_id);
+
+    grpc::ClientContext ctx;
+    hal::ResumeResponse resp;
+    return stub_->Resume(&ctx, req, &resp);
+}
+
 grpc::Status HalClient::ListModules(std::vector<hal::ModuleInfo>* modules) {
     hal::ListModulesRequest req;
     grpc::ClientContext ctx;

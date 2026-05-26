@@ -199,17 +199,25 @@ static EventCriteria trMakeCriteria(const std::string& spec)
 
 static void trPrintTable(const std::vector<TestResult>& results)
 {
-    int passed = 0, failed = 0;
+    int passed = 0, failed = 0, errored = 0, skipped = 0;
     std::chrono::duration<double> total{};
     std::cout << "\n"
               << std::left << std::setw(42) << "Test Name"
-              << std::setw(8) << "Result"
+              << std::setw(9) << "Result"
               << "Duration(s)\n"
               << std::string(64, '-') << "\n";
     for (const auto& r : results) {
-        bool ok = (r.output.status == hal::Status::PASS);
+        const char* label = "FAIL";
+        switch (r.output.status) {
+            case hal::Status::PASS:    label = "PASS";    ++passed;  break;
+            case hal::Status::FAIL:    label = "FAIL";    ++failed;  break;
+            case hal::Status::ERROR:   label = "ERROR";   ++errored; break;
+            case hal::Status::TIMEOUT: label = "TIMEOUT"; ++errored; break;
+            case hal::Status::SKIPPED: label = "SKIP";    ++skipped; break;
+            case hal::Status::ABORTED: label = "ABORT";   ++errored; break;
+        }
         std::cout << std::left << std::setw(42) << r.name
-                  << std::setw(8) << (ok ? "PASS" : "FAIL")
+                  << std::setw(9) << label
                   << std::fixed << std::setprecision(6)
                   << std::chrono::duration<double>(r.duration).count() << "\n";
         for (const auto& kv : r.output.reason) {
@@ -218,20 +226,23 @@ static void trPrintTable(const std::vector<TestResult>& results)
         if (!r.output.error_message.empty()) {
             std::cout << "    [error] " << r.output.error_message << "\n";
         }
-        ok ? ++passed : ++failed;
         total += r.duration;
     }
     std::cout << std::string(64, '-') << "\n"
               << "Total: " << results.size()
               << "  Pass: " << passed
-              << "  Fail: " << failed
-              << "  Time: " << std::fixed << std::setprecision(4) << total.count() << "s\n";
+              << "  Fail: " << failed;
+    if (errored > 0) std::cout << "  Error: " << errored;
+    if (skipped > 0) std::cout << "  Skip: "  << skipped;
+    std::cout << "  Time: " << std::fixed << std::setprecision(4) << total.count() << "s\n";
 }
 
 static void trPrintCycleHeader(int cycle, const std::string& label, bool clear_screen)
 {
     if (clear_screen) {
-        (void)system("clear");
+        // Use ANSI escape sequence instead of system("clear") to avoid
+        // spawning a shell process and the associated OWASP A03 risk.
+        std::cout << "\033[2J\033[H";
     }
     std::cout << "\n[Cycle " << cycle << "] " << label << "\n";
 }

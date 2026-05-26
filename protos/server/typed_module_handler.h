@@ -390,6 +390,22 @@ class TypedModuleHandler : public IModuleHandler {
     }
 
     // ----------------------------------------------------------------
+    // Pause
+    // ----------------------------------------------------------------
+    void Pause() override {
+        std::lock_guard<std::mutex> lk(active_mu_);
+        if (active_module_) active_module_->pause();
+    }
+
+    // ----------------------------------------------------------------
+    // Resume
+    // ----------------------------------------------------------------
+    void Resume() override {
+        std::lock_guard<std::mutex> lk(active_mu_);
+        if (active_module_) active_module_->resume();
+    }
+
+    // ----------------------------------------------------------------
     // GetModuleInfo
     // ----------------------------------------------------------------
     hal::ModuleInfo GetModuleInfo() const override {

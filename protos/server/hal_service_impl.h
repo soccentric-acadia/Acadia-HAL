@@ -63,6 +63,12 @@ class IModuleHandler {
     // Abort any active background test.
     virtual void Stop() = 0;
 
+    // Pause the active background test (no-op if not running).
+    virtual void Pause() = 0;
+
+    // Resume a paused background test (no-op if not paused).
+    virtual void Resume() = 0;
+
     // Return the ModuleInfo proto for ListModules.
     virtual hal::ModuleInfo GetModuleInfo() const = 0;
 };
@@ -120,6 +126,16 @@ class HalServiceImpl final : public hal::HalService::Service {
         grpc::ServerContext*   ctx,
         const hal::StopRequest* req,
         hal::StopResponse*      resp) override;
+
+    grpc::Status Pause(
+        grpc::ServerContext*    ctx,
+        const hal::PauseRequest* req,
+        hal::PauseResponse*      resp) override;
+
+    grpc::Status Resume(
+        grpc::ServerContext*     ctx,
+        const hal::ResumeRequest* req,
+        hal::ResumeResponse*      resp) override;
 
     grpc::Status ListModules(
         grpc::ServerContext*          ctx,

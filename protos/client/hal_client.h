@@ -98,6 +98,20 @@ class HalClient {
                       const std::string& session_id = {});
 
     // ------------------------------------------------------------------
+    // Pause
+    //   Pause an active background session. Pass empty module_id to pause all.
+    // ------------------------------------------------------------------
+    grpc::Status Pause(const std::string& module_id  = {},
+                       const std::string& session_id = {});
+
+    // ------------------------------------------------------------------
+    // Resume
+    //   Resume a paused session. Pass empty module_id to resume all.
+    // ------------------------------------------------------------------
+    grpc::Status Resume(const std::string& module_id  = {},
+                        const std::string& session_id = {});
+
+    // ------------------------------------------------------------------
     // ListModules
     //   Return ModuleInfo for every module registered on the server.
     // ------------------------------------------------------------------
