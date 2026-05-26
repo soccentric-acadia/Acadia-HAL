@@ -25,6 +25,7 @@ set(LIBRARY_OUTPUT_PATH "${MAINFOLDER}/lib")
 file(
     GLOB_RECURSE
     ALL_SOURCES
+    CONFIGURE_DEPENDS
     "src/*.cpp"
     "src/*.h"
     "tests/*.cpp"
@@ -85,17 +86,13 @@ else()
 endif()
 
 # Add proto layer (Protobuf + gRPC generated sources and hal_protos library)
-# This is guarded so the existing build continues to work even if
-# Protobuf is not installed on the current host.
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/protos/CMakeLists.txt")
-    add_subdirectory(protos)
-endif()
+add_subdirectory(protos)
 
 # Add src directory
 add_subdirectory(src)
 
 # Collect all source files from src for combined libraries
-file(GLOB_RECURSE SRC_SOURCES "src/*.cpp")
+file(GLOB_RECURSE SRC_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 
 # Create static library
 add_library(acu_full_test STATIC ${SRC_SOURCES})
@@ -118,9 +115,89 @@ install(TARGETS acu_full_test
 install(TARGETS acu_full_test_shared
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-install(DIRECTORY src/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/acaida_hal
+install(DIRECTORY src/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/acadia_hal
     FILES_MATCHING PATTERN "*.h"
 )
 
 # Add tests directory
 add_subdirectory(tests)
+
+# ============================================================
+# CPack — DEB / IPK / RPM packaging
+# ============================================================
+
+# --- Common metadata ---
+set(CPACK_PACKAGE_NAME             "acadia-hal")
+set(CPACK_PACKAGE_VENDOR           "Acadia")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+    "Hardware Abstraction Layer for Raspberry Pi 5")
+set(CPACK_PACKAGE_VERSION          "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_VERSION_MAJOR    "${PROJECT_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR    "${PROJECT_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH    "${PROJECT_VERSION_PATCH}")
+set(CPACK_PACKAGE_CONTACT          "maintainer@acadia.example.com")
+set(CPACK_STRIP_FILES              ON)
+
+# Map CMake/system processor to package-manager architecture names
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+    set(HAL_DEB_ARCH "arm64")
+    set(HAL_RPM_ARCH "aarch64")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
+    set(HAL_DEB_ARCH "amd64")
+    set(HAL_RPM_ARCH "x86_64")
+else()
+    set(HAL_DEB_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+    set(HAL_RPM_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+
+# ---------------------------------------------------------------
+# DEB
+# ---------------------------------------------------------------
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER  "Acadia <maintainer@acadia.example.com>")
+set(CPACK_DEBIAN_PACKAGE_SECTION     "embedded")
+set(CPACK_DEBIAN_PACKAGE_PRIORITY    "optional")
+set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "${HAL_DEB_ARCH}")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS     "libstdc++6 (>= 10), libgcc-s1")
+set(CPACK_DEBIAN_PACKAGE_DESCRIPTION [[Hardware Abstraction Layer for Raspberry Pi 5
+ Acadia HAL provides a C++17 hardware abstraction layer for the
+ Raspberry Pi 5 (BCM2712 / RP1) exposing 35 hardware modules via a
+ canonical API and a gRPC/Protobuf service interface.]])
+set(CPACK_DEBIAN_COMPRESSION_TYPE    "gzip")
+set(CPACK_DEBIAN_FILE_NAME           "DEB-DEFAULT")
+
+# ---------------------------------------------------------------
+# IPK  (Yocto / OpenWrt — structurally identical to DEB)
+# Build with:  cmake --build <dir> --target package_ipk
+# ---------------------------------------------------------------
+add_custom_target(package_ipk
+    COMMAND "${CMAKE_CPACK_COMMAND}" -G DEB
+            --config "${CMAKE_BINARY_DIR}/CPackConfig.cmake"
+    COMMAND "${CMAKE_COMMAND}"
+            "-DDIR=${CMAKE_BINARY_DIR}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/rename_deb_to_ipk.cmake"
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+    COMMENT "Generating IPK package (DEB repackaged as .ipk)"
+    VERBATIM
+)
+
+# ---------------------------------------------------------------
+# RPM
+# ---------------------------------------------------------------
+set(CPACK_RPM_PACKAGE_LICENSE       "Proprietary")
+set(CPACK_RPM_PACKAGE_GROUP         "System/Libraries")
+set(CPACK_RPM_PACKAGE_ARCHITECTURE  "${HAL_RPM_ARCH}")
+set(CPACK_RPM_PACKAGE_DESCRIPTION   "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")
+set(CPACK_RPM_PACKAGE_REQUIRES      "libstdc++ >= 10")
+set(CPACK_RPM_PACKAGE_AUTOREQPROV   NO)
+set(CPACK_RPM_COMPRESSION_TYPE      "gzip")
+set(CPACK_RPM_FILE_NAME             "RPM-DEFAULT")
+
+# ---------------------------------------------------------------
+# Generators
+# Run `cpack` to produce both DEB and RPM, or select one:
+#   cpack -G DEB
+#   cpack -G RPM
+#   cmake --build <dir> --target package_ipk
+# ---------------------------------------------------------------
+set(CPACK_GENERATOR "DEB;RPM")
+include(CPack)
