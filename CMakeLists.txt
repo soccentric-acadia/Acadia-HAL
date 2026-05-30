@@ -165,6 +165,12 @@ set_target_properties(acu_full_test_shared PROPERTIES
     SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
+# These source files intentionally ignore write()/read()/system() return values.
+# Suppress only for the aggregate targets that compile them directly.
+foreach(_tgt acu_full_test acu_full_test_shared)
+    target_compile_options(${_tgt} PRIVATE -Wno-unused-result)
+endforeach()
+
 # Install rules for aggregate libraries and headers
 install(TARGETS acu_full_test
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
