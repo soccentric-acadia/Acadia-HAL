@@ -61,3 +61,10 @@ add_subdirectory(rtc_lib)
 add_subdirectory(sd_card_lib)
 add_subdirectory(spi_lib)
 add_subdirectory(uart_lib)
+
+# These modules intentionally ignore write()/read()/system() return values
+# (hardware probe paths where I/O failures are non-fatal by design).
+# Suppress only for these targets rather than globally.
+foreach(_tgt cpu_lib watchdog_and_reset_lib functional_safety_lib serializer_deserializer_lib)
+    target_compile_options(${_tgt} PRIVATE -Wno-unused-result)
+endforeach()
