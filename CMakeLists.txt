@@ -91,8 +91,65 @@ add_subdirectory(protos)
 # Add src directory
 add_subdirectory(src)
 
-# Collect all source files from src for combined libraries
-file(GLOB_RECURSE SRC_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
+# Explicit source list (replaces GLOB_RECURSE — adding a module requires
+# adding it here AND to src/CMakeLists.txt).
+set(SRC_SOURCES
+    # ── base ──────────────────────────────────────────────────────────────
+    src/lib_base.cpp
+    # ── 35 original modules ───────────────────────────────────────────────
+    src/audio_interfaces/audio_interfaces.cpp
+    src/camera_interfaces_lib/camera_interfaces_lib.cpp
+    src/camera_module3_lib/camera_module3_lib.cpp
+    src/clock_and_timing_lib/clock_and_timing_lib.cpp
+    src/communication_interface_lib/communication_interface_lib.cpp
+    src/cpu_lib/cpu_lib.cpp
+    src/debug_and_development_interfaces/debug_and_development_interfaces.cpp
+    src/deep_learning_accelerator_lib/deep_learning_accelerator_lib.cpp
+    src/display_interfaces/display_interfaces.cpp
+    src/environmental_lib/environmental_lib.cpp
+    src/ethernet_lib/ethernet_lib.cpp
+    src/ethernet_switch_lib/ethernet_switch_lib.cpp
+    src/external_connector_lib/external_connector_lib.cpp
+    src/functional_safety_lib/functional_safety_lib.cpp
+    src/gnss_lib/gnss_lib.cpp
+    src/gpio_lib/gpio_lib.cpp
+    src/gpu_lib/gpu_lib.cpp
+    src/imu_lib/imu_lib.cpp
+    src/mcu_interface_lib/mcu_interface_lib.cpp
+    src/pcie_lib/pcie_lib.cpp
+    src/poe_hat_lib/poe_hat_lib.cpp
+    src/power_management_lib/power_management_lib.cpp
+    src/reliability_lib/reliability_lib.cpp
+    src/security_features_lib/security_features_lib.cpp
+    src/sense_hat_lib/sense_hat_lib.cpp
+    src/serializer_deserializer_lib/serializer_deserializer_lib.cpp
+    src/software_interface_lib/software_interface_lib.cpp
+    src/storage_lib/storage_lib.cpp
+    src/system_integration_lib/system_integration_lib.cpp
+    src/system_memory_lib/system_memory_lib.cpp
+    src/thermal_management_lib/thermal_management_lib.cpp
+    src/usb_lib/usb_lib.cpp
+    src/video_encode_decode_lib/video_encode_decode_lib.cpp
+    src/vision_accelerator_lib/vision_accelerator_lib.cpp
+    src/watchdog_and_reset_lib/watchdog_and_reset_lib.cpp
+    # ── Phase 3 — 16 new modules ──────────────────────────────────────────
+    src/accelerometer_lib/accelerometer_lib.cpp
+    src/analog_input_lib/analog_input_lib.cpp
+    src/battery_lib/battery_lib.cpp
+    src/bluetooth_lib/bluetooth_lib.cpp
+    src/can_bus_lib/can_bus_lib.cpp
+    src/emmc_lib/emmc_lib.cpp
+    src/i2c_lib/i2c_lib.cpp
+    src/mipi_csi_lib/mipi_csi_lib.cpp
+    src/mipi_dsi_lib/mipi_dsi_lib.cpp
+    src/nvme_lib/nvme_lib.cpp
+    src/pwm_output_lib/pwm_output_lib.cpp
+    src/rs485_lib/rs485_lib.cpp
+    src/rtc_lib/rtc_lib.cpp
+    src/sd_card_lib/sd_card_lib.cpp
+    src/spi_lib/spi_lib.cpp
+    src/uart_lib/uart_lib.cpp
+)
 
 # Create static library
 add_library(acu_full_test STATIC ${SRC_SOURCES})
