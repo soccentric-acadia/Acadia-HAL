@@ -1023,8 +1023,8 @@ TestOutput CpuTesting::testContextSwitchingPerformance()
         uint8_t byte = 1;
         ready.store(true, std::memory_order_release);
         for (int i = 0; i < ROUNDS; ++i) {
-            write(pipeAB[1], &byte, 1);
-            read(pipeBA[0], &byte, 1);
+            (void)write(pipeAB[1], &byte, 1);
+            (void)read(pipeBA[0], &byte, 1);
         }
         close(pipeAB[1]);
         close(pipeBA[0]);
@@ -1035,8 +1035,8 @@ TestOutput CpuTesting::testContextSwitchingPerformance()
         while (!ready.load(std::memory_order_acquire))
             std::this_thread::yield();
         for (int i = 0; i < ROUNDS; ++i) {
-            read(pipeAB[0], &byte, 1);
-            write(pipeBA[1], &byte, 1);
+            (void)read(pipeAB[0], &byte, 1);
+            (void)write(pipeBA[1], &byte, 1);
         }
         close(pipeAB[0]);
         close(pipeBA[1]);
