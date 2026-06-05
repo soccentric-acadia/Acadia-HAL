@@ -1,0 +1,90 @@
+[Unit]
+Description=HAL (Hardware Abstraction Layer) gRPC Server
+Documentation=https://github.com/your-org/acadia-hal
+After=network-online.target
+Wants=network-online.target
+
+# Ensure basic system services are available
+Requires=multi-user.target
+After=multi-user.target
+
+[Service]
+# Service type
+Type=simple
+
+# User and group to run as
+# Note: Change to appropriate user (e.g., 'hal-server' or 'root' for privileged operations)
+User=root
+Group=root
+
+# Working directory
+WorkingDirectory=/opt/hal
+
+# Environment configuration
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="LD_LIBRARY_PATH=/opt/hal/lib:/usr/local/lib:/usr/lib:/lib"
+
+# Startup command - uses run.sh script
+# The script handles process lifecycle, conflict detection, and logging
+ExecStart=/opt/hal/run.sh --no-build
+# Alternative: direct execution (if not using run.sh)
+# ExecStart=/opt/hal/bin/hal_server 0.0.0.0:50051
+
+# Graceful restart: send SIGTERM and wait up to 30 seconds
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+
+# Restart only on non-zero exit codes and signal termination (not SIGKILL)
+RestartForceExitStatus=
+RestartForceSignal=
+
+# Limit restart attempts to prevent infinite restart loops
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Process management
+# Keep service alive if it forks (for compatibility)
+Delegate=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hal_server
+SyslogFacility=daemon
+
+# Security hardening
+PrivateTmp=yes
+NoNewPrivileges=true
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/hal /var/log /var/run /dev /proc /sys
+
+# Device access (required for hardware abstraction)
+PrivateDevices=no
+DevicePolicy=auto
+
+# Capabilities: adjust based on actual hardware access needs
+AmbientCapabilities=CAP_SYS_ADMIN CAP_SYS_NICE CAP_NET_ADMIN CAP_IPC_LOCK
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SYS_NICE CAP_NET_ADMIN CAP_IPC_LOCK CAP_SYS_PTRACE
+
+# Watchdog
+WatchdogSec=0
+
+# CPU and Memory limits (optional - adjust as needed)
+# CPUQuota=80%
+# MemoryMax=500M
+
+# Enable exit status propagation
+Type=simple
+
+[Install]
+# Auto-start on system boot
+WantedBy=multi-user.target
+
+# Alias for easier management
+Alias=hal.service
