@@ -272,6 +272,49 @@ hal_refactor/                   audit reports from the result-type refactor
   `Debian binary package (format 2.0)`.
 - All 35 ctest tests pass under QEMU in the cross build (slowest is
   `test_thermal_management` at ~41s; total wall-clock ~41s).
+- When smoke-testing a server binary that writes to `std::cout`, launch
+  it with `stdbuf -oL -eL ...` to force line-buffered output. Without
+  it, the `shutting down...` message and similar are lost when the
+  process exits via a signal — output looks like the server never
+  reached the shutdown branch when it actually did.
+- For async-signal-safe SIGINT/SIGTERM handlers in C++: the handler
+  body should be a single `std::atomic<bool>` write, with
+  `g_server->Shutdown()` and any `std::cout` driven from a watcher
+  thread that polls the flag after `g_server->Wait()`. A second
+  signal should re-arm `SIG_DFL` + `raise()` so an operator can still
+  hard-kill a wedged process. See `protos/server/hal_server_main.cpp`
+  (issue #4) for the reference pattern.
+- For variables / functions defined in a C++ header included from
+  multiple TUs: use `inline` (C++17), not `static`. `static` at
+  namespace scope gives internal linkage (one copy per TU); `inline`
+  gives the linker enough info to deduplicate. Verify with `nm` —
+  look for a single `u` (unique global) symbol per binary. See
+  `src/test_runner.h` (issue #7).
+- For client RPC deadlines: set `ctx.set_deadline()` on every RPC
+  (`5s` for control RPCs, `30s` for `RunSingleShot`, `1h` for the
+  streaming RPCs). `getenv` is async-signal-safe — use an env-var
+  override (`HAL_CLIENT_RPC_TIMEOUT_MS`) so CI can bump the cap
+  without rebuilding. See `protos/client/hal_client.cpp` (issue #9).
+- For CLI duration parsers: reject negative inputs with a clear
+  error. If a negative `duration_ms` reaches a background loop
+  guarded by `if (duration_ms > 0) elapsed-check;`, the check is
+  silently skipped and the loop runs forever. See `trParseDuration`
+  and `lib_base.cpp::runLongTerm/runMonitoringTest/runEventTest`
+  (issue #6).
+- For shared monitor readers: keep one registry
+  (`hal::monitors::Lookup(name)`), not parallel copies in the test
+  runner and the server handler. Unknown names return `"N/A"` so the
+  wire envelope never reports a misleading zero. See
+  `src/hal_monitors.h` (issue #1).
+- For multi-session server APIs: keep a
+  `std::unordered_map<session_id, shared_ptr<Resource>>` keyed by
+  session id (server-generated UUIDv4 when the caller doesn't supply
+  one). Empty session_id in Stop/Pause/Resume means "all sessions
+  for this module" (matches the proto comment and the legacy
+  single-slot behavior). Wire-additive new fields (new tag numbers
+  only, never renumber) so old clients still decode cleanly. See
+  `protos/server/typed_module_handler.h` and `session_id.h`
+  (issue #3).
 
 **Don't**
 - Don't run `make format` / `make cppcheck` / `make doc` without first
@@ -286,3 +329,23 @@ hal_refactor/                   audit reports from the result-type refactor
   creates a competing build tree alongside the Makefile-managed one and
   confuses the next `make build`. Use `make configure` or `rm -rf
   build/native && make build`.
+- Don't call `g_server->Shutdown()` or `std::cout` directly from a
+  SIGINT/SIGTERM handler. Neither is on the POSIX async-signal-safe
+  list, and gRPC explicitly warns against it. Use the atomic-flag +
+  watcher thread pattern (see `hal_server_main.cpp`).
+- Don't use a `static` declaration for variables or functions defined
+  in a C++ header that is included from multiple TUs — `static` at
+  namespace scope gives internal linkage (one copy per TU). Use
+  `inline` (C++17) instead. Test on `nm` to verify a unique global
+  symbol per binary.
+- Don't accept negative durations in CLI parsers that feed background
+  loops with `if (duration_ms > 0) elapsed-check;` guards — the
+  negative case silently disables the elapsed-check and produces an
+  indefinite run. Reject negatives with a clear error, AND
+  defensively log + clamp in the lib-level entry point (defense in
+  depth for non-CLI callers).
+- Don't use a single-slot `active_module_` per handler for server
+  state if the wire protocol already has a `session_id` field. Two
+  clients targeting the same module will clobber each other. Use a
+  map keyed by session id; new session = additive entry, Stop on S1
+  = stop only S1. (See issue #3 — was broken pre-fix.)
