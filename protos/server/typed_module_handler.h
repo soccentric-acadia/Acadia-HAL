@@ -156,8 +156,12 @@ inline hal::common::TestStatus ComputeStatus(
         if (r.output.status == ::hal::Status::PASS) any_pass = true;
         else                                         all_pass = false;
     }
-    if (all_pass) return hal::common::TestStatus::TEST_STATUS_PASS;
-    if (any_pass) return hal::common::TestStatus::PARTIAL;  // envelope-level aggregate
+    if (all_pass)  return hal::common::TestStatus::TEST_STATUS_PASS;
+    // PARTIAL (numeric value 6) is a *deprecated* envelope aggregate —
+    // see common.proto: "no longer produced; kept to avoid decode errors".
+    // Roll mixed outcomes up to TEST_STATUS_FAIL (conservative: at least
+    // one sub-test failed). Granular outcomes remain in the subtests array.
+    if (any_pass)  return hal::common::TestStatus::TEST_STATUS_FAIL;
     return hal::common::TestStatus::TEST_STATUS_FAIL;
 }
 
