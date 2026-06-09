@@ -21,6 +21,7 @@
 #include "server/hal_service_impl.h"
 #include "common.pb.h"
 #include "lib_base.h"
+#include "hal_monitors.h"
 
 #include <google/protobuf/duration.pb.h>
 #include <google/protobuf/timestamp.pb.h>
@@ -268,10 +269,11 @@ class TypedModuleHandler : public IModuleHandler {
 
         std::vector<::MonitorItem> monitor_items;
         for (const auto& name : monitoring.monitor_item_names()) {
-            ::MonitorItem item;
-            item.name   = name;
-            item.reader = [name]() -> std::string { return name + ":0"; };
-            monitor_items.push_back(std::move(item));
+            // Resolve through the shared Pi 5 monitor registry. Unknown
+            // names get a reader that returns "N/A" (same sentinel the
+            // registry uses for read failures), so the wire envelope
+            // never reports a misleading zero.
+            monitor_items.push_back(hal::monitors::Lookup(name));
         }
 
         auto hal_module = std::make_shared<HalClass>();

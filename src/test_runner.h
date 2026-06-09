@@ -26,11 +26,11 @@
 #pragma once
 
 #include "lib_base.h"
+#include "hal_monitors.h"
 
 #include <atomic>
 #include <csignal>
 #include <cstdlib>
-#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -39,97 +39,71 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
-// Signal handling (one copy per binary — static is fine here)
+// Signal handling (one copy per binary — inline gives external linkage in
+// C++17, so multi-TU inclusion is ODR-safe)
 // ---------------------------------------------------------------------------
 
-static std::atomic<bool> g_test_stop_flag{false};
+// C++17 inline variables: every TU that includes this header sees the SAME
+// object. The previous `static` gave internal linkage (one copy per TU),
+// which would silently break Ctrl+C handling the moment a test binary grew
+// a second TU that included the header.
+inline std::atomic<bool> g_test_stop_flag{false};
 
-static void testRunnerSigHandler(int /*signal*/)
+inline void testRunnerSigHandler(int /*signal*/)
 {
-    g_test_stop_flag = true;
+    g_test_stop_flag.store(true, std::memory_order_release);
 }
 
 // ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
 
-static std::string trReadSysfs(const std::string& path)
-{
-    std::ifstream f(path);
-    if (!f.is_open()) {
-        return "";
-    }
-    std::string line;
-    std::getline(f, line);
-    while (!line.empty() && (line.back() == '\n' || line.back() == '\r' || line.back() == ' ')) {
-        line.pop_back();
-    }
-    return line;
-}
-
 // Parse human-friendly duration string to milliseconds.
 // Accepted: "500ms"  "30s"  "5m"  "2h"  "1d"  or plain integer (treated as ms).
-// Returns -1 if the input cannot be parsed.
+// Returns -1 if the input cannot be parsed OR is negative (zero is allowed —
+// some tests legitimately want "run once and stop").
 static long long trParseDuration(const std::string& s)
 {
+    long long v = 0;
     try {
         if (s.size() >= 3 && s.substr(s.size() - 2) == "ms") {
-            return std::stoll(s.substr(0, s.size() - 2));
-        }
-        if (s.size() >= 2) {
+            v = std::stoll(s.substr(0, s.size() - 2));
+        } else if (s.size() >= 2) {
             char u = s.back();
             std::string n = s.substr(0, s.size() - 1);
-            if (u == 's') return std::stoll(n) * 1000LL;
-            if (u == 'm') return std::stoll(n) * 60000LL;
-            if (u == 'h') return std::stoll(n) * 3600000LL;
-            if (u == 'd') return std::stoll(n) * 86400000LL;
+            if      (u == 's') v = std::stoll(n) * 1000LL;
+            else if (u == 'm') v = std::stoll(n) * 60000LL;
+            else if (u == 'h') v = std::stoll(n) * 3600000LL;
+            else if (u == 'd') v = std::stoll(n) * 86400000LL;
+            else                v = std::stoll(s);  // plain integer → ms
+        } else {
+            v = std::stoll(s); // plain integer → ms
         }
-        return std::stoll(s); // plain integer → ms
     } catch (...) {
         std::cerr << "[ERROR] Invalid duration string: \"" << s << "\"\n";
         return -1LL;
     }
+    if (v < 0) {
+        std::cerr << "[ERROR] Duration must be non-negative: \"" << s << "\" (got "
+                  << v << "ms). A negative value would previously have caused an "
+                     "indefinite run because the elapsed-time check was skipped; "
+                     "reject it instead.\n";
+        return -1LL;
+    }
+    return v;
 }
 
 // ---------------------------------------------------------------------------
 // Built-in Raspberry Pi 5 hardware monitor items
+//
+// Thin wrapper around the shared registry in hal_monitors.h. The CLI
+// "monitor-test" mode exposes the same set the gRPC MONITORING RPC
+// resolves against — one source of truth.
 // ---------------------------------------------------------------------------
 
 static std::vector<MonitorItem> trPi5MonitorItems()
 {
-    return {
-        {"cpu_temp_C", []() {
-            std::string v = trReadSysfs("/sys/class/thermal/thermal_zone0/temp");
-            if (v.empty()) return std::string("N/A");
-            std::ostringstream ss;
-            ss << std::fixed << std::setprecision(1) << (std::stod(v) / 1000.0);
-            return ss.str();
-        }},
-        {"cpu0_freq_MHz", []() {
-            std::string v = trReadSysfs("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq");
-            if (v.empty()) return std::string("N/A");
-            return std::to_string(std::stoll(v) / 1000);
-        }},
-        {"gpu_freq_MHz", []() {
-            std::string v = trReadSysfs("/sys/class/devfreq/fde00000.gpu/cur_freq");
-            if (v.empty()) return std::string("N/A");
-            return std::to_string(std::stoll(v) / 1000000);
-        }},
-        {"mem_avail_MB", []() {
-            std::ifstream f("/proc/meminfo");
-            if (!f.is_open()) return std::string("N/A");
-            std::string line;
-            while (std::getline(f, line)) {
-                if (line.rfind("MemAvailable:", 0) == 0) {
-                    std::istringstream ss(line.substr(13));
-                    long long kb = 0;
-                    ss >> kb;
-                    return std::to_string(kb / 1024) + " MB";
-                }
-            }
-            return std::string("N/A");
-        }},
-    };
+    return hal::monitors::AllPi5();
 }
 
 // ---------------------------------------------------------------------------
