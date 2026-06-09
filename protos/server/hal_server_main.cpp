@@ -20,6 +20,8 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/security/server_credentials.h>
 
+#include <atomic>
+#include <chrono>
 #include <csignal>
 #include <cstdlib>
 #include <fstream>
@@ -27,14 +29,37 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <thread>
 
 static std::unique_ptr<grpc::Server> g_server;
 
-static void OnSignal(int /*sig*/) {
-    if (g_server) {
-        std::cout << "\n[hal_server] shutting down...\n";
-        g_server->Shutdown();
+// Async-signal-safe shutdown signalling.
+//
+// The previous implementation called g_server->Shutdown() and std::cout
+// directly inside the SIGINT/SIGTERM handler. Neither is on the POSIX
+// async-signal-safe list, and gRPC explicitly warns against invoking
+// Server::Shutdown from a signal handler. The fix is to write a single
+// std::atomic<bool> flag in the handler (the only safe operation besides
+// _exit / SIG_DFL) and have the main thread observe it and call Shutdown
+// from a context where it's safe.
+static std::atomic<bool> g_shutdown_requested{false};
+
+static void OnSignal(int sig) {
+    // Async-signal-safe body: a single atomic store. Everything else
+    // (gRPC Shutdown, std::cout) is driven from the main thread.
+    //
+    // The first signal asks the server to shut down gracefully. A second
+    // signal restores the default disposition so the operator can still
+    // hard-kill a process whose gRPC stack is wedged in the middle of
+    // Shutdown(). std::signal() is async-signal-safe.
+    if (g_shutdown_requested.load(std::memory_order_acquire)) {
+        std::signal(sig, SIG_DFL);
+        // Re-raise so the default handler actually runs. raise() is
+        // async-signal-safe per POSIX.
+        std::raise(sig);
+        return;
     }
+    g_shutdown_requested.store(true, std::memory_order_release);
 }
 
 // Read a file into a string. Returns empty on error.
@@ -105,6 +130,23 @@ int main(int argc, char* argv[]) {
     std::signal(SIGINT,  OnSignal);
     std::signal(SIGTERM, OnSignal);
 
+    // Drive gRPC shutdown from a dedicated watcher thread. This keeps the
+    // gRPC API and std::cout calls out of the signal handler, where they
+    // are not async-signal-safe.
+    std::thread shutdown_watcher([&]() {
+        while (!g_shutdown_requested.load(std::memory_order_acquire)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        if (g_server) {
+            std::cout << "\n[hal_server] shutting down...\n";
+            g_server->Shutdown();
+        }
+    });
+
     g_server->Wait();
+    // Ensure the watcher exits even if g_server->Wait() returned for a
+    // reason other than the signal (e.g. the server builder failed).
+    g_shutdown_requested.store(true, std::memory_order_release);
+    if (shutdown_watcher.joinable()) shutdown_watcher.join();
     return 0;
 }
