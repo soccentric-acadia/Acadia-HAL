@@ -163,9 +163,13 @@ inline hal::common::TestStatus ComputeStatus(
 
 // Stamp module_id, timestamp (if not already set), and sequence onto a results
 // vector. Called by RunTests() after the HAL module's tests have executed.
+// If `config_unset` is true, also stamps a diagnostic reason key on every
+// result so a client that forgot to send module_config is visible in the
+// audit trail (Fix #50).
 inline void StampResults(std::vector<::TestResult>& results,
                           const std::string&          module_id,
-                          uint64_t                    sequence) {
+                          uint64_t                    sequence,
+                          bool                        config_unset = false) {
     auto now = std::chrono::system_clock::now();
     for (auto& r : results) {
         r.module_id = module_id;
@@ -173,6 +177,8 @@ inline void StampResults(std::vector<::TestResult>& results,
         if (r.timestamp == std::chrono::system_clock::time_point{})
             r.timestamp = now;
         if (r.test_id.empty()) r.test_id = r.name;
+        if (config_unset)
+            r.output.reason["module_config_unset"] = "true";
     }
 }
 
@@ -196,10 +202,16 @@ class TypedModuleHandler : public IModuleHandler {
                                 const hal::common::CommonConfig& /*common*/,
                                 hal::common::ResultEnvelope*     out) override {
         ConfigProto cfg;
-        TryUnpack(module_config, cfg);
+        const auto up = TryUnpack(module_config, cfg);
+        if (up == UnpackResult::kTypeMismatch) {
+            return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                                "module_config type_url mismatch: " +
+                                module_config.type_url());
+        }
+        const bool config_unset = (up == UnpackResult::kEmpty);
 
         HalClass hal_module;
-        auto results = RunAndStamp(hal_module, cfg, /*sequence=*/0);
+        auto results = RunAndStamp(hal_module, cfg, /*sequence=*/0, config_unset);
 
         ResultProto rp;
         for (const auto& r : results) *rp.add_results() = ToProtoTestResult(r);
@@ -220,7 +232,13 @@ class TypedModuleHandler : public IModuleHandler {
         const hal::common::CommonConfig&                 common,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
-        TryUnpack(module_config, cfg);
+        const auto up = TryUnpack(module_config, cfg);
+        if (up == UnpackResult::kTypeMismatch) {
+            return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                                "module_config type_url mismatch: " +
+                                module_config.type_url());
+        }
+        const bool config_unset = (up == UnpackResult::kEmpty);
 
         int      interval_ms = std::max(common.interval_ms(), 100);
         int64_t  dur_ms      = common.run_forever() ? 0LL : common.duration_ms();
@@ -234,7 +252,7 @@ class TypedModuleHandler : public IModuleHandler {
             interval_ms, dur_ms,
             [&](const std::vector<::TestResult>& raw_results, int /*cycle*/) {
                 auto results = raw_results;
-                StampResults(results, module_id_, seq++);
+                StampResults(results, module_id_, seq++, config_unset);
                 hal::common::ResultEnvelope env;
                 ResultProto rp;
                 for (const auto& r : results) *rp.add_results() = ToProtoTestResult(r);
@@ -261,7 +279,13 @@ class TypedModuleHandler : public IModuleHandler {
         const hal::common::MonitoringParams&             monitoring,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
-        TryUnpack(module_config, cfg);
+        const auto up = TryUnpack(module_config, cfg);
+        if (up == UnpackResult::kTypeMismatch) {
+            return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                                "module_config type_url mismatch: " +
+                                module_config.type_url());
+        }
+        const bool config_unset = (up == UnpackResult::kEmpty);
 
         int     interval_ms = std::max(common.interval_ms(), 100);
         int64_t dur_ms      = common.run_forever() ? 0LL : common.duration_ms();
@@ -290,7 +314,7 @@ class TypedModuleHandler : public IModuleHandler {
                             ::hal::Value{std::string(kv.second)};
                     }
                 }
-                StampResults(results, module_id_, seq++);
+                StampResults(results, module_id_, seq++, config_unset);
 
                 hal::common::ResultEnvelope   env;
                 hal::common::MonitoringSnapshot proto_snap;
@@ -326,7 +350,13 @@ class TypedModuleHandler : public IModuleHandler {
         const hal::common::EventCondition&               condition,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
-        TryUnpack(module_config, cfg);
+        const auto up = TryUnpack(module_config, cfg);
+        if (up == UnpackResult::kTypeMismatch) {
+            return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                                "module_config type_url mismatch: " +
+                                module_config.type_url());
+        }
+        const bool config_unset = (up == UnpackResult::kEmpty);
 
         int     poll_ms = std::max(common.poll_interval_ms(), 100);
         int64_t max_ms  = common.run_forever() ? 0LL : common.duration_ms();
@@ -363,7 +393,7 @@ class TypedModuleHandler : public IModuleHandler {
                     r.output.event["observed_pass"]    =
                         ::hal::Value{r.output.status == ::hal::Status::PASS};
                 }
-                StampResults(results, module_id_, seq++);
+                StampResults(results, module_id_, seq++, config_unset);
                 hal::common::ResultEnvelope env;
                 ResultProto rp;
                 for (const auto& r : results) *rp.add_results() = ToProtoTestResult(r);
@@ -423,7 +453,8 @@ class TypedModuleHandler : public IModuleHandler {
   private:
     // Run selected tests, stamp results, and return them.
     std::vector<::TestResult> RunAndStamp(HalClass& m, const ConfigProto& cfg,
-                                           uint64_t sequence) {
+                                           uint64_t sequence,
+                                           bool     config_unset = false) {
         std::vector<::TestResult> results;
         if (cfg.test_names_size() == 0)
             results = m.runSelectedTests(m.getAvailableTests());
@@ -432,13 +463,21 @@ class TypedModuleHandler : public IModuleHandler {
                                            cfg.test_names().end());
             results = m.runSelectedTests(names);
         }
-        StampResults(results, module_id_, sequence);
+        StampResults(results, module_id_, sequence, config_unset);
         return results;
     }
 
-    // Unpack google.protobuf.Any → ConfigProto; silently skips if the Any is empty.
-    static void TryUnpack(const google::protobuf::Any& any, ConfigProto& cfg) {
-        if (!any.type_url().empty()) any.UnpackTo(&cfg);
+    // Unpack google.protobuf.Any → ConfigProto; classifies the outcome so
+    // callers can stamp a diagnostic or fail with INVALID_ARGUMENT.
+    //   kEmpty        — Any was unset (client sent no module_config).
+    //   kTypeMismatch — Any.type_url() set but UnpackTo failed.
+    //   kOk           — UnpackTo succeeded.
+    enum class UnpackResult { kEmpty, kTypeMismatch, kOk };
+    static UnpackResult TryUnpack(const google::protobuf::Any& any,
+                                  ConfigProto&                  cfg) {
+        if (any.type_url().empty()) return UnpackResult::kEmpty;
+        if (!any.UnpackTo(&cfg))    return UnpackResult::kTypeMismatch;
+        return UnpackResult::kOk;
     }
 
     // Poll until the HAL background thread exits, or the RPC is cancelled.
