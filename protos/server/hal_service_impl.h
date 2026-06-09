@@ -37,37 +37,42 @@ class IModuleHandler {
         const hal::common::CommonConfig& common,
         hal::common::ResultEnvelope*     out) = 0;
 
-    // Run tests in cycles for a fixed duration; write one envelope per cycle.
+    // Run tests in cycles for a fixed duration; write one envelope per
+    // cycle. If `session_id_in` is empty, the server generates one and
+    // returns it to the caller via the stamped envelope's session_id.
     virtual grpc::Status StartLongTerm(
         grpc::ServerContext*                              ctx,
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
+        const std::string&                                session_id_in,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) = 0;
 
-    // Run tests + sample monitor items each cycle; write one envelope per cycle.
+    // Run tests + sample monitor items each cycle.
     virtual grpc::Status StartMonitoring(
         grpc::ServerContext*                              ctx,
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
         const hal::common::MonitoringParams&             monitoring,
+        const std::string&                                session_id_in,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) = 0;
 
-    // Poll tests continuously; write an envelope each time the condition fires.
+    // Poll tests continuously; fire on condition.
     virtual grpc::Status StartEventBased(
         grpc::ServerContext*                              ctx,
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
         const hal::common::EventCondition&               condition,
+        const std::string&                                session_id_in,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) = 0;
 
-    // Abort any active background test.
-    virtual void Stop() = 0;
+    // Abort the named session. Empty `session_id` stops all active
+    // sessions for this module (back-compat with the original
+    // single-slot behaviour). The fan-out is performed by
+    // HalServiceImpl — this method targets one session at a time.
+    virtual void Stop(const std::string& session_id) = 0;
 
-    // Pause the active background test (no-op if not running).
-    virtual void Pause() = 0;
-
-    // Resume a paused background test (no-op if not paused).
-    virtual void Resume() = 0;
+    virtual void Pause(const std::string& session_id) = 0;
+    virtual void Resume(const std::string& session_id) = 0;
 
     // Return the ModuleInfo proto for ListModules.
     virtual hal::ModuleInfo GetModuleInfo() const = 0;

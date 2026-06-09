@@ -63,7 +63,8 @@ grpc::Status HalServiceImpl::StartLongTerm(
     grpc::ServerWriter<hal::common::ResultEnvelope>*  writer) {
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
-    return h->StartLongTerm(ctx, req->module_config(), req->common(), writer);
+    return h->StartLongTerm(ctx, req->module_config(), req->common(),
+                            req->session_id(), writer);
 }
 
 grpc::Status HalServiceImpl::StartMonitoring(
@@ -73,7 +74,7 @@ grpc::Status HalServiceImpl::StartMonitoring(
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
     return h->StartMonitoring(ctx, req->module_config(), req->common(),
-                              req->monitoring(), writer);
+                              req->monitoring(), req->session_id(), writer);
 }
 
 grpc::Status HalServiceImpl::StartEventBased(
@@ -83,16 +84,17 @@ grpc::Status HalServiceImpl::StartEventBased(
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
     return h->StartEventBased(ctx, req->module_config(), req->common(),
-                              req->condition(), writer);
+                              req->condition(), req->session_id(), writer);
 }
 
 grpc::Status HalServiceImpl::Stop(grpc::ServerContext*    /*ctx*/,
                                    const hal::StopRequest* req,
                                    hal::StopResponse*       resp) {
     if (req->module_id().empty()) {
+        // Fan out: stop every session of every module.
         for (const auto& info : registry_->ListAll()) {
             auto* h = registry_->Find(info.id());
-            if (h) h->Stop();
+            if (h) h->Stop(/*session_id=*/"");
         }
         resp->set_accepted(true);
         resp->set_message("All modules stopped");
@@ -100,9 +102,16 @@ grpc::Status HalServiceImpl::Stop(grpc::ServerContext*    /*ctx*/,
     }
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
-    h->Stop();
+    // Empty session_id at the IModuleHandler level means "all sessions
+    // for this module" — see TypedModuleHandler::Stop.
+    h->Stop(req->session_id());
     resp->set_accepted(true);
-    resp->set_message("Stopped " + req->module_id());
+    if (req->session_id().empty()) {
+        resp->set_message("Stopped all sessions of " + req->module_id());
+    } else {
+        resp->set_message("Stopped " + req->module_id() +
+                          " (session=" + req->session_id() + ")");
+    }
     return grpc::Status::OK;
 }
 
@@ -112,7 +121,7 @@ grpc::Status HalServiceImpl::Pause(grpc::ServerContext*     /*ctx*/,
     if (req->module_id().empty()) {
         for (const auto& info : registry_->ListAll()) {
             auto* h = registry_->Find(info.id());
-            if (h) h->Pause();
+            if (h) h->Pause(/*session_id=*/"");
         }
         resp->set_accepted(true);
         resp->set_message("All modules paused");
@@ -120,9 +129,14 @@ grpc::Status HalServiceImpl::Pause(grpc::ServerContext*     /*ctx*/,
     }
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
-    h->Pause();
+    h->Pause(req->session_id());
     resp->set_accepted(true);
-    resp->set_message("Paused " + req->module_id());
+    if (req->session_id().empty()) {
+        resp->set_message("Paused all sessions of " + req->module_id());
+    } else {
+        resp->set_message("Paused " + req->module_id() +
+                          " (session=" + req->session_id() + ")");
+    }
     return grpc::Status::OK;
 }
 
@@ -132,7 +146,7 @@ grpc::Status HalServiceImpl::Resume(grpc::ServerContext*      /*ctx*/,
     if (req->module_id().empty()) {
         for (const auto& info : registry_->ListAll()) {
             auto* h = registry_->Find(info.id());
-            if (h) h->Resume();
+            if (h) h->Resume(/*session_id=*/"");
         }
         resp->set_accepted(true);
         resp->set_message("All modules resumed");
@@ -140,9 +154,14 @@ grpc::Status HalServiceImpl::Resume(grpc::ServerContext*      /*ctx*/,
     }
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
-    h->Resume();
+    h->Resume(req->session_id());
     resp->set_accepted(true);
-    resp->set_message("Resumed " + req->module_id());
+    if (req->session_id().empty()) {
+        resp->set_message("Resumed all sessions of " + req->module_id());
+    } else {
+        resp->set_message("Resumed " + req->module_id() +
+                          " (session=" + req->session_id() + ")");
+    }
     return grpc::Status::OK;
 }
 

@@ -29,6 +29,10 @@ message LongTermRequest {
   string                    module_id     = 1;
   hal.common.CommonConfig   common        = 2;
   google.protobuf.Any       module_config = 3;  // hal.modules.<name>.Config
+  // Optional client-supplied session id. If empty, the server generates
+  // a unique id and stamps it on every streamed ResultEnvelope (and on
+  // Stop/Pause/Resume matching). Wire-additive (tag 4).
+  string                    session_id    = 4;
 }
 
 // Start a monitoring run; server streams one ResultEnvelope per cycle.
@@ -38,6 +42,7 @@ message MonitoringRequest {
   hal.common.CommonConfig      common        = 2;
   hal.common.MonitoringParams  monitoring    = 3;
   google.protobuf.Any          module_config = 4;  // hal.modules.<name>.Config
+  string                       session_id    = 5;  // wire-additive; see LongTermRequest.session_id
 }
 
 // Start event-based testing; server streams a ResultEnvelope each time
@@ -47,6 +52,7 @@ message EventBasedRequest {
   hal.common.CommonConfig   common        = 2;
   hal.common.EventCondition condition     = 3;
   google.protobuf.Any       module_config = 4;  // hal.modules.<name>.Config
+  string                    session_id    = 5;  // wire-additive; see LongTermRequest.session_id
 }
 
 // Stop an active background session for a module.

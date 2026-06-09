@@ -183,4 +183,9 @@ message ResultEnvelope {
   TestStatus                status         = 5;
   string                    error_message  = 6;
   google.protobuf.Any       payload        = 7;  // hal.modules.<name>.Result
+  // Server-assigned (or client-supplied, see LongTermRequest.session_id)
+  // identifier for the background session that produced this envelope.
+  // Empty for SINGLE_SHOT responses. Wire-additive (tag 8) — older
+  // clients decode it as a missing field and behave identically.
+  string                    session_id     = 8;
 }

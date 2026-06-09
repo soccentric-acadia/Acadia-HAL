@@ -19,6 +19,7 @@
 //           "cpu", 1, "src/cpu_lib/cpu_lib.h"));
 
 #include "server/hal_service_impl.h"
+#include "server/session_id.h"
 #include "common.pb.h"
 #include "lib_base.h"
 
@@ -31,6 +32,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 namespace hal {
@@ -218,6 +220,7 @@ class TypedModuleHandler : public IModuleHandler {
         grpc::ServerContext*                              ctx,
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
+        const std::string&                                session_id_in,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
         TryUnpack(module_config, cfg);
@@ -225,8 +228,11 @@ class TypedModuleHandler : public IModuleHandler {
         int      interval_ms = std::max(common.interval_ms(), 100);
         int64_t  dur_ms      = common.run_forever() ? 0LL : common.duration_ms();
 
+        const std::string session_id = session_id_in.empty()
+            ? GenerateSessionId() : session_id_in;
+
         auto hal_module = std::make_shared<HalClass>();
-        StoreActive(hal_module);
+        StoreActive(session_id, hal_module);
 
         std::mutex write_mu;
         uint64_t   seq = 0;
@@ -242,12 +248,13 @@ class TypedModuleHandler : public IModuleHandler {
                              hal::common::ExecutionMode::LONG_TERM,
                              ComputeStatus(results));
                 env.mutable_payload()->PackFrom(rp);
+                env.set_session_id(session_id);
                 std::lock_guard<std::mutex> wlk(write_mu);
                 writer->Write(env);
             });
 
         WaitOrCancel(ctx, *hal_module);
-        ClearActive();
+        ClearActive(session_id);
         return grpc::Status::OK;
     }
 
@@ -259,12 +266,16 @@ class TypedModuleHandler : public IModuleHandler {
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
         const hal::common::MonitoringParams&             monitoring,
+        const std::string&                                session_id_in,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
         TryUnpack(module_config, cfg);
 
         int     interval_ms = std::max(common.interval_ms(), 100);
         int64_t dur_ms      = common.run_forever() ? 0LL : common.duration_ms();
+
+        const std::string session_id = session_id_in.empty()
+            ? GenerateSessionId() : session_id_in;
 
         std::vector<::MonitorItem> monitor_items;
         for (const auto& name : monitoring.monitor_item_names()) {
@@ -275,7 +286,7 @@ class TypedModuleHandler : public IModuleHandler {
         }
 
         auto hal_module = std::make_shared<HalClass>();
-        StoreActive(hal_module);
+        StoreActive(session_id, hal_module);
 
         std::mutex write_mu;
         uint64_t   seq = 0;
@@ -307,12 +318,13 @@ class TypedModuleHandler : public IModuleHandler {
                              hal::common::ExecutionMode::MONITORING,
                              ComputeStatus(results));
                 env.mutable_payload()->PackFrom(proto_snap);
+                env.set_session_id(session_id);
                 std::lock_guard<std::mutex> wlk(write_mu);
                 writer->Write(env);
             });
 
         WaitOrCancel(ctx, *hal_module);
-        ClearActive();
+        ClearActive(session_id);
         return grpc::Status::OK;
     }
 
@@ -324,12 +336,16 @@ class TypedModuleHandler : public IModuleHandler {
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
         const hal::common::EventCondition&               condition,
+        const std::string&                                session_id_in,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
         TryUnpack(module_config, cfg);
 
         int     poll_ms = std::max(common.poll_interval_ms(), 100);
         int64_t max_ms  = common.run_forever() ? 0LL : common.duration_ms();
+
+        const std::string session_id = session_id_in.empty()
+            ? GenerateSessionId() : session_id_in;
 
         ::EventCriteria criteria;
         criteria.description = condition.expression().empty()
@@ -348,7 +364,7 @@ class TypedModuleHandler : public IModuleHandler {
         };
 
         auto hal_module = std::make_shared<HalClass>();
-        StoreActive(hal_module);
+        StoreActive(session_id, hal_module);
 
         std::mutex write_mu;
         uint64_t   seq = 0;
@@ -371,38 +387,61 @@ class TypedModuleHandler : public IModuleHandler {
                              hal::common::ExecutionMode::EVENT_BASED,
                              ComputeStatus(results));
                 env.mutable_payload()->PackFrom(rp);
+                env.set_session_id(session_id);
                 std::lock_guard<std::mutex> wlk(write_mu);
                 writer->Write(env);
             },
             max_ms);
 
         WaitOrCancel(ctx, *hal_module);
-        ClearActive();
+        ClearActive(session_id);
         return grpc::Status::OK;
     }
 
     // ----------------------------------------------------------------
-    // Stop
+    // Stop / Pause / Resume — empty session_id targets ALL active
+    // sessions for this module. Named session_id targets one.
     // ----------------------------------------------------------------
-    void Stop() override {
+    void Stop(const std::string& session_id) override {
         std::lock_guard<std::mutex> lk(active_mu_);
-        if (active_module_) active_module_->stop();
+        if (session_id.empty()) {
+            for (auto& kv : active_modules_) {
+                if (kv.second) kv.second->stop();
+            }
+            return;
+        }
+        auto it = active_modules_.find(session_id);
+        if (it != active_modules_.end() && it->second) {
+            it->second->stop();
+        }
     }
 
-    // ----------------------------------------------------------------
-    // Pause
-    // ----------------------------------------------------------------
-    void Pause() override {
+    void Pause(const std::string& session_id) override {
         std::lock_guard<std::mutex> lk(active_mu_);
-        if (active_module_) active_module_->pause();
+        if (session_id.empty()) {
+            for (auto& kv : active_modules_) {
+                if (kv.second) kv.second->pause();
+            }
+            return;
+        }
+        auto it = active_modules_.find(session_id);
+        if (it != active_modules_.end() && it->second) {
+            it->second->pause();
+        }
     }
 
-    // ----------------------------------------------------------------
-    // Resume
-    // ----------------------------------------------------------------
-    void Resume() override {
+    void Resume(const std::string& session_id) override {
         std::lock_guard<std::mutex> lk(active_mu_);
-        if (active_module_) active_module_->resume();
+        if (session_id.empty()) {
+            for (auto& kv : active_modules_) {
+                if (kv.second) kv.second->resume();
+            }
+            return;
+        }
+        auto it = active_modules_.find(session_id);
+        if (it != active_modules_.end() && it->second) {
+            it->second->resume();
+        }
     }
 
     // ----------------------------------------------------------------
@@ -449,22 +488,27 @@ class TypedModuleHandler : public IModuleHandler {
         }
     }
 
-    void StoreActive(std::shared_ptr<::TestBase> module) {
+    void StoreActive(const std::string& session_id,
+                     std::shared_ptr<::TestBase> module) {
         std::lock_guard<std::mutex> lk(active_mu_);
-        active_module_ = std::move(module);
+        active_modules_[session_id] = std::move(module);
     }
 
-    void ClearActive() {
+    void ClearActive(const std::string& session_id) {
         std::lock_guard<std::mutex> lk(active_mu_);
-        active_module_.reset();
+        active_modules_.erase(session_id);
     }
 
     std::string              module_id_;
     int                      version_;
     std::string              source_path_;
 
-    std::mutex               active_mu_;
-    std::shared_ptr<::TestBase> active_module_; // non-null while a background test is running
+    // One slot per active session. Empty session_id (legacy single-slot
+    // callers, if any reappear) is treated as a valid key; the Stop/
+    // Pause/Resume API uses an empty session_id to mean "all sessions
+    // for this module".
+    std::mutex                                            active_mu_;
+    std::unordered_map<std::string, std::shared_ptr<::TestBase>> active_modules_;
 };
 
 } // namespace server
