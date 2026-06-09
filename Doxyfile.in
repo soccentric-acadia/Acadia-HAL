@@ -1,9 +1,9 @@
 # Doxyfile.in
 
 # Project settings
-PROJECT_NAME           = "ACU Full Test"
+PROJECT_NAME           = "Acadia HAL"
 PROJECT_NUMBER         = @PROJECT_VERSION@
-PROJECT_BRIEF          = "Comprehensive testing suite for ACU components"
+PROJECT_BRIEF          = "On-target C++17 Hardware Abstraction Layer for Raspberry Pi 5"
 
 # Input settings
 INPUT                  = @CMAKE_CURRENT_SOURCE_DIR@/src @CMAKE_CURRENT_SOURCE_DIR@/tests
