@@ -1,9 +1,7 @@
-/**
-#include "lib_base.h"
- * @file system_memory_lib.h
- * @brief Header file for SystemMemoryTesting class
- * @author sandesh ghimire
- * @copyright (C) Soccentric LLC */
+// @file system_memory_lib.h
+// @brief Header file for SystemMemoryTesting class
+// @author sandesh ghimire
+// @copyright (C) Soccentric LLC
 #ifndef SYSTEMMEMORYTESTING_H
 #define SYSTEMMEMORYTESTING_H
 #include "lib_base.h"
