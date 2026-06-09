@@ -13,7 +13,7 @@ protos/
 ├── modules/                # One .proto file per HAL module
 │   ├── cpu.proto
 │   ├── gpu.proto
-│   └── …  (35 modules total)
+│   └── …  (51 .proto files covering 35 implemented HAL modules)
 ├── registry/
 │   └── modules.yaml        # Machine-readable module manifest
 ├── CMakeLists.txt          # Builds the hal_protos static library
@@ -73,9 +73,10 @@ req.mutable_module_config()->PackFrom(cpu_cfg);
 // Unpack the result:
 hal::modules::cpu::Result cpu_result;
 envelope.payload().UnpackTo(&cpu_result);
-for (const auto& entry : cpu_result.test_results()) {
+for (const auto& entry : cpu_result.results()) {
     std::cout << entry.name() << ": "
-              << (entry.output().passed() ? "PASS" : "FAIL") << "\n";
+              << (entry.output().status() == hal::common::TEST_STATUS_PASS ? "PASS" : "FAIL")
+              << "\n";
 }
 ```
 
@@ -102,7 +103,9 @@ for (const auto& entry : cpu_result.test_results()) {
    }
 
    message Result {
-     repeated hal.common.TestResultEntry test_results = 1;
+     reserved 1;
+     reserved "test_results";
+     repeated hal.common.TestResult results = 2;
    }
    ```
 
@@ -148,5 +151,5 @@ That is all. No changes to `hal_service.proto`, `common.proto`, or any dispatch 
 | A1 | `MonitorItem::reader` (`std::function<string()>`) | Client sends `repeated string monitor_item_names` in `MonitoringParams`; server maps names to registered reader functions. |
 | A2 | `EventCriteria::predicate` (`std::function<bool(...)>`) | Client sends a structured `EventCondition` (test name + expected pass, or freeform expression string); server evaluates it each poll cycle. |
 | A3 | `GpioPin`, `GpioDirection`, `GpioPullMode` in `gpio_lib.h` | Omitted — they are internal test-harness state, never part of the public module API. |
-| A4 | `chrono::duration<double>` for test duration | Mapped to `double duration_sec` in `TestResultEntry`. |
+| A4 | `chrono::nanoseconds` for test duration | Mapped to `google.protobuf.Duration duration` on `hal.common.TestResult`. |
 | A5 | `TestOutput::data` (`vector<string>`) | Mapped to `repeated string data` — free-form diagnostic strings. |
