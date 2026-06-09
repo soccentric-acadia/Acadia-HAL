@@ -69,26 +69,37 @@ static std::string trReadSysfs(const std::string& path)
 
 // Parse human-friendly duration string to milliseconds.
 // Accepted: "500ms"  "30s"  "5m"  "2h"  "1d"  or plain integer (treated as ms).
-// Returns -1 if the input cannot be parsed.
+// Returns -1 if the input cannot be parsed OR is negative (zero is allowed —
+// some tests legitimately want "run once and stop").
 static long long trParseDuration(const std::string& s)
 {
+    long long v = 0;
     try {
         if (s.size() >= 3 && s.substr(s.size() - 2) == "ms") {
-            return std::stoll(s.substr(0, s.size() - 2));
-        }
-        if (s.size() >= 2) {
+            v = std::stoll(s.substr(0, s.size() - 2));
+        } else if (s.size() >= 2) {
             char u = s.back();
             std::string n = s.substr(0, s.size() - 1);
-            if (u == 's') return std::stoll(n) * 1000LL;
-            if (u == 'm') return std::stoll(n) * 60000LL;
-            if (u == 'h') return std::stoll(n) * 3600000LL;
-            if (u == 'd') return std::stoll(n) * 86400000LL;
+            if      (u == 's') v = std::stoll(n) * 1000LL;
+            else if (u == 'm') v = std::stoll(n) * 60000LL;
+            else if (u == 'h') v = std::stoll(n) * 3600000LL;
+            else if (u == 'd') v = std::stoll(n) * 86400000LL;
+            else                v = std::stoll(s);  // plain integer → ms
+        } else {
+            v = std::stoll(s); // plain integer → ms
         }
-        return std::stoll(s); // plain integer → ms
     } catch (...) {
         std::cerr << "[ERROR] Invalid duration string: \"" << s << "\"\n";
         return -1LL;
     }
+    if (v < 0) {
+        std::cerr << "[ERROR] Duration must be non-negative: \"" << s << "\" (got "
+                  << v << "ms). A negative value would previously have caused an "
+                     "indefinite run because the elapsed-time check was skipped; "
+                     "reject it instead.\n";
+        return -1LL;
+    }
+    return v;
 }
 
 // ---------------------------------------------------------------------------

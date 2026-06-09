@@ -96,6 +96,11 @@ void TestBase::runTests(TestMode mode,
 void TestBase::runLongTerm(int interval_ms, long long duration_ms,
                             std::function<void(const std::vector<TestResult>&, int)> callback)
 {
+    if (duration_ms < 0) {
+        std::cerr << "[TestBase] runLongTerm: negative duration_ms=" << duration_ms
+                  << " is a contract violation; treating as 0 (single cycle).\n";
+        duration_ms = 0;
+    }
     stop();
     stopped_ = false;
     monitoring_thread_ = std::thread([this, interval_ms, duration_ms, callback]() {
@@ -133,6 +138,11 @@ void TestBase::runMonitoringTest(int interval_ms, long long duration_ms,
                                   const std::vector<MonitorItem>& monitorItems,
                                   std::function<void(const MonitoringSnapshot&)> callback)
 {
+    if (duration_ms < 0) {
+        std::cerr << "[TestBase] runMonitoringTest: negative duration_ms=" << duration_ms
+                  << " is a contract violation; treating as 0 (single cycle).\n";
+        duration_ms = 0;
+    }
     stop();
     stopped_ = false;
     monitoring_thread_ = std::thread([this, interval_ms, duration_ms, monitorItems, callback]() {
@@ -181,6 +191,11 @@ void TestBase::runEventTest(int poll_interval_ms, const EventCriteria& criteria,
                              std::function<void(const std::vector<TestResult>&)> event_callback,
                              long long max_duration_ms)
 {
+    if (max_duration_ms < 0) {
+        std::cerr << "[TestBase] runEventTest: negative max_duration_ms=" << max_duration_ms
+                  << " is a contract violation; treating as 0 (no timeout).\n";
+        max_duration_ms = 0;
+    }
     stop();
     stopped_ = false;
     monitoring_thread_ = std::thread([this, poll_interval_ms, max_duration_ms,
