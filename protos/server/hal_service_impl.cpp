@@ -52,6 +52,10 @@ grpc::Status HalServiceImpl::Resolve(const std::string& module_id,
 grpc::Status HalServiceImpl::RunSingleShot(grpc::ServerContext*           ctx,
                                             const hal::SingleShotRequest* req,
                                             hal::common::ResultEnvelope*  resp) {
+    if (req->module_id().empty()) {
+        return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                            "module_id is required");
+    }
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
     return h->RunSingleShot(ctx, req->module_config(), req->common(), resp);
@@ -61,6 +65,10 @@ grpc::Status HalServiceImpl::StartLongTerm(
     grpc::ServerContext*                              ctx,
     const hal::LongTermRequest*                       req,
     grpc::ServerWriter<hal::common::ResultEnvelope>*  writer) {
+    if (req->module_id().empty()) {
+        return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                            "module_id is required");
+    }
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
     return h->StartLongTerm(ctx, req->module_config(), req->common(), writer);
@@ -70,6 +78,10 @@ grpc::Status HalServiceImpl::StartMonitoring(
     grpc::ServerContext*                              ctx,
     const hal::MonitoringRequest*                     req,
     grpc::ServerWriter<hal::common::ResultEnvelope>*  writer) {
+    if (req->module_id().empty()) {
+        return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                            "module_id is required");
+    }
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
     return h->StartMonitoring(ctx, req->module_config(), req->common(),
@@ -80,6 +92,10 @@ grpc::Status HalServiceImpl::StartEventBased(
     grpc::ServerContext*                              ctx,
     const hal::EventBasedRequest*                     req,
     grpc::ServerWriter<hal::common::ResultEnvelope>*  writer) {
+    if (req->module_id().empty()) {
+        return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
+                            "module_id is required");
+    }
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
     return h->StartEventBased(ctx, req->module_config(), req->common(),

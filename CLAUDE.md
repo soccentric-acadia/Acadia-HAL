@@ -272,6 +272,20 @@ hal_refactor/                   audit reports from the result-type refactor
   `Debian binary package (format 2.0)`.
 - All 35 ctest tests pass under QEMU in the cross build (slowest is
   `test_thermal_management` at ~41s; total wall-clock ~41s).
+- When running `make docker-test`, the cross build may emit a "GLOB
+  mismatch!" warning and re-run cmake. This is benign — the protos/
+  CMakeLists.txt uses `file(GLOB ...)` without `CONFIGURE_DEPENDS`
+  (see issue #38). On the next `make docker-test` the build tree is
+  already in sync, so the warning does not reappear.
+- After editing a `.proto` under `protos/modules/`, force a cmake
+  reconfigure: `rm build/cross/build.ninja && make docker-build`.
+  The `file(GLOB)` (see issue #38) does not invalidate on
+  its own; only a missing build.ninja triggers the reconfigure.
+- Adding a new test target under `tests/<name>/` requires both
+  creating the dir AND adding `add_subdirectory(<name>)` to
+  `tests/CMakeLists.txt`. The CMake reconfigure (triggered by a
+  parent edit) is what makes the new test show up in ctest.
+  36+ tests have been verified this way (issues #50, #47).
 
 **Don't**
 - Don't run `make format` / `make cppcheck` / `make doc` without first
@@ -286,3 +300,10 @@ hal_refactor/                   audit reports from the result-type refactor
   creates a competing build tree alongside the Makefile-managed one and
   confuses the next `make build`. Use `make configure` or `rm -rf
   build/native && make build`.
+- Don't file a "missing X" issue from a file listing or pattern
+  without reading the *actual file content*. The §7 review workflow
+  requires reading every applicable file; a defect premise derived
+  from a `grep -c add_subdirectory` count (35) was wrong because
+  `tests/CMakeLists.txt` did contain the entries (issue #47 was
+  filed in error and immediately closed as invalid). When in doubt,
+  read the file end-to-end before opening the issue.
