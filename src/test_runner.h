@@ -39,14 +39,19 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
-// Signal handling (one copy per binary — static is fine here)
+// Signal handling (one copy per binary — inline gives external linkage in
+// C++17, so multi-TU inclusion is ODR-safe)
 // ---------------------------------------------------------------------------
 
-static std::atomic<bool> g_test_stop_flag{false};
+// C++17 inline variables: every TU that includes this header sees the SAME
+// object. The previous `static` gave internal linkage (one copy per TU),
+// which would silently break Ctrl+C handling the moment a test binary grew
+// a second TU that included the header.
+inline std::atomic<bool> g_test_stop_flag{false};
 
-static void testRunnerSigHandler(int /*signal*/)
+inline void testRunnerSigHandler(int /*signal*/)
 {
-    g_test_stop_flag = true;
+    g_test_stop_flag.store(true, std::memory_order_release);
 }
 
 // ---------------------------------------------------------------------------
