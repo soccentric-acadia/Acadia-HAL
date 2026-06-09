@@ -85,6 +85,10 @@ void TestBase::runTests(TestMode mode,
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 }
             }
+            // Match runLongTerm / runMonitoringTest / runEventTest: mark
+            // the thread as no longer running when the loop exits naturally
+            // so isRunning() returns false and trWaitForCompletion wakes.
+            stopped_ = true;
         });
     }
 }
