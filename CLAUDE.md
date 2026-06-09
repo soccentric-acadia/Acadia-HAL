@@ -273,6 +273,26 @@ hal_refactor/                   audit reports from the result-type refactor
 - All 35 ctest tests pass under QEMU in the cross build (slowest is
   `test_thermal_management` at ~41s; total wall-clock ~41s).
 
+- All 35 ctest tests pass under QEMU in the cross build (slowest is
+  `test_thermal_management` at ~41s; total wall-clock ~41s).
+- When smoke-testing a server binary that writes to `std::cout`, launch it
+  with `stdbuf -oL -eL ...` to force line-buffered output. Without it, the
+  `shutting down...` message and similar are lost when the process exits
+  via a signal — output looks like the server never reached the
+  shutdown branch when it actually did.
+- For async-signal-safe SIGINT/SIGTERM handlers in C++: the handler body
+  should be a single `std::atomic<bool>` write, with `g_server->Shutdown()`
+  and any `std::cout` driven from a watcher thread that polls the flag
+  after `g_server->Wait()`. A second signal should re-arm `SIG_DFL` +
+  `raise()` so an operator can still hard-kill a wedged process. See
+  `protos/server/hal_server_main.cpp` (issue #4) for the reference
+  pattern.
+- `git push --force-with-lease` is blocked by the harness's destructive-op
+  gate. If the local branch is already at the desired SHA (e.g. a rebase
+  that resolved the same commit), a plain `git push origin <branch>`
+  reports "Everything up-to-date" and silently syncs — verify with
+  `git rev-parse origin/<branch>` afterwards.
+
 **Don't**
 - Don't run `make format` / `make cppcheck` / `make doc` without first
   confirming the tool is installed. The fail-fast check was added in the
@@ -286,3 +306,7 @@ hal_refactor/                   audit reports from the result-type refactor
   creates a competing build tree alongside the Makefile-managed one and
   confuses the next `make build`. Use `make configure` or `rm -rf
   build/native && make build`.
+- Don't call `g_server->Shutdown()` or `std::cout` directly from a
+  SIGINT/SIGTERM handler. Neither is on the POSIX async-signal-safe list,
+  and gRPC explicitly warns against it. Use the atomic-flag + watcher
+  thread pattern (see `hal_server_main.cpp`).
