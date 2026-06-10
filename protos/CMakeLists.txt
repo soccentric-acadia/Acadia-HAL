@@ -72,7 +72,7 @@ file(MAKE_DIRECTORY "${PROTO_BINARY_DIR}/modules")
 # ============================================================
 set(COMMON_PROTO  "${CMAKE_CURRENT_SOURCE_DIR}/common.proto")
 set(SERVICE_PROTO "${CMAKE_CURRENT_SOURCE_DIR}/hal_service.proto")
-file(GLOB MODULE_PROTOS "${CMAKE_CURRENT_SOURCE_DIR}/modules/*.proto")
+file(GLOB MODULE_PROTOS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/modules/*.proto")
 set(ALL_PROTOS ${COMMON_PROTO} ${SERVICE_PROTO} ${MODULE_PROTOS})
 
 # ============================================================

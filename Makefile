@@ -195,23 +195,45 @@ run-b: deploy-b
 # Code quality & Docs
 # =============================================================================
 
-format: configure
+format: check-clang-format configure
 	@echo "Formatting C++ files with clang-format..."
 	cd $(NATIVE_BUILD_DIR) && ninja format
 	@echo "Formatting CMake files..."
 	@if command -v cmake-format > /dev/null 2>&1; then \
-		find . -name CMakeLists.txt -not -path './build/*' | xargs cmake-format -i; \
+		find . -name CMakeLists.txt -not -path './build/*' -not -path './cmake-build-debug/*' | xargs cmake-format -i; \
 	else \
-		echo "  cmake-format not found, skipping CMake file formatting."; \
+		echo "  cmake-format not found, skipping CMake file formatting. Install with: sudo apt install -y cmake-format"; \
 	fi
 
-cppcheck: configure
+cppcheck: check-cppcheck configure
 	@echo "Running cppcheck static analysis..."
 	cd $(NATIVE_BUILD_DIR) && ninja cppcheck
 
-doc: configure
+doc: check-doxygen configure
 	@echo "Generating documentation..."
 	cd $(NATIVE_BUILD_DIR) && ninja doc_doxygen
+
+.PHONY: check-clang-format check-cppcheck check-doxygen
+check-clang-format:
+	@if ! command -v clang-format > /dev/null 2>&1; then \
+		echo "Error: clang-format not found." >&2; \
+		echo "Install with: sudo apt install -y clang-format" >&2; \
+		exit 1; \
+	fi
+
+check-cppcheck:
+	@if ! command -v cppcheck > /dev/null 2>&1; then \
+		echo "Error: cppcheck not found." >&2; \
+		echo "Install with: sudo apt install -y cppcheck" >&2; \
+		exit 1; \
+	fi
+
+check-doxygen:
+	@if ! command -v doxygen > /dev/null 2>&1; then \
+		echo "Error: doxygen not found." >&2; \
+		echo "Install with: sudo apt install -y doxygen graphviz" >&2; \
+		exit 1; \
+	fi
 
 # =============================================================================
 # Packaging (DEB / IPK / RPM)
