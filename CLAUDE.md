@@ -246,9 +246,11 @@ hal_refactor/                   audit reports from the result-type refactor
   *ninja* level, not the cmake level), then fail with a confusing
   "unknown target" error if the tool is missing.
 - The native build (`make build` → `build/native/`) is the fast feedback
-  loop. All 35 ctest tests pass on the x86_64 host. Use it for iterative
-  work; use the Docker cross-build only when the change is platform-
-  specific (e.g. new `RPI5_*` constants in `platform_rpi5.h`).
+  loop. All 36 ctest tests pass on the x86_64 host (35 module tests +
+  `test_sysfs_helpers` regression for the `hal::sysfs` helpers in
+  `lib_base.h`). Use it for iterative work; use the Docker cross-build
+  only when the change is platform-specific (e.g. new `RPI5_*` constants
+  in `platform_rpi5.h`).
 - For the cross-build on a x86_64 host, install QEMU user-mode emulation
   once per host: `sudo apt install -y qemu-user-static binfmt-support &&
   sudo update-binfmts --enable qemu-aarch64`. Without it, `make
@@ -270,8 +272,15 @@ hal_refactor/                   audit reports from the result-type refactor
   `build/cross/`. `file build/cross/bin/test_cpu` confirms
   `ARM aarch64` and `build/cross/acadia-hal_1.0_arm64.deb` confirms
   `Debian binary package (format 2.0)`.
-- All 35 ctest tests pass under QEMU in the cross build (slowest is
+- All 36 ctest tests pass under QEMU in the cross build (slowest is
   `test_thermal_management` at ~41s; total wall-clock ~41s).
+- For issue #43 (sysfs helpers in 30+ module .cpp files), the minimal
+  acceptable fix is: add `hal::sysfs::readSysfsLine/Int` to `lib_base.h`
+  + a `tests/sysfs_helpers/` regression that wires into ctest. Do NOT
+  migrate the 30+ call sites in the same PR — that's a sweep across
+  many modules and a §8 'no drive-by edits' violation. The helpers
+  get adopted opportunistically as each module is touched for other
+  reasons.
 
 **Don't**
 - Don't run `make format` / `make cppcheck` / `make doc` without first
