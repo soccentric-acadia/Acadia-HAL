@@ -151,13 +151,17 @@ inline void FillEnvelope(hal::common::ResultEnvelope*  env,
 inline hal::common::TestStatus ComputeStatus(
     const std::vector<::TestResult>& results) {
     if (results.empty()) return hal::common::TestStatus::TEST_STATUS_ERROR;
-    bool all_pass = true, any_pass = false;
+    bool all_pass = true;
     for (const auto& r : results) {
-        if (r.output.status == ::hal::Status::PASS) any_pass = true;
-        else                                         all_pass = false;
+        if (r.output.status != ::hal::Status::PASS) { all_pass = false; break; }
     }
     if (all_pass) return hal::common::TestStatus::TEST_STATUS_PASS;
-    if (any_pass) return hal::common::TestStatus::PARTIAL;  // envelope-level aggregate
+    // Some passes + some fails: per common.proto, PARTIAL (enum value 6) is
+    // a deprecated envelope-level aggregate that must no longer be
+    // produced. The run as a whole did not pass, so the envelope status
+    // is FAIL. Per-test results in the payload still carry their own
+    // individual statuses (PASS / FAIL / ERROR / ...), so a consumer can
+    // always reconstruct the breakdown from envelope.payload().
     return hal::common::TestStatus::TEST_STATUS_FAIL;
 }
 
