@@ -245,4 +245,57 @@ class TestBase
     std::thread monitoring_thread_;
 };
 
+// ============================================================
+// Shared sysfs helpers — issue #43
+//
+// These are the canonical implementations used by every HAL module
+// that reads a kernel-exposed value via /sys. New code should use
+// these instead of declaring local static copies. The 30+ existing
+// local helpers in individual module .cpp files are intentionally
+// left in place (per §8 'no drive-by edits'); future migrations
+// can replace them one module at a time without breaking anything.
+// ============================================================
+
+#include <fstream>
+#include <string>
+
+namespace hal {
+namespace sysfs {
+
+/**
+ * @brief Read the first line of a sysfs file.
+ * @param path Absolute path under /sys (or anywhere on the filesystem).
+ * @return The line read, with trailing newline stripped.
+ *         Returns an empty string if the file could not be opened
+ *         or contained no data.
+ */
+inline std::string readSysfsLine(const std::string& path) {
+    std::ifstream f(path);
+    if (!f.is_open()) return std::string();
+    std::string line;
+    std::getline(f, line);
+    return line;
+}
+
+/**
+ * @brief Read a sysfs file and parse its first line as a long long.
+ * @param path Absolute path under /sys.
+ * @return The parsed integer, or -1 on any failure (file missing,
+ *         empty, or non-numeric content). Callers that need a
+ *         different "missing" sentinel should inspect readSysfsLine()
+ *         directly.
+ */
+inline long long readSysfsInt(const std::string& path) {
+    std::string s = readSysfsLine(path);
+    if (s.empty()) return -1LL;
+    try {
+        return std::stoll(s);
+    } catch (...) {
+        return -1LL;
+    }
+}
+
+}  // namespace sysfs
+}  // namespace hal
+
 #endif // TEST_BASE_H
