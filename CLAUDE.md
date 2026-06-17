@@ -281,6 +281,22 @@ hal_refactor/                   audit reports from the result-type refactor
   many modules and a §8 'no drive-by edits' violation. The helpers
   get adopted opportunistically as each module is touched for other
   reasons.
+- For issue #61 (16 stub modules in `modules.yaml` with `status: active`
+  but no C++ implementation), the minimal fix is to flip them to
+  `status: planned` and add a `planned_source_path`. Do NOT rewrite
+  the 16 stub protos to embed the new `hal.common.TestResult` shape in
+  the same change — they have no consumers (no C++, no serializer case,
+  no tests), so a 16-file proto rewrite has zero runtime impact. Align
+  each stub proto when its module is actually implemented.
+- For manifest edits: validate with `python3 -c "import yaml; ..."`
+  before committing. The two entry shapes (old: `proto_package` +
+  `config_type` + `result_type` + `source_path`; new: `config_type_url`
+  + `result_type_url` + `modes` list) co-exist; match the surrounding
+  style when adding fields to either.
+- The Makefile has no `lint` target — only `format` and `cppcheck`,
+  both of which require their respective tool to be installed. For PR
+  validation, run `make build && make test`; skip lint when no tool
+  is available locally (it's not part of the standard CI gate).
 
 **Don't**
 - Don't run `make format` / `make cppcheck` / `make doc` without first
