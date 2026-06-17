@@ -99,6 +99,24 @@ TestOutput VisionAcceleratorTesting::testDualVectorProcessingUnits()
         _out.severity = v3dOk ? hal::Severity::INFO : hal::Severity::ERROR;
         for (size_t _i = 0; _i < data.size(); ++_i)
             _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        // Typed measurements (req.md §2 rule 1): CPU core count and GPU clock
+        // are chartable integers; downstream consumers (Web UI thresholds)
+        // rely on type rather than on string parsing.
+        if (!cpuCount.empty()) {
+            try { _out.metrics["cpu_core_count"] = static_cast<int64_t>(std::stoi(cpuCount)); }
+            catch (...) { /* leave as reason only */ }
+        }
+        if (!gpuFreq.empty()) {
+            try {
+                // vcgencmd output: "frequency(48)=700000000" → Hz
+                auto eq = gpuFreq.find('=');
+                auto close = gpuFreq.find(')', eq);
+                if (eq != std::string::npos && close != std::string::npos) {
+                    long long hz = std::stoll(gpuFreq.substr(eq + 1, close - eq - 1));
+                    _out.metrics["v3d_clock_hz"] = static_cast<int64_t>(hz);
+                }
+            } catch (...) { /* leave as reason only */ }
+        }
         return _out;
     }
 }
@@ -184,6 +202,17 @@ TestOutput VisionAcceleratorTesting::testScalarExecutionUnits()
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
         for (size_t _i = 0; _i < data.size(); ++_i)
             _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        // Typed measurements (req.md §2 rule 1): CPU frequency in kHz from
+        // sysfs → typed integer for charting.
+        if (!cpuFreq.empty()) {
+            try { _out.metrics["cpu0_cur_freq_khz"] = static_cast<int64_t>(std::stoi(cpuFreq)); }
+            catch (...) { /* leave as reason only */ }
+        }
+        if (!maxFreq.empty()) {
+            try { _out.metrics["cpu0_max_freq_khz"] = static_cast<int64_t>(std::stoi(maxFreq)); }
+            catch (...) { /* leave as reason only */ }
+        }
+        _out.metrics["cpu_max_freq_rated_mhz"] = static_cast<int64_t>(RPI5_CPU_MAX_FREQ_MHZ);
         return _out;
     }
 }
@@ -216,6 +245,11 @@ TestOutput VisionAcceleratorTesting::testVectorExecutionUnits()
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
         for (size_t _i = 0; _i < data.size(); ++_i)
             _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        // Typed measurements (req.md §2 rule 1): memcpy latency (ns) and
+        // throughput (GB/s) — the headline numbers for a NEON throughput
+        // benchmark must be typed for downstream charting/thresholding.
+        _out.metrics["neon_memcpy_ns"] = static_cast<int64_t>(ns);
+        _out.metrics["neon_memcpy_gbps"] = static_cast<double>(gbps);
         return _out;
     }
 }
@@ -241,6 +275,11 @@ TestOutput VisionAcceleratorTesting::testDmaEngine1Functionality()
         _out.severity = hal::Severity::INFO;
         for (size_t _i = 0; _i < data.size(); ++_i)
             _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        // Typed measurement (req.md §2 rule 1): BCM DMA module count.
+        if (!dmaMod.empty()) {
+            try { _out.metrics["bcm_dma_module_count"] = static_cast<int64_t>(std::stoi(dmaMod)); }
+            catch (...) { /* leave as reason only */ }
+        }
         return _out;
     }
 }
@@ -300,6 +339,10 @@ TestOutput VisionAcceleratorTesting::testDmaBandwidthTesting()
         _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
         for (size_t _i = 0; _i < data.size(); ++_i)
             _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        // Typed measurements (req.md §2 rule 1): 128 MB DMA-proxy latency
+        // and throughput — typed for charting.
+        _out.metrics["dma_memcpy_ms"] = static_cast<double>(ms);
+        _out.metrics["dma_memcpy_gbps"] = static_cast<double>(gbps);
         return _out;
     }
 }
@@ -339,6 +382,9 @@ TestOutput VisionAcceleratorTesting::testDmaLatencyTesting()
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
         for (size_t _i = 0; _i < data.size(); ++_i)
             _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        // Typed measurement (req.md §2 rule 1): 4 KB DMA-proxy avg latency
+        // in nanoseconds — typed for thresholding (< 100µs pass).
+        _out.metrics["dma_proxy_avg_latency_ns"] = static_cast<int64_t>(avgNs);
         return _out;
     }
 }
