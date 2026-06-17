@@ -2,8 +2,18 @@
 
 ## Summary
 
-All 9 phases of the HAL result-type refactor have been completed successfully.
-The full codebase compiles cleanly with zero errors (333/333 targets).
+All 9 phases of the HAL result-type refactor have been completed successfully
+for the **35 implemented modules**. The full codebase compiles cleanly with
+zero errors (333/333 targets).
+
+**Note (2026-06, issue #61):** the manifest `protos/registry/modules.yaml` also
+contains 16 additional modules marked `status: planned` (i2c, spi, uart, rtc,
+battery, nvme, emmc, can_bus, rs485, analog_input, pwm_output, sd_card,
+bluetooth, mipi_csi, mipi_dsi, accelerometer). These are proto stubs only —
+no C++ implementation exists, so they are not part of the migrated 35. Their
+protos retain the older flat `Result` shape and will be aligned to the new
+`hal.common.TestResult` shape when each is implemented. See
+`hal_refactor/01_discovery.md` §9 for the full breakdown.
 
 ## Objective
 
