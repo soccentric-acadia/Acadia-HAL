@@ -148,3 +148,23 @@ per-module.
 | `module_id` values unchanged from `modules.yaml` | ✅ Passed through `HAL_REGISTER` |
 | Old proto tag numbers not reused | ✅ Tag 1 reserved; new field at tag 2 |
 | Old field names not reused | ✅ `test_results` reserved; new field is `results` |
+
+## Typed-metric reclassification (#63)
+
+The 572 ambiguous `data` entries from Phase 5 were positionally
+indexed to `reason["detail_N"]`. Per req.md §2 rule 1, clearly
+measurable values should be in the typed `metrics` map, not as
+opaque strings. A full sweep across 35 modules is explicitly out of
+scope per §8 (no drive-by edits); the reclassification is done
+opportunistically per module, when each is next touched for other
+reasons.
+
+**Status (2026-06):**
+
+- `vision_accelerator_lib` — reclassified 11 measurement entries into
+  typed `metrics` (see `hal_refactor/05_modules/vision_accelerator_lib.md`).
+  Regression test added at `tests/vision_accelerator_metrics/`.
+  17 assertions, all pass.
+- The remaining 34 modules — still carry `reason["detail_N"]` for
+  their measurement values. Each module reclassifies its own
+  measurements when next touched.

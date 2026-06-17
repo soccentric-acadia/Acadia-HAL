@@ -288,6 +288,16 @@ hal_refactor/                   audit reports from the result-type refactor
   the same change — they have no consumers (no C++, no serializer case,
   no tests), so a 16-file proto rewrite has zero runtime impact. Align
   each stub proto when its module is actually implemented.
+- For issue #63 (572 `reason["detail_N"]` positional translations from
+  the original refactor), the minimal acceptable pattern is to
+  reclassify measurements per-module opportunistically. Pick one
+  module, parse its clearly-typed values into `metrics[key] = Value{...}`,
+  and add a dedicated test binary (e.g. `tests/<module>_metrics/`)
+  that wires through `TypedModuleHandler` and asserts on the typed
+  surface. The original `reason["detail_N"]` strings are preserved
+  (additive change). Do NOT sweep all 35 modules in one PR — §8
+  "no drive-by edits" applies. Other modules adopt the same pattern
+  as they are each touched for other reasons.
 - For manifest edits: validate with `python3 -c "import yaml; ..."`
   before committing. The two entry shapes (old: `proto_package` +
   `config_type` + `result_type` + `source_path`; new: `config_type_url`

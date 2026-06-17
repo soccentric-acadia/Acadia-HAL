@@ -38,5 +38,4 @@ moved to `reason["detail_N"]`. No data is lost.
 | `src/thermal_management_lib/thermal_management_lib.cpp` | `data[0..N]` | `reason["detail_N"]` | Unlabeled vector entries; positional index used as key |
 | `src/usb_lib/usb_lib.cpp` | `data[0..N]` | `reason["detail_N"]` | Unlabeled vector entries; positional index used as key |
 | `src/video_encode_decode_lib/video_encode_decode_lib.cpp` | `data[0..N]` | `reason["detail_N"]` | Unlabeled vector entries; positional index used as key |
-| `src/vision_accelerator_lib/vision_accelerator_lib.cpp` | `data[0..N]` | `reason["detail_N"]` | Unlabeled vector entries; positional index used as key |
 | `src/watchdog_and_reset_lib/watchdog_and_reset_lib.cpp` | `data[0..N]` | `reason["detail_N"]` | Unlabeled vector entries; positional index used as key |
