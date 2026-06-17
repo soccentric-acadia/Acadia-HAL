@@ -31,9 +31,14 @@ enum ExecutionMode {
 }
 
 // Per-test and overall-run status.
-// Numeric values are stable forever — never reassign.
+// Numeric values are stable forever — never reassign, never reuse.
 // The prefixed names (TEST_STATUS_*) are canonical; the short names are
 // legacy aliases kept for envelope-level consumers and are deprecated.
+// Numeric value 6 was historically PARTIAL (an envelope-level aggregate);
+// that aggregate is no longer produced and the C++ hal::Status enum has
+// no PARTIAL member. The value 6 is now formally reserved so it cannot
+// be rebound and so any incoming wire value of 6 is rejected at decode
+// time rather than silently mapped to a dead alias.
 enum TestStatus {
   option allow_alias = true;
   TEST_STATUS_UNSPECIFIED = 0;
@@ -43,14 +48,15 @@ enum TestStatus {
   TEST_STATUS_ERROR       = 3;
   TEST_STATUS_TIMEOUT     = 4;
   TEST_STATUS_ABORTED     = 5;
-  TEST_STATUS_SKIPPED     = 7;  // new value; 5 was ABORTED, 6 was PARTIAL
+  TEST_STATUS_SKIPPED     = 7;  // 6 was PARTIAL (deprecated, retired; see reserved below)
+  reserved 6;
+  reserved "PARTIAL";
   // Deprecated short aliases kept for envelope-level consumers:
   PASS    = 1;   // deprecated; use TEST_STATUS_PASS
   FAIL    = 2;   // deprecated; use TEST_STATUS_FAIL
   ERROR   = 3;   // deprecated; use TEST_STATUS_ERROR
   TIMEOUT = 4;   // deprecated; use TEST_STATUS_TIMEOUT
   ABORTED = 5;   // deprecated; use TEST_STATUS_ABORTED
-  PARTIAL = 6;   // deprecated envelope aggregate — no longer produced; kept to avoid decode errors
 }
 
 // Per-test severity (new — mirrors hal::Severity).
