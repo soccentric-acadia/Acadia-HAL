@@ -103,7 +103,11 @@ All 35 test binaries in `tests/*/main.cpp` use the `runTestApp<ClassName>()` tem
 
 ## 9. Module count from modules.yaml
 
-**35 active modules registered:**
+**51 modules registered total** — 35 active with C++ implementations, 16 planned
+(protos exist, no C++ implementation yet — added in 2026-06 as part of fix for
+issue #61 to make the implementation gap explicit).
+
+### 35 active (migrated, source under `src/`)
 
 audio_interfaces, camera_interfaces, camera_module3, clock_and_timing,
 communication_interface, cpu, debug_and_development_interfaces,
@@ -115,6 +119,17 @@ system_integration, system_memory, thermal_management, usb, video_encode_decode,
 vision_accelerator, watchdog_and_reset
 
 All 35 source directories confirmed present under `src/`.
+
+### 16 planned (proto stub only — not yet implemented)
+
+i2c, spi, uart, rtc, battery, nvme, emmc, can_bus, rs485, analog_input,
+pwm_output, sd_card, bluetooth, mipi_csi, mipi_dsi, accelerometer
+
+These have a proto entry in `protos/registry/modules.yaml` with `status: planned`
+and a `planned_source_path`, but no C++ implementation under `src/`. Their
+module-specific protos retain the older flat `Result { status; message; TestDetail[] }`
+shape; they will be aligned to the new `hal.common.TestResult` shape when each is
+implemented (Phase 5 work for that module).
 
 ---
 
