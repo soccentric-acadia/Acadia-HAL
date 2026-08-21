@@ -20,18 +20,20 @@ DOCKER_CROSS_BUILD_DIR := /workspace/build/cross
 HOST_ARCH := $(shell uname -m | sed 's/x86_64/x86-64/')
 
 # IP addresses for Raspberry Pi 5 target devices
-# Override on the command line: make deploy IP_A=<addr> IP_B=<addr>
-IP_A := 192.168.1.3
-IP_B := 192.168.1.13
+# Single source of truth: loop/tools/targets.yaml. Do not duplicate a second
+# copy here; provide the address at call time (make deploy-a IP_A=... or
+# ACADIA_TARGET_ADDRESS=...). Empty default so a stale/wrong target can never be
+# silently deployed to.
+IP_A ?= $(ACADIA_TARGET_ADDRESS)
+IP_B ?=
 
-# User and password for SSH/SCP.
-# Override on the command line or via environment variables:
-#   make deploy USER=pi PASS=<password>
-#   HAL_SSH_USER=pi HAL_SSH_PASS=<password> make deploy
-# Do NOT commit real credentials here.
-USER := $(or $(HAL_SSH_USER),nvidia)
-PASS := $(or $(HAL_SSH_PASS),nvidia)
-SSHPASS := sshpass -p $(PASS)
+# SSH credentials are NEVER committed. Injected from the environment / secret
+# manager at run time. Key-based auth is preferred (ACADIA_TARGET_SSH_KEY); a
+# password may be supplied via ACADIA_TARGET_PASS. Deploy targets fail if
+# neither is configured.
+USER := $(or $(ACADIA_TARGET_USER),$(ACADIA_SSH_USER),$(HAL_SSH_USER))
+PASS := $(or $(ACADIA_TARGET_PASS),$(HAL_SSH_PASS))
+SSHPASS := $(if $(PASS),sshpass -p $(PASS))
 SSH := $(SSHPASS) ssh -o StrictHostKeyChecking=no
 SCP := $(SSHPASS) scp -o StrictHostKeyChecking=no
 
@@ -39,7 +41,11 @@ SCP := $(SSHPASS) scp -o StrictHostKeyChecking=no
 all: docker-build
 
 # Deploy to remote target: $(1)=IP address
+# Fails fast if no address or credentials were provided.
+_require_deploy_env = $(if $(strip $(1)),,$(error deploy requires an IP (set IP_A/IP_B or ACADIA_TARGET_ADDRESS)))
 define deploy_remote
+	$(call _require_deploy_env,$(1))
+	$(if $(and $(PASS),$(SSHPASS)),,$(if $(ACADIA_TARGET_SSH_KEY),,$(error deploy: no SSH credentials configured; set ACADIA_TARGET_SSH_KEY or ACADIA_TARGET_USER/ACADIA_TARGET_PASS)))
 	@echo "Deploying to $(1)..."
 	$(SSH) $(USER)@$(1) "rm -rf /tmp/acu-test && mkdir -p /tmp/acu-test"
 	$(SCP) -r $(CROSS_BUILD_DIR)/lib $(USER)@$(1):/tmp/acu-test/
@@ -48,6 +54,7 @@ endef
 
 # Run apps on remote target: $(1)=IP address
 define run_remote
+	$(call _require_deploy_env,$(1))
 	@APP="$(word 2, $(MAKECMDGOALS))"; \
 	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
 	if [ -z "$$APP" ]; then \
@@ -323,9 +330,8 @@ help:
 	@echo "    setup-completion - Set up bash completion for make (adds to ~/.bashrc)"
 	@echo ""
 	@echo "  Environment variables:"
-	@echo "    HAL_SSH_USER  - SSH username for deploy (default: nvidia)"
-	@echo "    HAL_SSH_PASS  - SSH password for deploy"
-	@echo "    HAL_TLS_CERT  - Path to server TLS certificate"
-	@echo "    HAL_TLS_KEY   - Path to server TLS private key"
-	@echo "    HAL_TLS_CA    - Path to CA certificate for mutual TLS"
+	@echo "    ACADIA_TARGET_SSH_KEY - path to SSH private key (preferred auth)"
+	@echo "    ACADIA_TARGET_USER    - SSH username for deploy"
+	@echo "    ACADIA_TARGET_PASS    - SSH password for deploy (never commit)"
+	@echo "    HAL_SSH_USER/HAL_SSH_PASS - legacy env overrides"
 	@echo "    JOBS          - Parallel build jobs (default: nproc=$(JOBS))"

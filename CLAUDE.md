@@ -220,10 +220,11 @@ hal_refactor/                   audit reports from the result-type refactor
   use `config_type_url` + `result_type_url` + a `modes` list. When
   editing, match the style of the surrounding entries.
 - The `make help` target is the canonical reference for available targets
-  and their env-var overrides (`HAL_SSH_USER`, `HAL_TLS_*`, `JOBS`).
-- Default `make deploy` credentials are placeholders (`nvidia`/`nvidia`) —
-  override with `HAL_SSH_USER` / `HAL_SSH_PASS` or on the command line.
-  Never commit real credentials.
+  and their env-var overrides (`ACADIA_TARGET_*`, `JOBS`).
+- `make deploy` has **no hardcoded credentials** and fails closed when none are
+  supplied. Provide them via the environment (`ACADIA_TARGET_SSH_KEY` +
+  `ACADIA_TARGET_USER`, or `ACADIA_TARGET_PASS`) — see `loop/tools/README.md`
+  and the master repo's `.env.example`. Never commit real credentials.
 - **Cross-build via Docker requires QEMU user-mode emulation on the host**
   (x86_64 host running an ARM64 image). The `acadia` image is ARM64; without
   `qemu-user-static` + `binfmt-support` registered for aarch64, the

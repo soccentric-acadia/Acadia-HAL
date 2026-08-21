@@ -86,10 +86,12 @@ make run APP_NAME arg1
 ```
 
 `deploy-*` first cross-builds and then copies `build/cross/lib` and `build/cross/bin` to
-`/tmp/acu-test/` on the target. Defaults are `192.168.1.3`, `192.168.1.13`, and user/password
-`nvidia`; use `HAL_SSH_USER`/`HAL_SSH_PASS` or `USER`/`PASS` overrides and do not commit
-secrets. `run` uses native binaries and `LD_LIBRARY_PATH`; `run-a`/`run-b` execute on the remote
-target. No cloud installation target exists.
+`/tmp/acu-test/` on the target. Addresses and SSH credentials are **not hardcoded** — they come
+from the environment at run time (`ACADIA_TARGET_ADDRESS`, `ACADIA_TARGET_USER`, and
+`ACADIA_TARGET_SSH_KEY` or `ACADIA_TARGET_PASS`). Never commit secrets; the single source of
+truth for bench targets is `loop/tools/targets.yaml`. `run` uses native binaries and
+`LD_LIBRARY_PATH`; `run-a`/`run-b` execute on the remote target. No cloud installation target
+exists.
 
 ## 7. Cleanup
 
