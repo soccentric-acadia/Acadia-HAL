@@ -2,11 +2,14 @@
 
 ## Overview
 
-Acaida-HAL is a comprehensive hardware abstraction and testing suite targeting the **Raspberry Pi 5** (BCM2712 SoC + RP1 south-bridge). It provides a modular, extensible architecture for testing and exercising hardware interfaces and system components commonly found in automotive and industrial applications.
+Acaida-HAL is a comprehensive hardware abstraction and testing suite targeting the **Raspberry
+Pi 5** (BCM2712 SoC + RP1 south-bridge). It provides a modular, extensible architecture for
+testing and exercising hardware interfaces and system components commonly found in automotive
+and industrial applications.
 
-> **Port history**: Originally developed for NVIDIA Jetson AGX Orin (Tegra234).
-> Ported to Raspberry Pi 5 (BCM2712 + RP1) — all platform-specific paths, constants,
-> and device nodes updated for the Pi 5 hardware.
+> **Port history**: Originally developed for NVIDIA Jetson AGX Orin (Tegra234). > Ported to
+Raspberry Pi 5 (BCM2712 + RP1) — all platform-specific paths, constants, > and device nodes
+updated for the Pi 5 hardware.
 
 ### Target Platform
 
@@ -21,8 +24,11 @@ Acaida-HAL is a comprehensive hardware abstraction and testing suite targeting t
 
 ### Key Features
 
-- **Modular Library Architecture**: Separate libraries for CPU, GPU, DLA (Hailo-8/Coral), video codec (V4L2 M2M), camera (Unicam/RP1), audio (RP1 I2S), PCIe, USB (xhci-hcd), GPIO (gpiochip4), storage, Ethernet, and more.
-- **Pi5 Platform Header**: Centralised constants in `src/platform_rpi5.h` (device paths, thermal thresholds, memory bandwidth).
+- **Modular Library Architecture**: Separate libraries for CPU, GPU, DLA (Hailo-8/Coral), video
+codec (V4L2 M2M), camera (Unicam/RP1), audio (RP1 I2S), PCIe, USB (xhci-hcd), GPIO (gpiochip4),
+storage, Ethernet, and more.
+- **Pi5 Platform Header**: Centralised constants in `src/platform_rpi5.h` (device paths, thermal
+thresholds, memory bandwidth).
 - **Cross-compilation via Docker**: ARM64 Ubuntu 24.04 container (`rpi5-builder`).
 - **Comprehensive Testing**: Unit tests, integration tests, and deployment workflows.
 - **Documentation Generation**: Integrated Doxygen support.
@@ -30,13 +36,31 @@ Acaida-HAL is a comprehensive hardware abstraction and testing suite targeting t
 
 ## Project Description
 
-Acadia-HAL is the C++ hardware-abstraction and board-exercise library used to expose Raspberry Pi 5 capabilities to the Acadia test stack. Its CMake tree builds separate libraries for CPU, GPU, deep-learning acceleration, video encode/decode, camera, audio, communication, GPIO, Ethernet and switching, PCIe, USB, storage, thermal management, power management, memory, reliability, security, watchdog/reset, display, GNSS, IMU, MCU, external connectors, and system integration. `src/platform_rpi5.h` centralizes Raspberry Pi 5 device paths and platform constants, while `lib_base` provides shared support. Actual peripheral readiness depends on kernel drivers, attached hardware, permissions, and the target.
+Acadia-HAL is the C++ hardware-abstraction and board-exercise library used to expose Raspberry
+Pi 5 capabilities to the Acadia test stack. Its CMake tree builds separate libraries for CPU,
+GPU, deep-learning acceleration, video encode/decode, camera, audio, communication, GPIO,
+Ethernet and switching, PCIe, USB, storage, thermal management, power management, memory,
+reliability, security, watchdog/reset, display, GNSS, IMU, MCU, external connectors, and system
+integration. `src/platform_rpi5.h` centralizes Raspberry Pi 5 device paths and platform
+constants, while `lib_base` provides shared support. Actual peripheral readiness depends on
+kernel drivers, attached hardware, permissions, and the target.
 
-The repository includes test areas for most library families under `tests/`, with CMake entry points and small executable test programs, plus selective GPU coverage in `tests/gpu/test_selective.cpp`. It also includes protobuf definitions, Docker ARM64 support, Doxygen, clang-format, and cppcheck. Native workflows use `make build`, `make run`, and the test target; Docker uses `make docker-image` and `make docker-build`. These commands are build evidence, not proof that every adapter passes on a populated board, especially optional accelerator, camera, display, and networking hardware.
+The repository includes test areas for most library families under `tests/`, with CMake entry
+points and small executable test programs, plus selective GPU coverage in
+`tests/gpu/test_selective.cpp`. It also includes protobuf definitions, Docker ARM64 support,
+Doxygen, clang-format, and cppcheck. Native workflows use `make build`, `make run`, and the test
+target; Docker uses `make docker-image` and `make docker-build`. These commands are build
+evidence, not proof that every adapter passes on a populated board, especially optional
+accelerator, camera, display, and networking hardware.
 
-The libraries are consumed by the Client registry and must be judged at two levels: whether a target can link and call the interface, and whether the corresponding kernel-backed operation returns a meaningful result. Device permissions, firmware, attached peripherals, and Raspberry Pi 5 driver names can change the second answer. Tests that execute without hardware should therefore be read as interface or host-level checks unless their source clearly exercises a real device.
+The libraries are consumed by the Client registry and must be judged at two levels: whether a
+target can link and call the interface, and whether the corresponding kernel-backed operation
+returns a meaningful result. Device permissions, firmware, attached peripherals, and Raspberry
+Pi 5 driver names can change the second answer. Tests that execute without hardware should
+therefore be read as interface or host-level checks unless their source clearly exercises a real
+device.
 
-## Feature Matrix
+## Feature Status
 
 | # | Name / Description | Implemented? | Test Coverage? | Manual Test |
 |---:|---|---|---|---|
@@ -55,7 +79,8 @@ The libraries are consumed by the Client registry and must be judged at two leve
 
 ## Test Evidence
 
-Test programs live under `tests/`; run the configured test target after `make build`. Static checks use `make format` and `make cppcheck` where supported.
+Test programs live under `tests/`; run the configured test target after `make build`. Static
+checks use `make format` and `make cppcheck` where supported.
 
 ## Prerequisites
 
@@ -64,10 +89,10 @@ Test programs live under `tests/`; run the configured test target after `make bu
 - **Operating System**: Linux (Ubuntu 20.04+ recommended for host)
 - **Compiler**: GCC 11+ or Clang 14+
 - **Build Tools**:
-  - CMake 3.10+
-  - Ninja build system
-  - Make
-  - Git
+- CMake 3.10+
+- Ninja build system
+- Make
+- Git
 - Docker installed and running (for cross-compilation)
 
 ## Build Process
@@ -75,7 +100,8 @@ Test programs live under `tests/`; run the configured test target after `make bu
 The project supports two primary build methods:
 
 1. **Native Compilation**: Build directly on a Raspberry Pi 5 running 64-bit OS.
-2. **Docker-based Cross-Compilation**: Build for ARM64 on any Linux host using the `rpi5-builder` container.
+2. **Docker-based Cross-Compilation**: Build for ARM64 on any Linux host using the
+`rpi5-builder` container.
 
 ### Native Compilation (on Pi 5)
 
@@ -100,28 +126,20 @@ The Docker image is based on `ubuntu:22.04` (ARM64) and is named `acadia`.
 
 #### Build Process
 
-1. **Ensure Docker is Installed**
-   ```bash
-   make docker-install
-   ```
+1. **Ensure Docker is Installed** ```bash make docker-install ```
 
-2. **Build the Docker Image**
-   ```bash
-   make docker-image
-   ```
+2. **Build the Docker Image** ```bash make docker-image ```
 
-   This creates a Docker image named `acadia` based on `ubuntu:22.04` with all necessary ARM64 build dependencies pre-installed.
+This creates a Docker image named `acadia` based on `ubuntu:22.04` with all necessary ARM64
+build dependencies pre-installed.
 
-3. **Build**
-   ```bash
-   make docker-build
-   ```
+3. **Build** ```bash make docker-build ```
 
-   This command:
-   - Runs the Docker container with the project mounted
-   - Configures the build system with Ninja generator
-   - Builds all targets
-   - Outputs binaries in the `build/cross/` directory
+This command:
+- Runs the Docker container with the project mounted
+- Configures the build system with Ninja generator
+- Builds all targets
+- Outputs binaries in the `build/cross/` directory
 
 4. **Deploy and Run on Target Pi 5**
 
@@ -137,7 +155,8 @@ The Docker image is based on `ubuntu:22.04` (ARM64) and is named `acadia`.
 ## Platform-Specific Notes
 
 ### AI Inference (DLA)
-- **Hailo-8** (PCIe HAT+): detected at `/dev/hailo0`, kernel module `hailo_pci` (vendor `0x1e60`)
+- **Hailo-8** (PCIe HAT+): detected at `/dev/hailo0`, kernel module `hailo_pci` (vendor
+`0x1e60`)
 - **Coral USB Edge TPU**: detected via USB vendor `18d1` at `/dev/apex_0`
 
 ### GPU (VideoCore VII)
