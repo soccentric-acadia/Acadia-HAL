@@ -28,6 +28,35 @@ Acaida-HAL is a comprehensive hardware abstraction and testing suite targeting t
 - **Documentation Generation**: Integrated Doxygen support.
 - **Code Quality Tools**: clang-format and cppcheck.
 
+## Project Description
+
+Acadia-HAL is the C++ hardware-abstraction and board-exercise library used to expose Raspberry Pi 5 capabilities to the Acadia test stack. Its CMake tree builds separate libraries for CPU, GPU, deep-learning acceleration, video encode/decode, camera, audio, communication, GPIO, Ethernet and switching, PCIe, USB, storage, thermal management, power management, memory, reliability, security, watchdog/reset, display, GNSS, IMU, MCU, external connectors, and system integration. `src/platform_rpi5.h` centralizes Raspberry Pi 5 device paths and platform constants, while `lib_base` provides shared support. Actual peripheral readiness depends on kernel drivers, attached hardware, permissions, and the target.
+
+The repository includes test areas for most library families under `tests/`, with CMake entry points and small executable test programs, plus selective GPU coverage in `tests/gpu/test_selective.cpp`. It also includes protobuf definitions, Docker ARM64 support, Doxygen, clang-format, and cppcheck. Native workflows use `make build`, `make run`, and the test target; Docker uses `make docker-image` and `make docker-build`. These commands are build evidence, not proof that every adapter passes on a populated board, especially optional accelerator, camera, display, and networking hardware.
+
+The libraries are consumed by the Client registry and must be judged at two levels: whether a target can link and call the interface, and whether the corresponding kernel-backed operation returns a meaningful result. Device permissions, firmware, attached peripherals, and Raspberry Pi 5 driver names can change the second answer. Tests that execute without hardware should therefore be read as interface or host-level checks unless their source clearly exercises a real device.
+
+## Feature Matrix
+
+| # | Name / Description | Implemented? | Test Coverage? | Manual Test |
+|---:|---|---|---|---|
+| 1 | Shared HAL base and Raspberry Pi 5 constants | Implemented | Library tests present; assertions unknown | [ ] Manual verification required |
+| 2 | CPU and system-memory libraries | Implemented | Dedicated test executables present | [ ] Manual verification required |
+| 3 | GPU and VideoCore support | Implemented | GPU tests, including selective test | [ ] Manual verification required |
+| 4 | Hailo/Coral accelerator integration | Partial: surface present; optional hardware | Unknown | [ ] Manual verification required |
+| 5 | V4L2 video encode/decode | Implemented | Dedicated test area present | [ ] Manual verification required |
+| 6 | CSI camera and camera module 3 | Implemented | Dedicated test areas present | [ ] Manual verification required |
+| 7 | Audio and communication interfaces | Implemented | Dedicated test areas present | [ ] Manual verification required |
+| 8 | GPIO, Ethernet, PCIe, and USB | Implemented | Dedicated test areas present | [ ] Manual verification required |
+| 9 | Storage, thermal, power, reliability, watchdog | Implemented | Dedicated test areas present | [ ] Manual verification required |
+| 10 | GNSS, IMU, MCU, display, external connector, PoE | Implemented | Test areas present where defined | [ ] Manual verification required |
+| 11 | Security, safety, serialization, integration interfaces | Implemented | Dedicated test areas present | [ ] Manual verification required |
+| 12 | Protobuf, CMake, Docker, Doxygen, format, cppcheck | Implemented | Build/static checks documented | [ ] Manual verification required |
+
+## Test Evidence
+
+Test programs live under `tests/`; run the configured test target after `make build`. Static checks use `make format` and `make cppcheck` where supported.
+
 ## Prerequisites
 
 ### System Requirements
