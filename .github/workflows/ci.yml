@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [master, develop, "release/**"]
+  pull_request:
+    branches: [master, develop]
+
+jobs:
+  # Build + unit tests run inside a pinned Ubuntu Docker container. This is
+  # mandatory: the host machine's protobuf/gRPC CMake exports are mutually
+  # incompatible (see missing_Features.md §3), but a fresh ubuntu:22.04
+  # container gets a compatible apt protobuf 3.12 + gRPC 1.30 pair.
+  build-and-test:
+    runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:22.04@sha256:4f838adc7181d9039ac795a7d0aba05a9bd9ecd480d294483169c5def983b64d
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build git pkg-config \
+            protobuf-compiler libprotobuf-dev libprotoc-dev \
+            libgrpc++-dev libgrpc-dev libssl-dev \
+            libspdlog-dev libgtest-dev libyaml-cpp-dev \
+            libsqlite3-dev libboost-system-dev libboost-date-time-dev
+          # yaml-cpp 0.8.0 (Ubuntu 22.04 ships 0.7 without the imported target)
+          git clone --depth=1 --branch 0.8.0 https://github.com/jbeder/yaml-cpp.git /tmp/yaml-cpp
+          cmake -S /tmp/yaml-cpp -B /tmp/yaml-cpp/build -DCMAKE_INSTALL_PREFIX=/usr -DYAML_CPP_BUILD_TESTS=OFF -GNinja
+          ninja -C /tmp/yaml-cpp/build install
+
+      - name: Configure
+        run: cmake -S . -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+
+      - name: Build
+        run: ninja -C build -j$(nproc)
+
+      - name: Lint (clang-format + cppcheck)
+        run: |
+          apt-get install -y --no-install-recommends clang-format cppcheck
+          ninja -C build check-clang-format || true
+          ninja -C build check-cppcheck || true
+
+      - name: Test
+        run: ctest --test-dir build -j$(nproc) --output-on-failure
+
+  docker-build:
+    name: Build Docker image
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build arm64 toolchain image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/arm64
+          push: false
+          load: false
+          tags: acadia-hal:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
