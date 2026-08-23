@@ -1,0 +1,6 @@
+add_executable(test_wifi main.cpp)
+target_link_libraries(test_wifi PRIVATE wifi_lib)
+target_include_directories(test_wifi PRIVATE ${CMAKE_SOURCE_DIR}/src)
+add_test(NAME test_wifi COMMAND test_wifi)
+set_tests_properties(test_wifi PROPERTIES TIMEOUT 120)
+install(TARGETS test_wifi RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

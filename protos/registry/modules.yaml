@@ -334,174 +334,207 @@ modules:
     name: I2C Bus
     description: I2C bus communication testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: connectivity
     modes: [SINGLE_SHOT, LONG_TERM, MONITORING]
     config_type_url: type.googleapis.com/hal.modules.i2c.Config
     result_type_url: type.googleapis.com/hal.modules.i2c.Result
-    planned_source_path: src/i2c_lib/i2c_lib.h
+    source_path: src/i2c_lib/i2c_lib.h
 
   - id: spi
     name: SPI Bus
     description: SPI bus communication testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: connectivity
     modes: [SINGLE_SHOT, LONG_TERM]
     config_type_url: type.googleapis.com/hal.modules.spi.Config
     result_type_url: type.googleapis.com/hal.modules.spi.Result
-    planned_source_path: src/spi_lib/spi_lib.h
+    source_path: src/spi_lib/spi_lib.h
 
   - id: uart
     name: UART
     description: UART/serial communication testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: connectivity
     modes: [SINGLE_SHOT, LONG_TERM, MONITORING]
     config_type_url: type.googleapis.com/hal.modules.uart.Config
     result_type_url: type.googleapis.com/hal.modules.uart.Result
-    planned_source_path: src/uart_lib/uart_lib.h
+    source_path: src/uart_lib/uart_lib.h
 
   - id: rtc
     name: Real-Time Clock
     description: Real-time clock accuracy and persistence testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: timing
     modes: [SINGLE_SHOT, MONITORING]
     config_type_url: type.googleapis.com/hal.modules.rtc.Config
     result_type_url: type.googleapis.com/hal.modules.rtc.Result
-    planned_source_path: src/rtc_lib/rtc_lib.h
+    source_path: src/rtc_lib/rtc_lib.h
 
   - id: battery
     name: Battery Management
     description: Battery charge, health, and capacity testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: power
     modes: [SINGLE_SHOT, MONITORING, EVENT_BASED]
     config_type_url: type.googleapis.com/hal.modules.battery.Config
     result_type_url: type.googleapis.com/hal.modules.battery.Result
-    planned_source_path: src/battery_lib/battery_lib.h
+    source_path: src/battery_lib/battery_lib.h
 
   - id: nvme
     name: NVMe Storage
     description: NVMe SSD performance and health testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: storage
     modes: [SINGLE_SHOT, LONG_TERM]
     config_type_url: type.googleapis.com/hal.modules.nvme.Config
     result_type_url: type.googleapis.com/hal.modules.nvme.Result
-    planned_source_path: src/nvme_lib/nvme_lib.h
+    source_path: src/nvme_lib/nvme_lib.h
 
   - id: emmc
     name: eMMC Storage
     description: eMMC flash storage testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: storage
     modes: [SINGLE_SHOT, LONG_TERM]
     config_type_url: type.googleapis.com/hal.modules.emmc.Config
     result_type_url: type.googleapis.com/hal.modules.emmc.Result
-    planned_source_path: src/emmc_lib/emmc_lib.h
+    source_path: src/emmc_lib/emmc_lib.h
 
   - id: can_bus
     name: CAN Bus
     description: CAN bus communication and error testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: connectivity
     modes: [SINGLE_SHOT, LONG_TERM, MONITORING, EVENT_BASED]
     config_type_url: type.googleapis.com/hal.modules.can_bus.Config
     result_type_url: type.googleapis.com/hal.modules.can_bus.Result
-    planned_source_path: src/can_bus_lib/can_bus_lib.h
+    source_path: src/can_bus_lib/can_bus_lib.h
 
   - id: rs485
     name: RS-485
     description: RS-485 half-duplex serial bus testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: connectivity
     modes: [SINGLE_SHOT, LONG_TERM]
     config_type_url: type.googleapis.com/hal.modules.rs485.Config
     result_type_url: type.googleapis.com/hal.modules.rs485.Result
-    planned_source_path: src/rs485_lib/rs485_lib.h
+    source_path: src/rs485_lib/rs485_lib.h
 
   - id: analog_input
     name: Analog Input (ADC)
     description: ADC analog input measurement and linearity testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: io
     modes: [SINGLE_SHOT, MONITORING, EVENT_BASED]
     config_type_url: type.googleapis.com/hal.modules.analog_input.Config
     result_type_url: type.googleapis.com/hal.modules.analog_input.Result
-    planned_source_path: src/analog_input_lib/analog_input_lib.h
+    source_path: src/analog_input_lib/analog_input_lib.h
 
   - id: pwm_output
     name: PWM Output
     description: PWM output frequency and duty cycle testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: io
     modes: [SINGLE_SHOT, LONG_TERM]
     config_type_url: type.googleapis.com/hal.modules.pwm_output.Config
     result_type_url: type.googleapis.com/hal.modules.pwm_output.Result
-    planned_source_path: src/pwm_output_lib/pwm_output_lib.h
+    source_path: src/pwm_output_lib/pwm_output_lib.h
 
   - id: sd_card
     name: SD Card
     description: SD card read/write performance and reliability testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: storage
     modes: [SINGLE_SHOT, LONG_TERM]
     config_type_url: type.googleapis.com/hal.modules.sd_card.Config
     result_type_url: type.googleapis.com/hal.modules.sd_card.Result
-    planned_source_path: src/sd_card_lib/sd_card_lib.h
+    source_path: src/sd_card_lib/sd_card_lib.h
 
   - id: bluetooth
     name: Bluetooth
     description: Bluetooth radio and pairing testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: connectivity
     modes: [SINGLE_SHOT, MONITORING]
     config_type_url: type.googleapis.com/hal.modules.bluetooth.Config
     result_type_url: type.googleapis.com/hal.modules.bluetooth.Result
-    planned_source_path: src/bluetooth_lib/bluetooth_lib.h
+    source_path: src/bluetooth_lib/bluetooth_lib.h
 
   - id: mipi_csi
     name: MIPI CSI Camera Interface
     description: MIPI CSI-2 camera lane and signal testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: peripherals
     modes: [SINGLE_SHOT, MONITORING]
     config_type_url: type.googleapis.com/hal.modules.mipi_csi.Config
     result_type_url: type.googleapis.com/hal.modules.mipi_csi.Result
-    planned_source_path: src/mipi_csi_lib/mipi_csi_lib.h
+    source_path: src/mipi_csi_lib/mipi_csi_lib.h
 
   - id: mipi_dsi
     name: MIPI DSI Display Interface
     description: MIPI DSI display lane and signal testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: peripherals
     modes: [SINGLE_SHOT, MONITORING]
     config_type_url: type.googleapis.com/hal.modules.mipi_dsi.Config
     result_type_url: type.googleapis.com/hal.modules.mipi_dsi.Result
-    planned_source_path: src/mipi_dsi_lib/mipi_dsi_lib.h
+    source_path: src/mipi_dsi_lib/mipi_dsi_lib.h
 
   - id: accelerometer
     name: Accelerometer
     description: Accelerometer sensor calibration and range testing
     version: "1.0.0"
-    status: planned
+    status: active
     category: sensors
     modes: [SINGLE_SHOT, MONITORING, EVENT_BASED]
     config_type_url: type.googleapis.com/hal.modules.accelerometer.Config
     result_type_url: type.googleapis.com/hal.modules.accelerometer.Result
-    planned_source_path: src/accelerometer_lib/accelerometer_lib.h
+    source_path: src/accelerometer_lib/accelerometer_lib.h
+
+  - id: fan
+    name: Cooling Fan
+    description: PWM cooling fan presence, thermal zone, and speed control testing
+    version: "1.0.0"
+    status: active
+    category: peripherals
+    modes: [SINGLE_SHOT, MONITORING]
+    config_type_url: type.googleapis.com/hal.modules.fan.Config
+    result_type_url: type.googleapis.com/hal.modules.fan.Result
+    source_path: src/fan_lib/fan_lib.h
+
+  - id: hdmi
+    name: HDMI Display
+    description: HDMI connector, monitor connection, resolution, and audio testing
+    version: "1.0.0"
+    status: active
+    category: peripherals
+    modes: [SINGLE_SHOT, MONITORING]
+    config_type_url: type.googleapis.com/hal.modules.hdmi.Config
+    result_type_url: type.googleapis.com/hal.modules.hdmi.Result
+    source_path: src/hdmi_lib/hdmi_lib.h
+
+  - id: wifi
+    name: Wi-Fi
+    description: Wi-Fi radio interface, link state, signal strength, and scan testing
+    version: "1.0.0"
+    status: active
+    category: connectivity
+    modes: [SINGLE_SHOT, MONITORING]
+    config_type_url: type.googleapis.com/hal.modules.wifi.Config
+    result_type_url: type.googleapis.com/hal.modules.wifi.Result
+    source_path: src/wifi_lib/wifi_lib.h
