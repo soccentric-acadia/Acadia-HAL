@@ -1,7 +1,7 @@
 # Master Makefile for Acadia HAL
 # Supports both native and Docker-based builds with Ninja
 
-.PHONY: all build configure clean test format cppcheck doc help
+.PHONY: all build configure clean test format cppcheck lint doc help
 .PHONY: package package-deb package-rpm package-ipk
 .PHONY: docker-build docker-configure docker-clean docker-shell docker-install docker-image docker-test
 .PHONY: docker-package docker-package-deb docker-package-rpm docker-package-ipk
@@ -216,6 +216,16 @@ cppcheck: check-cppcheck configure
 	@echo "Running cppcheck static analysis..."
 	cd $(NATIVE_BUILD_DIR) && ninja cppcheck
 
+# lint = static analysis (cppcheck) + style conformance (clang-format --dry-run).
+# Warnings are treated as errors so CI fails on style/analysis violations.
+lint: check-clang-format check-cppcheck
+	@echo "Running cppcheck static analysis (lint)..."
+	cd $(NATIVE_BUILD_DIR) && ninja cppcheck
+	@echo "Checking clang-format conformance (dry-run)..."
+	@find src tests -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror && \
+		echo "  lint: clang-format conformance OK"
+	@echo "lint complete"
+
 doc: check-doxygen configure
 	@echo "Generating documentation..."
 	cd $(NATIVE_BUILD_DIR) && ninja doc_doxygen
@@ -324,6 +334,7 @@ help:
 	@echo "  Code quality & Docs:"
 	@echo "    format       - Format code with clang-format (and cmake-format if available)"
 	@echo "    cppcheck     - Run static analysis with cppcheck"
+	@echo "    lint         - Run cppcheck + clang-format conformance (warnings-as-errors)"
 	@echo "    doc          - Generate Doxygen documentation"
 	@echo ""
 	@echo "  Misc:"

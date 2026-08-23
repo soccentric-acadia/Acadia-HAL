@@ -86,7 +86,10 @@ These are the only known gaps left; none are blocking for normal use:
   permissions (camera, display, audio, networking, CAN, ADC, PWM, eMMC, RTC HAT).
   Module tests report PASS/FAIL accordingly and degrade gracefully when hardware is
   absent.
-- **No `lint` Makefile target** (only `format` + `cppcheck`).
+
+> Resolved in earlier passes: the previously-missing `lint` Makefile target (now
+> `cppcheck` + `clang-format --dry-run --Werror`) is provided, and the full proto
+> layer is wired for all 54 modules.
 
 ---
 
