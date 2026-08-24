@@ -4,3 +4,5 @@ target_include_directories(test_i2c PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_i2c COMMAND test_i2c)
 set_tests_properties(test_i2c PROPERTIES TIMEOUT 120)
 install(TARGETS test_i2c RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_i2c PROPERTIES LABELS "target-required")

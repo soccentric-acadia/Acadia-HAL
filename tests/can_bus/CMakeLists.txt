@@ -4,3 +4,5 @@ target_include_directories(test_can_bus PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_can_bus COMMAND test_can_bus)
 set_tests_properties(test_can_bus PROPERTIES TIMEOUT 120)
 install(TARGETS test_can_bus RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_can_bus PROPERTIES LABELS "target-required")

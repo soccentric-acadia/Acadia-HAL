@@ -4,3 +4,5 @@ target_include_directories(test_mipi_dsi PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_mipi_dsi COMMAND test_mipi_dsi)
 set_tests_properties(test_mipi_dsi PROPERTIES TIMEOUT 120)
 install(TARGETS test_mipi_dsi RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_mipi_dsi PROPERTIES LABELS "target-required")

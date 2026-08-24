@@ -4,3 +4,5 @@ target_include_directories(test_battery PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_battery COMMAND test_battery)
 set_tests_properties(test_battery PROPERTIES TIMEOUT 120)
 install(TARGETS test_battery RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_battery PROPERTIES LABELS "target-required")

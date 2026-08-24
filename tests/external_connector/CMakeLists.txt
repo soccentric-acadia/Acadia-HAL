@@ -4,3 +4,5 @@ target_include_directories(test_external_connector PRIVATE ${CMAKE_SOURCE_DIR}/s
 add_test(NAME test_external_connector COMMAND test_external_connector)
 set_tests_properties(test_external_connector PROPERTIES TIMEOUT 300)
 install(TARGETS test_external_connector RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_external_connector PROPERTIES LABELS "target-required")

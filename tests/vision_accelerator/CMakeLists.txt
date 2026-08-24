@@ -4,3 +4,5 @@ target_include_directories(test_vision_accelerator PRIVATE ${CMAKE_SOURCE_DIR}/s
 add_test(NAME test_vision_accelerator COMMAND test_vision_accelerator)
 set_tests_properties(test_vision_accelerator PROPERTIES TIMEOUT 300)
 install(TARGETS test_vision_accelerator RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_vision_accelerator PROPERTIES LABELS "optional-hardware")

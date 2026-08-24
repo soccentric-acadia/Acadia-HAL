@@ -4,3 +4,5 @@ target_include_directories(test_security_features PRIVATE ${CMAKE_SOURCE_DIR}/sr
 add_test(NAME test_security_features COMMAND test_security_features)
 set_tests_properties(test_security_features PROPERTIES TIMEOUT 300)
 install(TARGETS test_security_features RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_security_features PROPERTIES LABELS "target-required")

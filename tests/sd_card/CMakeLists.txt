@@ -4,3 +4,5 @@ target_include_directories(test_sd_card PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_sd_card COMMAND test_sd_card)
 set_tests_properties(test_sd_card PROPERTIES TIMEOUT 120)
 install(TARGETS test_sd_card RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_sd_card PROPERTIES LABELS "target-required")

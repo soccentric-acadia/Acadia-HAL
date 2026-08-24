@@ -4,3 +4,5 @@ target_include_directories(test_functional_safety PRIVATE ${CMAKE_SOURCE_DIR}/sr
 add_test(NAME test_functional_safety COMMAND test_functional_safety)
 set_tests_properties(test_functional_safety PROPERTIES TIMEOUT 300)
 install(TARGETS test_functional_safety RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_functional_safety PROPERTIES LABELS "host")

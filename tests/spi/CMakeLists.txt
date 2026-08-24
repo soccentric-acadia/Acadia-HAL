@@ -4,3 +4,5 @@ target_include_directories(test_spi PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_spi COMMAND test_spi)
 set_tests_properties(test_spi PROPERTIES TIMEOUT 120)
 install(TARGETS test_spi RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_spi PROPERTIES LABELS "target-required")

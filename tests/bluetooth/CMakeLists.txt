@@ -4,3 +4,5 @@ target_include_directories(test_bluetooth PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_bluetooth COMMAND test_bluetooth)
 set_tests_properties(test_bluetooth PROPERTIES TIMEOUT 120)
 install(TARGETS test_bluetooth RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_bluetooth PROPERTIES LABELS "target-required")

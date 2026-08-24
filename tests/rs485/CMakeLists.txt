@@ -4,3 +4,5 @@ target_include_directories(test_rs485 PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_rs485 COMMAND test_rs485)
 set_tests_properties(test_rs485 PROPERTIES TIMEOUT 120)
 install(TARGETS test_rs485 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_rs485 PROPERTIES LABELS "target-required")

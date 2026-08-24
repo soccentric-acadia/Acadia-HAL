@@ -4,3 +4,5 @@ target_include_directories(test_wifi PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_wifi COMMAND test_wifi)
 set_tests_properties(test_wifi PROPERTIES TIMEOUT 120)
 install(TARGETS test_wifi RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_wifi PROPERTIES LABELS "optional-hardware")

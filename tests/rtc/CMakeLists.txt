@@ -4,3 +4,5 @@ target_include_directories(test_rtc PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_rtc COMMAND test_rtc)
 set_tests_properties(test_rtc PROPERTIES TIMEOUT 120)
 install(TARGETS test_rtc RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_rtc PROPERTIES LABELS "target-required")

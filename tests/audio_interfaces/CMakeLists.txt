@@ -4,3 +4,5 @@ target_include_directories(test_audio_interfaces PRIVATE ${CMAKE_SOURCE_DIR}/src
 add_test(NAME test_audio_interfaces COMMAND test_audio_interfaces)
 set_tests_properties(test_audio_interfaces PROPERTIES TIMEOUT 300)
 install(TARGETS test_audio_interfaces RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_audio_interfaces PROPERTIES LABELS "target-required")

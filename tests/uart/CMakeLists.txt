@@ -4,3 +4,5 @@ target_include_directories(test_uart PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_uart COMMAND test_uart)
 set_tests_properties(test_uart PROPERTIES TIMEOUT 120)
 install(TARGETS test_uart RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_uart PROPERTIES LABELS "target-required")

@@ -4,3 +4,5 @@ target_include_directories(test_serializer_deserializer PRIVATE ${CMAKE_SOURCE_D
 add_test(NAME test_serializer_deserializer COMMAND test_serializer_deserializer)
 set_tests_properties(test_serializer_deserializer PROPERTIES TIMEOUT 300)
 install(TARGETS test_serializer_deserializer RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_serializer_deserializer PROPERTIES LABELS "target-required")

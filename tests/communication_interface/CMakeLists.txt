@@ -4,3 +4,5 @@ target_include_directories(test_communication_interface PRIVATE ${CMAKE_SOURCE_D
 add_test(NAME test_communication_interface COMMAND test_communication_interface)
 set_tests_properties(test_communication_interface PROPERTIES TIMEOUT 300)
 install(TARGETS test_communication_interface RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_communication_interface PROPERTIES LABELS "host")

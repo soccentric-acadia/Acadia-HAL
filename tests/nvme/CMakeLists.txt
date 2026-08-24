@@ -4,3 +4,5 @@ target_include_directories(test_nvme PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_nvme COMMAND test_nvme)
 set_tests_properties(test_nvme PROPERTIES TIMEOUT 120)
 install(TARGETS test_nvme RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_nvme PROPERTIES LABELS "target-required")

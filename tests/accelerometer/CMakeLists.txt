@@ -4,3 +4,5 @@ target_include_directories(test_accelerometer PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_accelerometer COMMAND test_accelerometer)
 set_tests_properties(test_accelerometer PROPERTIES TIMEOUT 120)
 install(TARGETS test_accelerometer RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_accelerometer PROPERTIES LABELS "target-required")
