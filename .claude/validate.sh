@@ -36,6 +36,11 @@ assert "platform header declares confirmed targets (rpi5/cm4/cm5)" \
        || { echo "platform_rpi5.h missing $tok constants (task 20)"; exit 1; }
    done'
 
+# Registry completeness (task 21): every entry must have implementation, test,
+# proto, and a hardware status.
+check "registry completeness (impl/test/proto/hw)" "python3" \
+  'python3 scripts/validate-registry.py'
+
 [ "$TIER" = "quick" ] && { report "$TIER"; exit $?; }
 
 # --- full ------------------------------------------------------------------
