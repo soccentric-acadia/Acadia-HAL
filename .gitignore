@@ -36,3 +36,6 @@ cppcheck_results.xml
 build_*/
 build_*/**/*
 build
+# .claude validation lib must stay tracked despite the generic lib/ rule
+!.claude/lib/
+!.claude/lib/*
