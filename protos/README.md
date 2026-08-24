@@ -153,3 +153,10 @@ That is all. No changes to `hal_service.proto`, `common.proto`, or any dispatch 
 | A3 | `GpioPin`, `GpioDirection`, `GpioPullMode` in `gpio_lib.h` | Omitted — they are internal test-harness state, never part of the public module API. |
 | A4 | `chrono::nanoseconds` for test duration | Mapped to `google.protobuf.Duration duration` on `hal.common.TestResult`. |
 | A5 | `TestOutput::data` (`vector<string>`) | Mapped to `repeated string data` — free-form diagnostic strings. |
+
+## Ownership
+
+`client_service.proto` source ownership, generation inputs, compatibility
+policy, and change-review responsibilities are documented in
+`doc/client-server-contract.md` (task 23). Acadia-HAL owns the source; Client
+and Server consume HAL-generated code and never regenerate it.
