@@ -27,6 +27,15 @@ assert "proto sources parse (syntax declarations)" \
 assert "generated sources are not gitignored (must stay tracked)" \
   '! git check-ignore -q gen 2>/dev/null || { echo "gen/ is gitignored; it must stay tracked"; exit 1; }'
 
+# Board-revision compatibility policy (task 20): the platform header must
+# declare the confirmed Acadia targets (rpi5/cm4/cm5) so runtime detection and
+# capability tables never fall back to "assume everything works".
+assert "platform header declares confirmed targets (rpi5/cm4/cm5)" \
+  'for tok in RPI5 CM5 CM4; do
+     grep -q "$tok" src/platform_rpi5.h \
+       || { echo "platform_rpi5.h missing $tok constants (task 20)"; exit 1; }
+   done'
+
 [ "$TIER" = "quick" ] && { report "$TIER"; exit $?; }
 
 # --- full ------------------------------------------------------------------
