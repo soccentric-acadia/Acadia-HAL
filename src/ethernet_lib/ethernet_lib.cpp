@@ -161,7 +161,7 @@ TestOutput EthernetTesting::test10gbeTransmitThroughput()
         data.push_back("SKIP: Interface not present.");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
             for (size_t _i = 0; _i < data.size(); ++_i)
                 _out.reason["detail_" + std::to_string(_i)] = data[_i];
@@ -214,7 +214,7 @@ TestOutput EthernetTesting::test10gbeReceiveThroughput()
         data.push_back("SKIP: Interface not present.");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
             for (size_t _i = 0; _i < data.size(); ++_i)
                 _out.reason["detail_" + std::to_string(_i)] = data[_i];
@@ -264,7 +264,7 @@ TestOutput EthernetTesting::testFullduplexOperation()
         data.push_back("SKIP: Interface not present.");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
             for (size_t _i = 0; _i < data.size(); ++_i)
                 _out.reason["detail_" + std::to_string(_i)] = data[_i];
@@ -312,7 +312,7 @@ TestOutput EthernetTesting::testJumboFramesSupport()
         data.push_back("SKIP: Interface not present.");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
             for (size_t _i = 0; _i < data.size(); ++_i)
                 _out.reason["detail_" + std::to_string(_i)] = data[_i];
