@@ -1018,13 +1018,34 @@ TestOutput CpuTesting::testContextSwitchingPerformance()
         }
 
     std::atomic<bool> ready{false};
+    // Task 56: read/write return values are checked so -Werror=unused-result
+    // does not fail the build (which previously prevented every test executable
+    // from being produced, making ctest -N report missing tests).
+    auto write_all = [](int fd, const void* buf, size_t n) -> bool {
+        const auto* p = static_cast<const char*>(buf);
+        while (n > 0) {
+            auto w = write(fd, p, n);
+            if (w <= 0) return false;
+            p += w; n -= static_cast<size_t>(w);
+        }
+        return true;
+    };
+    auto read_all = [](int fd, void* buf, size_t n) -> bool {
+        auto* p = static_cast<char*>(buf);
+        while (n > 0) {
+            auto r = read(fd, p, n);
+            if (r <= 0) return false;
+            p += r; n -= static_cast<size_t>(r);
+        }
+        return true;
+    };
     std::thread pinger([&]() {
         pinThreadToCore(0);
         uint8_t byte = 1;
         ready.store(true, std::memory_order_release);
         for (int i = 0; i < ROUNDS; ++i) {
-            write(pipeAB[1], &byte, 1);
-            read(pipeBA[0], &byte, 1);
+            if (!write_all(pipeAB[1], &byte, 1)) break;
+            if (!read_all(pipeBA[0], &byte, 1)) break;
         }
         close(pipeAB[1]);
         close(pipeBA[0]);
@@ -1035,8 +1056,8 @@ TestOutput CpuTesting::testContextSwitchingPerformance()
         while (!ready.load(std::memory_order_acquire))
             std::this_thread::yield();
         for (int i = 0; i < ROUNDS; ++i) {
-            read(pipeAB[0], &byte, 1);
-            write(pipeBA[1], &byte, 1);
+            if (!read_all(pipeAB[0], &byte, 1)) break;
+            if (!write_all(pipeBA[1], &byte, 1)) break;
         }
         close(pipeAB[0]);
         close(pipeBA[1]);
