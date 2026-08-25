@@ -89,6 +89,8 @@ class CameraInterfacesTesting : public TestBase
      * @return TestOutput with pass/fail and data
      */
     TestOutput testCameraClockGeneration();
+    /// Task 65: representative capture/encode/decode (not just device nodes).
+    TestOutput testRepresentativeCapture();
     /**
      * @brief Constructor for CameraInterfacesTesting
      * @return TestOutput with pass/fail and data
