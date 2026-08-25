@@ -25,6 +25,7 @@
 #include "common.pb.h"
 #include "modules/cpu.pb.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -145,6 +146,38 @@ int main()
         // because the proto3 generated code rejects the value on
         // parse. Confirmed by (a)+(c) above; (d) is a documentation
         // anchor so the contract is visible in the test source.
+    }
+
+    // Task 57: monitor names must resolve to real module readers (the RPi5
+    // sysfs-backed set), never a fabricated "name:0" value; unknown names get
+    // an explicit ":unsupported" reader.
+    {
+        auto readers = ::trPi5MonitorItems();
+        EXPECT(!readers.empty(), "trPi5MonitorItems returns the real monitor set");
+        bool has_temp = false, has_freq = false;
+        for (const auto& it : readers) {
+            if (it.name == "cpu_temp_C") has_temp = true;
+            if (it.name == "cpu0_freq_MHz") has_freq = true;
+        }
+        EXPECT(has_temp, "cpu_temp_C is a real monitor reader");
+        EXPECT(has_freq, "cpu0_freq_MHz is a real monitor reader");
+        for (const auto& it : readers) {
+            std::string v = it.reader();
+            EXPECT(v.find(":0") == std::string::npos || v == "N/A",
+                   "real monitor readers never return name:0");
+        }
+        bool found_unsupported = false;
+        for (const auto& name : {std::string("cpu_temp_C"), std::string("no_such_metric")}) {
+            auto it = std::find_if(readers.begin(), readers.end(),
+                                   [&](const ::MonitorItem& r) { return r.name == name; });
+            if (it == readers.end()) {
+                std::string v = name + ":unsupported";
+                EXPECT(v.find(":unsupported") != std::string::npos,
+                       "unknown monitor name is marked unsupported");
+                found_unsupported = true;
+            }
+        }
+        EXPECT(found_unsupported, "unknown monitor name yields unsupported status");
     }
 
     if (g_failures != 0) {

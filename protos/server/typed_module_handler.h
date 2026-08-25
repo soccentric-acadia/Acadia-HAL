@@ -21,6 +21,7 @@
 #include "server/hal_service_impl.h"
 #include "common.pb.h"
 #include "lib_base.h"
+#include "test_runner.h"
 
 #include <google/protobuf/duration.pb.h>
 #include <google/protobuf/timestamp.pb.h>
@@ -295,10 +296,24 @@ class TypedModuleHandler : public IModuleHandler {
         int64_t dur_ms      = common.run_forever() ? 0LL : common.duration_ms();
 
         std::vector<::MonitorItem> monitor_items;
+        // Task 57: resolve requested monitor names against the REAL module
+        // readers (the RPi5 monitor item set) instead of fabricating "name:0".
+        // Unknown/unsupported names get an explicit "unsupported" reader so a
+        // consumer sees a distinct status, never a fabricated value.
+        auto real_readers = ::trPi5MonitorItems();
         for (const auto& name : monitoring.monitor_item_names()) {
             ::MonitorItem item;
-            item.name   = name;
-            item.reader = [name]() -> std::string { return name + ":0"; };
+            item.name = name;
+            const auto it =
+                std::find_if(real_readers.begin(), real_readers.end(),
+                             [&](const ::MonitorItem& r) { return r.name == name; });
+            if (it != real_readers.end()) {
+                item.reader = it->reader;  // real sysfs-backed reader
+            } else {
+                item.reader = [name]() -> std::string {
+                    return name + ":unsupported";
+                };
+            }
             monitor_items.push_back(std::move(item));
         }
 
