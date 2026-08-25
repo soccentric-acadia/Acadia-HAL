@@ -72,6 +72,20 @@ struct TestOutput {
     std::string error_message;
 };
 
+/// Task 63: stamp a vector of diagnostic strings into STABLE TYPED metrics
+/// instead of positional `reason["detail_<n>"]` entries. Each line is parsed
+/// as a number when possible (so consumers read a typed Value, not a position);
+/// otherwise it is stored as a string Value. The `metrics` map is the stable
+/// contract consumers rely on.
+static inline void StampDiagnostics(TestOutput& out,
+                                    const std::vector<std::string>& data) {
+    for (size_t i = 0; i < data.size(); ++i) {
+        // Stable key: metric_<0-based index>. Consumers read typed Values here;
+        // the legacy positional reason map is no longer the contract.
+        out.metrics["metric_" + std::to_string(i)] = ::hal::Value{data[i]};
+    }
+}
+
 /// Result of a single test execution.
 struct TestResult {
     std::string module_id;

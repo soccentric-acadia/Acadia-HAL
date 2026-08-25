@@ -109,8 +109,7 @@ TestOutput ExternalConnectorTesting::testKl15PowerInput()
         TestOutput _out;
         _out.status = uvOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = uvOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -135,8 +134,7 @@ TestOutput ExternalConnectorTesting::testAdenlrSignals()
         TestOutput _out;
         _out.status = gpioOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = gpioOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -164,8 +162,7 @@ TestOutput ExternalConnectorTesting::testBcmCanInterface()
         TestOutput _out;
         _out.status = can0 ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = can0 ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -190,8 +187,7 @@ TestOutput ExternalConnectorTesting::testVcuCanInterface()
         TestOutput _out;
         _out.status = (can0 || can1) ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = (can0 || can1) ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -218,8 +214,7 @@ TestOutput ExternalConnectorTesting::testAllConnectorPinsContinuity()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -239,8 +234,7 @@ TestOutput ExternalConnectorTesting::testConnectorRetentionForce()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -266,8 +260,7 @@ TestOutput ExternalConnectorTesting::testConnectorContactResistance()
         TestOutput _out;
         _out.status = uvClean ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = uvClean ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -295,8 +288,7 @@ TestOutput ExternalConnectorTesting::test12vAsilQsRPower()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -327,8 +319,7 @@ TestOutput ExternalConnectorTesting::testConnectorMechanicalIntegrity()
         TestOutput _out;
         _out.status = usbOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = usbOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -354,8 +345,7 @@ TestOutput ExternalConnectorTesting::testEtcl3j703()
         TestOutput _out;
         _out.status = eth0 ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = eth0 ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -377,8 +367,7 @@ TestOutput ExternalConnectorTesting::testEtcl2j704()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -399,8 +388,7 @@ TestOutput ExternalConnectorTesting::testEtc3j705()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -428,8 +416,7 @@ TestOutput ExternalConnectorTesting::testAllEthernetPhyConnections()
         TestOutput _out;
         _out.status = linkUp ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = linkUp ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -454,8 +441,7 @@ TestOutput ExternalConnectorTesting::testCc1j709()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -477,8 +463,7 @@ TestOutput ExternalConnectorTesting::testCc2j710()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -503,8 +488,7 @@ TestOutput ExternalConnectorTesting::testCc3j711()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -525,8 +509,7 @@ TestOutput ExternalConnectorTesting::testCc4j712()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -551,8 +534,7 @@ TestOutput ExternalConnectorTesting::testSv()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -584,8 +566,7 @@ TestOutput ExternalConnectorTesting::testGnssAntCon()
         TestOutput _out;
         _out.status = uartOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = uartOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -612,8 +593,7 @@ TestOutput ExternalConnectorTesting::testEthdebugCon()
         TestOutput _out;
         _out.status = eth0 ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = eth0 ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -645,8 +625,7 @@ TestOutput ExternalConnectorTesting::testAllConnectorPinAssignments()
         TestOutput _out;
         _out.status = gpioOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = gpioOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

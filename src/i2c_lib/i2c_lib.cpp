@@ -90,8 +90,7 @@ TestOutput I2cTesting::testI2cControllerPresent()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         _out.metrics["controllers_found"] = static_cast<int64_t>(found);
         return _out;
     }
@@ -117,8 +116,7 @@ TestOutput I2cTesting::testI2cBusScan()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         _out.metrics["i2c_adapters"] = static_cast<int64_t>(buses);
         return _out;
     }
@@ -144,8 +142,7 @@ TestOutput I2cTesting::testI2cDeviceEnumeration()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         _out.metrics["attached_devices"] = static_cast<int64_t>(n);
         return _out;
     }
@@ -174,8 +171,7 @@ TestOutput I2cTesting::testI2cInterfaceAccess()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         _out.metrics["openable_buses"] = static_cast<int64_t>(opened);
         return _out;
     }

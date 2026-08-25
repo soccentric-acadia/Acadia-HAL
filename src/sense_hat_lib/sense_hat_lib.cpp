@@ -133,8 +133,7 @@ TestOutput SenseHatTesting::testSenseHatDetection()
         TestOutput _out;
         _out.status = (anyFound || senseFb) ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = (anyFound || senseFb) ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -180,8 +179,7 @@ TestOutput SenseHatTesting::testLedMatrix()
         TestOutput _out;
         _out.status = fb1 ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = fb1 ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -231,8 +229,7 @@ TestOutput SenseHatTesting::testTemperatureSensor()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -271,8 +268,7 @@ TestOutput SenseHatTesting::testHumiditySensor()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -323,8 +319,7 @@ TestOutput SenseHatTesting::testPressureSensor()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -396,8 +391,7 @@ TestOutput SenseHatTesting::testImuSensors()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -433,8 +427,7 @@ TestOutput SenseHatTesting::testJoystick()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -486,8 +479,7 @@ TestOutput SenseHatTesting::testI2cBusIntegrity()
         TestOutput _out;
         _out.status = i2c1 ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = i2c1 ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

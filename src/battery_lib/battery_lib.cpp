@@ -66,8 +66,7 @@ TestOutput BatteryTesting::testBatteryPresent()
         TestOutput _out;
         _out.status = found ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = found ? hal::Severity::INFO : hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         _out.metrics["battery_present"] = found;
         return _out;
     }
@@ -102,8 +101,7 @@ TestOutput BatteryTesting::testBatteryChargeLevel()
         TestOutput _out;
         _out.status = read ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = read ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         if (capPercent > 0) _out.metrics["capacity_percent"] = capPercent;
         return _out;
     }
@@ -130,8 +128,7 @@ TestOutput BatteryTesting::testBatteryHealth()
         TestOutput _out;
         _out.status = read ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = read ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -167,8 +164,7 @@ TestOutput BatteryTesting::testBatteryVoltageCurrent()
         TestOutput _out;
         _out.status = read ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = read ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         if (voltage > 0) _out.metrics["voltage_v"] = voltage;
         if (current > 0) _out.metrics["current_a"] = current;
         return _out;

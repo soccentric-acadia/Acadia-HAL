@@ -102,8 +102,7 @@ TestOutput ReliabilityTesting::testBurninTesting()
         TestOutput _out;
         _out.status = !uvDetected ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = !uvDetected ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -139,8 +138,7 @@ TestOutput ReliabilityTesting::testPowerCycling()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -173,8 +171,7 @@ TestOutput ReliabilityTesting::testThermalCycling()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -207,8 +204,7 @@ TestOutput ReliabilityTesting::testMtbf()
         TestOutput _out;
         _out.status = !pstoreOops ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = !pstoreOops ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -245,8 +241,7 @@ TestOutput ReliabilityTesting::testComponentAging()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -279,8 +274,7 @@ TestOutput ReliabilityTesting::testSolderJointIntegrity()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

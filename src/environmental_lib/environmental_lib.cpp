@@ -102,8 +102,7 @@ TestOutput EnvironmentalTesting::testTemperatureRange()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -145,8 +144,7 @@ TestOutput EnvironmentalTesting::testHumidityResistance()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -183,8 +181,7 @@ TestOutput EnvironmentalTesting::testVibrationResistance()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -219,8 +216,7 @@ TestOutput EnvironmentalTesting::testShockResistance()
         TestOutput _out;
         _out.status = !pstoreHasCrash ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = !pstoreHasCrash ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -257,8 +253,7 @@ TestOutput EnvironmentalTesting::testEmiemcCompliance()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -295,8 +290,7 @@ TestOutput EnvironmentalTesting::testEsdProtection()
         TestOutput _out;
         _out.status = gpioPresent ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = gpioPresent ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -335,8 +329,7 @@ TestOutput EnvironmentalTesting::testSaltSprayResistance()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

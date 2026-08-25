@@ -49,7 +49,7 @@ TestOutput PcieTesting::testPcieLinkTraining()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No PCIe devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No PCIe devices found"};
             return _out;
         }
     }
@@ -82,8 +82,7 @@ TestOutput PcieTesting::testPcieLinkTraining()
         TestOutput _out;
         _out.status = allTrained ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allTrained ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -104,7 +103,7 @@ TestOutput PcieTesting::testPcieLinkSpeed()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No PCIe devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No PCIe devices found"};
             return _out;
         }
     }
@@ -170,8 +169,7 @@ TestOutput PcieTesting::testPcieLinkSpeed()
         TestOutput _out;
         _out.status = allValid ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allValid ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -192,7 +190,7 @@ TestOutput PcieTesting::testPcieLinkWidth()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No PCIe devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No PCIe devices found"};
             return _out;
         }
     }
@@ -267,8 +265,7 @@ TestOutput PcieTesting::testPcieLinkWidth()
         TestOutput _out;
         _out.status = allValid ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allValid ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -343,7 +340,7 @@ TestOutput PcieTesting::testPcieLaneReversal()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No PCIe controllers or devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No PCIe controllers or devices found"};
             return _out;
         }
     }
@@ -354,8 +351,7 @@ TestOutput PcieTesting::testPcieLaneReversal()
         TestOutput _out;
         _out.status = allLanesActive ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allLanesActive ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -429,8 +425,7 @@ TestOutput PcieTesting::testPcieHotplugSupport()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -453,7 +448,7 @@ TestOutput PcieTesting::testPcieReadBandwidth()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No PCIe devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No PCIe devices found"};
             return _out;
         }
     }
@@ -524,8 +519,7 @@ TestOutput PcieTesting::testPcieReadBandwidth()
         TestOutput _out;
         _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -548,7 +542,7 @@ TestOutput PcieTesting::testPcieWriteBandwidth()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No PCIe devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No PCIe devices found"};
             return _out;
         }
     }
@@ -633,8 +627,7 @@ TestOutput PcieTesting::testPcieWriteBandwidth()
         TestOutput _out;
         _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -656,7 +649,7 @@ TestOutput PcieTesting::testPcieLatency()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No PCIe devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No PCIe devices found"};
             return _out;
         }
     }
@@ -713,7 +706,7 @@ TestOutput PcieTesting::testPcieLatency()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No PCIe devices with active links found";
+            _out.metrics["metric_0"] = ::hal::Value{"No PCIe devices with active links found"};
             return _out;
         }
     }
@@ -723,8 +716,7 @@ TestOutput PcieTesting::testPcieLatency()
         TestOutput _out;
         _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -748,7 +740,7 @@ TestOutput PcieTesting::testPcieErrorHandling()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No PCIe devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No PCIe devices found"};
             return _out;
         }
     }
@@ -829,8 +821,7 @@ TestOutput PcieTesting::testPcieErrorHandling()
         TestOutput _out;
         _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -853,7 +844,7 @@ TestOutput PcieTesting::testPciePowerManagement()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No PCIe devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No PCIe devices found"};
             return _out;
         }
     }
@@ -923,8 +914,7 @@ TestOutput PcieTesting::testPciePowerManagement()
         TestOutput _out;
         _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -993,8 +983,7 @@ TestOutput PcieTesting::testSecondaryPcieLinkTraining()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -1004,8 +993,7 @@ TestOutput PcieTesting::testSecondaryPcieLinkTraining()
         TestOutput _out;
         _out.status = (trainedCount == totalSecondary) ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = (trainedCount == totalSecondary) ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1083,8 +1071,7 @@ TestOutput PcieTesting::testPcieX4Bandwidth()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     } // Not a failure when device is simply absent
 }
@@ -1162,8 +1149,7 @@ TestOutput PcieTesting::testPcieX4LaneFunctionality()
         TestOutput _out;
         _out.status = overallPass ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = overallPass ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1245,8 +1231,7 @@ TestOutput PcieTesting::testConcurrentPcieX8AndX4Operation()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1265,7 +1250,7 @@ TestOutput PcieTesting::testNvmeSsdConnectivity()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No NVMe devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No NVMe devices found"};
             return _out;
         }
     }
@@ -1285,8 +1270,7 @@ TestOutput PcieTesting::testNvmeSsdConnectivity()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1305,7 +1289,7 @@ TestOutput PcieTesting::testGpuAddinCardSupport()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No GPU/display devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No GPU/display devices found"};
             return _out;
         }
     }
@@ -1325,8 +1309,7 @@ TestOutput PcieTesting::testGpuAddinCardSupport()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1345,7 +1328,7 @@ TestOutput PcieTesting::testNetworkAdapterConnectivity()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No network adapter devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No network adapter devices found"};
             return _out;
         }
     }
@@ -1365,8 +1348,7 @@ TestOutput PcieTesting::testNetworkAdapterConnectivity()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1385,7 +1367,7 @@ TestOutput PcieTesting::testMultiplePcieDeviceEnumeration()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            _out.reason["detail_0"] = "No PCIe devices found";
+            _out.metrics["metric_0"] = ::hal::Value{"No PCIe devices found"};
             return _out;
         }
     }
@@ -1405,8 +1387,7 @@ TestOutput PcieTesting::testMultiplePcieDeviceEnumeration()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1502,8 +1483,7 @@ TestOutput PcieTesting::testPcieSwitchCompatibility()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

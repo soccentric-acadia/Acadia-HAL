@@ -76,8 +76,7 @@ TestOutput AccelerometerTesting::testAccelerometerPresent()
         TestOutput _out;
         _out.status = found ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = found ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -105,8 +104,7 @@ TestOutput AccelerometerTesting::testAccelerometerRead()
         TestOutput _out;
         _out.status = read ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = read ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -132,8 +130,7 @@ TestOutput AccelerometerTesting::testAccelerometerScale()
         TestOutput _out;
         _out.status = read ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = read ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

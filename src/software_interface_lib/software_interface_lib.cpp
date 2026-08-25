@@ -92,8 +92,7 @@ TestOutput SoftwareInterfaceTesting::testLinuxKernelBoot()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -132,8 +131,7 @@ TestOutput SoftwareInterfaceTesting::testLinuxKernelBoot()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -192,8 +190,7 @@ TestOutput SoftwareInterfaceTesting::testDeviceDriverLoading()
         TestOutput _out;
         _out.status = anyLoaded ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = anyLoaded ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -247,8 +244,7 @@ TestOutput SoftwareInterfaceTesting::testSystemServiceStartup()
         const bool _ok = active > 0 || sysdState == "running" || sysdState == "degraded";
         _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -296,8 +292,7 @@ TestOutput SoftwareInterfaceTesting::testApplicationFramework()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -336,8 +331,7 @@ TestOutput SoftwareInterfaceTesting::testMultiuserSupport()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -377,8 +371,7 @@ TestOutput SoftwareInterfaceTesting::testCudaRuntime()
         TestOutput _out;
         _out.status = v3dLoaded ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = v3dLoaded ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -417,8 +410,7 @@ TestOutput SoftwareInterfaceTesting::testCudnnLibrary()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -453,8 +445,7 @@ TestOutput SoftwareInterfaceTesting::testTensorrtInference()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -491,8 +482,7 @@ TestOutput SoftwareInterfaceTesting::testVpi()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -537,8 +527,7 @@ TestOutput SoftwareInterfaceTesting::testMultimediaApi()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -582,8 +571,7 @@ TestOutput SoftwareInterfaceTesting::testSensorDriverFramework()
         TestOutput _out;
         _out.status = hasSensors ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = hasSensors ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

@@ -118,8 +118,7 @@ TestOutput SerializerDeserializerTesting::testSerializationFunctionality()
         const bool _ok = unicamFound || !videoDevs.empty();
         _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -144,8 +143,7 @@ TestOutput SerializerDeserializerTesting::testDataIntegrity()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -167,8 +165,7 @@ TestOutput SerializerDeserializerTesting::testDataIntegrity()
         TestOutput _out;
         _out.status = frameOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = frameOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -197,8 +194,7 @@ TestOutput SerializerDeserializerTesting::testLinkSpeed()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -226,8 +222,7 @@ TestOutput SerializerDeserializerTesting::testErrorDetection()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -260,8 +255,7 @@ TestOutput SerializerDeserializerTesting::testDeserializationFunctionality()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -291,8 +285,7 @@ TestOutput SerializerDeserializerTesting::testClockRecovery()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -336,8 +329,7 @@ TestOutput SerializerDeserializerTesting::testMultistreamSupport()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

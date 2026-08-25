@@ -102,8 +102,7 @@ TestOutput CameraModule3Testing::testCameraDetection()
         TestOutput _out;
         _out.status = (imx708Found || vid0) ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = (imx708Found || vid0) ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -131,8 +130,7 @@ TestOutput CameraModule3Testing::testSensorResolution()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -147,8 +145,7 @@ TestOutput CameraModule3Testing::testSensorResolution()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -187,8 +184,7 @@ TestOutput CameraModule3Testing::testAutofocus()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -219,8 +215,7 @@ TestOutput CameraModule3Testing::testHdrMode()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -251,8 +246,7 @@ TestOutput CameraModule3Testing::testStillCapture()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -285,8 +279,7 @@ TestOutput CameraModule3Testing::testMipiCsiInterface()
         TestOutput _out;
         _out.status = unicam ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = unicam ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -316,8 +309,7 @@ TestOutput CameraModule3Testing::testPixelFormats()
                 TestOutput _out;
                 _out.status = hal::Status::PASS;
                 _out.severity = hal::Severity::INFO;
-                for (size_t _i = 0; _i < data.size(); ++_i)
-                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                StampDiagnostics(_out, data);
                 return _out;
             }
         }
@@ -328,8 +320,7 @@ TestOutput CameraModule3Testing::testPixelFormats()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -360,8 +351,7 @@ TestOutput CameraModule3Testing::testVideoStreaming()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

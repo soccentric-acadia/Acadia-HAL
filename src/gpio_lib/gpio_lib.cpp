@@ -311,8 +311,7 @@ TestOutput GpioTesting::testGpioout1()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -357,8 +356,7 @@ TestOutput GpioTesting::testGpioout2()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -409,8 +407,7 @@ TestOutput GpioTesting::testGpioout3()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -457,8 +454,7 @@ TestOutput GpioTesting::testGpioout4()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -506,8 +502,7 @@ TestOutput GpioTesting::testGpioOutputVoltageLevels()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -553,8 +548,7 @@ TestOutput GpioTesting::testGpioOutputCurrentDriveCapability()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -592,8 +586,7 @@ TestOutput GpioTesting::testGpioOutputSwitchingSpeed()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -634,8 +627,7 @@ TestOutput GpioTesting::testGpioPwmOutput()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -696,8 +688,7 @@ TestOutput GpioTesting::testGpioPulluppulldownResistors()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -740,8 +731,7 @@ TestOutput GpioTesting::testGpioin1()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -788,8 +778,7 @@ TestOutput GpioTesting::testGpioin2()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -836,8 +825,7 @@ TestOutput GpioTesting::testGpioin3()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -886,8 +874,7 @@ TestOutput GpioTesting::testGpioin4()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -934,8 +921,7 @@ TestOutput GpioTesting::testGpioInputVoltageThreshold()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -978,8 +964,7 @@ TestOutput GpioTesting::testGpioInputDebouncing()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1020,8 +1005,7 @@ TestOutput GpioTesting::testGpioInterruptGeneration()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1065,8 +1049,7 @@ TestOutput GpioTesting::testGpioTimerCounterFunctionality()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1108,8 +1091,7 @@ TestOutput GpioTesting::testGpioSchmittTrigger()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1161,8 +1143,7 @@ TestOutput GpioTesting::testGpioDirectionChange()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1192,8 +1173,7 @@ TestOutput GpioTesting::testGpioConcurrentAccess()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1231,8 +1211,7 @@ TestOutput GpioTesting::testGpioInterruptLatency()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1272,8 +1251,7 @@ TestOutput GpioTesting::testGpioReservedPins()
         TestOutput _out;
         _out.status = success ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = success ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

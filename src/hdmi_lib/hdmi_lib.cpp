@@ -97,8 +97,7 @@ TestOutput HdmiTesting::testHdmiConnectorPresent()
         TestOutput _out;
         _out.status = found ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = found ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -122,8 +121,7 @@ TestOutput HdmiTesting::testHdmiConnected()
         TestOutput _out;
         _out.status = connected ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = connected ? hal::Severity::INFO : hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         _out.metrics["hdmi_connected"] = connected;
         return _out;
     }
@@ -156,8 +154,7 @@ TestOutput HdmiTesting::testHdmiResolution()
         TestOutput _out;
         _out.status = read ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = read ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -184,8 +181,7 @@ TestOutput HdmiTesting::testHdmiAudio()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

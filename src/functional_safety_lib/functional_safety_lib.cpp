@@ -101,8 +101,7 @@ TestOutput FunctionalSafetyTesting::testLockstepCpuOperation()
         TestOutput _out;
         _out.status = wdPresent ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = wdPresent ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -141,8 +140,7 @@ TestOutput FunctionalSafetyTesting::testEccOnMemories()
         TestOutput _out;
         _out.status = cleanPstore ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = cleanPstore ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -186,8 +184,7 @@ TestOutput FunctionalSafetyTesting::testRedundantPowerSupplies()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -228,8 +225,7 @@ TestOutput FunctionalSafetyTesting::testSafetyMonitoring()
         TestOutput _out;
         _out.status = wdOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = wdOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -271,8 +267,7 @@ TestOutput FunctionalSafetyTesting::testDiagnosticCoverage()
         const bool _ok = present >= static_cast<int>(checks.size()) / 2;
         _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -322,8 +317,7 @@ TestOutput FunctionalSafetyTesting::testFaultInjectionTesting()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -365,8 +359,7 @@ TestOutput FunctionalSafetyTesting::testFailsafeBehavior()
         TestOutput _out;
         _out.status = wdPresent ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = wdPresent ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -405,8 +398,7 @@ TestOutput FunctionalSafetyTesting::testAsilQsLAndRRailIsolation()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

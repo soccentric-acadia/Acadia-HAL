@@ -111,10 +111,10 @@ int main()
                            hal::common::TypedValue::kDoubleValue,
                        "metrics[neon_memcpy_gbps] is a double (typed, not stringified)");
             }
-            // The original reason[detail_N] surface is still preserved
-            // (additive change — human-readable summary intact).
-            EXPECT(r->output().reason().count("detail_0") == 1,
-                   "reason[detail_0] still present (preserved for runner output)");
+            // Task 63: the typed metrics map is the stable contract; the legacy
+            // positional reason[detail_N] surface is no longer required.
+            EXPECT(r->output().reason().count("detail_0") == 0,
+                   "reason[detail_0] removed — consumers read typed metrics, not position");
         }
     }
 

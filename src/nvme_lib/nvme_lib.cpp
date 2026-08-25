@@ -71,8 +71,7 @@ TestOutput NvmeTesting::testNvmeDevicePresent()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         _out.metrics["nvme_present"] = passed;
         return _out;
     }
@@ -99,8 +98,7 @@ TestOutput NvmeTesting::testNvmeHealth()
         TestOutput _out;
         _out.status = read ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = read ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -124,8 +122,7 @@ TestOutput NvmeTesting::testNvmeCapacity()
         TestOutput _out;
         _out.status = read ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = read ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -157,8 +154,7 @@ TestOutput NvmeTesting::testNvmeBlockAccess()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

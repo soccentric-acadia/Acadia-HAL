@@ -97,8 +97,7 @@ TestOutput VisionAcceleratorTesting::testDualVectorProcessingUnits()
         TestOutput _out;
         _out.status = v3dOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = v3dOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         // Typed measurements (req.md §2 rule 1): CPU core count and GPU clock
         // are chartable integers; downstream consumers (Web UI thresholds)
         // rely on type rather than on string parsing.
@@ -145,8 +144,7 @@ TestOutput VisionAcceleratorTesting::testVectorCoresInEachVpu()
         TestOutput _out;
         _out.status = neOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = neOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -170,8 +168,7 @@ TestOutput VisionAcceleratorTesting::testVliwSlots()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -200,8 +197,7 @@ TestOutput VisionAcceleratorTesting::testScalarExecutionUnits()
         const bool _ok = (!cpuFreq.empty());
         _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         // Typed measurements (req.md §2 rule 1): CPU frequency in kHz from
         // sysfs → typed integer for charting.
         if (!cpuFreq.empty()) {
@@ -243,8 +239,7 @@ TestOutput VisionAcceleratorTesting::testVectorExecutionUnits()
         const bool _ok = (gbps > 0.5);
         _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         // Typed measurements (req.md §2 rule 1): memcpy latency (ns) and
         // throughput (GB/s) — the headline numbers for a NEON throughput
         // benchmark must be typed for downstream charting/thresholding.
@@ -273,8 +268,7 @@ TestOutput VisionAcceleratorTesting::testDmaEngine1Functionality()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         // Typed measurement (req.md §2 rule 1): BCM DMA module count.
         if (!dmaMod.empty()) {
             try { _out.metrics["bcm_dma_module_count"] = static_cast<int64_t>(std::stoi(dmaMod)); }
@@ -304,8 +298,7 @@ TestOutput VisionAcceleratorTesting::testDmaEngine2Functionality()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -337,8 +330,7 @@ TestOutput VisionAcceleratorTesting::testDmaBandwidthTesting()
         TestOutput _out;
         _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         // Typed measurements (req.md §2 rule 1): 128 MB DMA-proxy latency
         // and throughput — typed for charting.
         _out.metrics["dma_memcpy_ms"] = static_cast<double>(ms);
@@ -380,8 +372,7 @@ TestOutput VisionAcceleratorTesting::testDmaLatencyTesting()
         const bool _ok = (avgNs < 100000);
         _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         // Typed measurement (req.md §2 rule 1): 4 KB DMA-proxy avg latency
         // in nanoseconds — typed for thresholding (< 100µs pass).
         _out.metrics["dma_proxy_avg_latency_ns"] = static_cast<int64_t>(avgNs);
@@ -415,8 +406,7 @@ TestOutput VisionAcceleratorTesting::testComputerVisionAlgorithms()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -443,8 +433,7 @@ TestOutput VisionAcceleratorTesting::testImageProcessingPipelines()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -465,8 +454,7 @@ TestOutput VisionAcceleratorTesting::testFeatureDetection()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -486,8 +474,7 @@ TestOutput VisionAcceleratorTesting::testFeatureDetection()
         const bool _ok = (!result.empty());
         _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -508,8 +495,7 @@ TestOutput VisionAcceleratorTesting::testOpticalFlow()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -529,8 +515,7 @@ TestOutput VisionAcceleratorTesting::testOpticalFlow()
         const bool _ok = (!result.empty());
         _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -551,8 +536,7 @@ TestOutput VisionAcceleratorTesting::testStereoDisparity()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -573,8 +557,7 @@ TestOutput VisionAcceleratorTesting::testStereoDisparity()
         const bool _ok = (!result.empty());
         _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -606,8 +589,7 @@ TestOutput VisionAcceleratorTesting::testPvaPowerConsumption()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -633,8 +615,7 @@ TestOutput VisionAcceleratorTesting::test5dimensionalAddressing()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -658,8 +639,7 @@ TestOutput VisionAcceleratorTesting::test16HardwareChannelsPerEngine()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

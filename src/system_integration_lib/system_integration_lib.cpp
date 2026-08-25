@@ -116,8 +116,7 @@ TestOutput SystemIntegrationTesting::testConcurrentOperationOfAllSubsystems()
         TestOutput _out;
         _out.status = (totalMb > 0) ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = (totalMb > 0) ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -155,8 +154,7 @@ TestOutput SystemIntegrationTesting::testResourceContentionHandling()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -201,8 +199,7 @@ TestOutput SystemIntegrationTesting::testSystemBottleneckIdentification()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -243,8 +240,7 @@ TestOutput SystemIntegrationTesting::testEndtoendLatency()
         TestOutput _out;
         _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -284,8 +280,7 @@ TestOutput SystemIntegrationTesting::testSystemThroughput()
         TestOutput _out;
         _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -324,8 +319,7 @@ TestOutput SystemIntegrationTesting::testMultimodalAiWorkloads()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -357,8 +351,7 @@ TestOutput SystemIntegrationTesting::testAutonomousDrivingStack()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -397,8 +390,7 @@ TestOutput SystemIntegrationTesting::testSensorFusionPipeline()
         TestOutput _out;
         _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

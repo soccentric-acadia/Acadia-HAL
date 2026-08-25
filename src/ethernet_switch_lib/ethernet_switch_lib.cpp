@@ -128,8 +128,7 @@ TestOutput EthernetSwitchTesting::testSwitchPortFunctionality()
         TestOutput _out;
         _out.status = eth0Up ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = eth0Up ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -167,8 +166,7 @@ TestOutput EthernetSwitchTesting::testSwitchForwardingTable()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -201,8 +199,7 @@ TestOutput EthernetSwitchTesting::testSwitchVlanSupport()
         TestOutput _out;
         _out.status = mod8021q ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = mod8021q ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -235,8 +232,7 @@ TestOutput EthernetSwitchTesting::testSwitchQos()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -265,8 +261,7 @@ TestOutput EthernetSwitchTesting::testSwitchPortMirroring()
         TestOutput _out;
         _out.status = mirredMod ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = mirredMod ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -306,8 +301,7 @@ TestOutput EthernetSwitchTesting::testSwitchStatistics()
         TestOutput _out;
         _out.status = !rxPackets.empty() ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = !rxPackets.empty() ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -337,8 +331,7 @@ TestOutput EthernetSwitchTesting::testRedundantSwitchOperation()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -371,8 +364,7 @@ TestOutput EthernetSwitchTesting::testSwitchFailover()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

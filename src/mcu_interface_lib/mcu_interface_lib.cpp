@@ -107,8 +107,7 @@ TestOutput McuInterfaceTesting::testMcuCommunicationInterface()
         TestOutput _out;
         _out.status = anyOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = anyOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -129,8 +128,7 @@ TestOutput McuInterfaceTesting::testMcuFirmwareOperation()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -153,8 +151,7 @@ TestOutput McuInterfaceTesting::testMcuFirmwareOperation()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -185,8 +182,7 @@ TestOutput McuInterfaceTesting::testMcuWatchdog()
         TestOutput _out;
         _out.status = wdPresent ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = wdPresent ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -218,8 +214,7 @@ TestOutput McuInterfaceTesting::testMcuGpioInterface()
         TestOutput _out;
         _out.status = gpioChipOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = gpioChipOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -239,8 +234,7 @@ TestOutput McuInterfaceTesting::testMcuSpiInterface()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -253,8 +247,7 @@ TestOutput McuInterfaceTesting::testMcuSpiInterface()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -281,8 +274,7 @@ TestOutput McuInterfaceTesting::testMcuSpiInterface()
         TestOutput _out;
         _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -302,8 +294,7 @@ TestOutput McuInterfaceTesting::testMcuUartInterface()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -325,8 +316,7 @@ TestOutput McuInterfaceTesting::testMcuUartInterface()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -357,8 +347,7 @@ TestOutput McuInterfaceTesting::testMcuDmsInterface()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -394,8 +383,7 @@ TestOutput McuInterfaceTesting::testMcuToOrinDataTransfer()
         TestOutput _out;
         _out.status = (spiOk || uartOk) ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = (spiOk || uartOk) ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -422,8 +410,7 @@ TestOutput McuInterfaceTesting::testSecondaryMcuRedundancy()
         TestOutput _out;
         _out.status = spi0 ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = spi0 ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -452,8 +439,7 @@ TestOutput McuInterfaceTesting::testMcuFailoverMechanism()
         TestOutput _out;
         _out.status = (spi0 || spi1) ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = (spi0 || spi1) ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -486,8 +472,7 @@ TestOutput McuInterfaceTesting::testMcuSynchronization()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
