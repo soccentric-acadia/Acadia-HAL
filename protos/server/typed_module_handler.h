@@ -253,9 +253,11 @@ class TypedModuleHandler : public IModuleHandler {
 
         std::mutex write_mu;
         uint64_t   seq = 0;
+        std::atomic<bool> stream_ok{true};  // Task 59: track broken/cancelled stream
         hal_module->runLongTerm(
             interval_ms, dur_ms,
             [&](const std::vector<::TestResult>& raw_results, int /*cycle*/) {
+                if (!stream_ok.load()) return;  // stop producing after a failed write
                 auto results = raw_results;
                 StampResults(results, module_id_, seq++, config_unset);
                 hal::common::ResultEnvelope env;
@@ -266,7 +268,11 @@ class TypedModuleHandler : public IModuleHandler {
                              ComputeStatus(results));
                 env.mutable_payload()->PackFrom(rp);
                 std::lock_guard<std::mutex> wlk(write_mu);
-                writer->Write(env);
+                if (!writer->Write(env)) {
+                    // Broken/cancelled stream: stop promptly, preserve state.
+                    stream_ok.store(false);
+                    hal_module->stop();
+                }
             });
 
         WaitOrCancel(ctx, *hal_module);
@@ -322,9 +328,11 @@ class TypedModuleHandler : public IModuleHandler {
 
         std::mutex write_mu;
         uint64_t   seq = 0;
+        std::atomic<bool> stream_ok{true};  // Task 59
         hal_module->runMonitoringTest(
             interval_ms, dur_ms, monitor_items,
             [&](const ::MonitoringSnapshot& snap) {
+                if (!stream_ok.load()) return;
                 auto results = snap.testResults;
                 // Stamp monitoring data into each result's monitoring map.
                 for (auto& r : results) {
@@ -351,7 +359,10 @@ class TypedModuleHandler : public IModuleHandler {
                              ComputeStatus(results));
                 env.mutable_payload()->PackFrom(proto_snap);
                 std::lock_guard<std::mutex> wlk(write_mu);
-                writer->Write(env);
+                if (!writer->Write(env)) {
+                    stream_ok.store(false);
+                    hal_module->stop();
+                }
             });
 
         WaitOrCancel(ctx, *hal_module);
@@ -419,9 +430,11 @@ class TypedModuleHandler : public IModuleHandler {
 
         std::mutex write_mu;
         uint64_t   seq = 0;
+        std::atomic<bool> stream_ok{true};  // Task 59
         hal_module->runEventTest(
             poll_ms, criteria,
             [&](const std::vector<::TestResult>& raw_results) {
+                if (!stream_ok.load()) return;
                 auto results = raw_results;
                 // Populate event map with trigger info.
                 for (auto& r : results) {
@@ -439,7 +452,10 @@ class TypedModuleHandler : public IModuleHandler {
                              ComputeStatus(results));
                 env.mutable_payload()->PackFrom(rp);
                 std::lock_guard<std::mutex> wlk(write_mu);
-                writer->Write(env);
+                if (!writer->Write(env)) {
+                    stream_ok.store(false);
+                    hal_module->stop();
+                }
             },
             max_ms);
 
