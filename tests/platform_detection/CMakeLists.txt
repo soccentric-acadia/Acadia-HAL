@@ -1,0 +1,5 @@
+add_executable(test_platform_detection main.cpp)
+target_include_directories(test_platform_detection PRIVATE ${CMAKE_SOURCE_DIR}/src)
+add_test(NAME test_platform_detection COMMAND test_platform_detection)
+set_tests_properties(test_platform_detection PROPERTIES TIMEOUT 60)
+set_tests_properties(test_platform_detection PROPERTIES LABELS "host")

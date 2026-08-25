@@ -36,6 +36,9 @@
 
 #pragma once
 
+#include <fstream>
+#include <string>
+
 // ---------------------------------------------------------------------------
 // CPU — Quad-core Cortex-A76
 // ---------------------------------------------------------------------------
@@ -307,3 +310,57 @@ enum class PlatformFamily
     CM5_LITE,
     UNKNOWN
 };
+
+// Task 64: runtime board detection. Reads the device-tree model string to
+// decide which capability table applies, instead of mixing Pi5/CM5/carrier
+// assumptions. Returns RPI5 for a Pi 5, CM5/CM5_LITE for Compute Module 5,
+// and UNKNOWN when the model is not recognized (callers should not assume
+// hardware is present).
+inline PlatformFamily DetectPlatformFamily()
+{
+    std::ifstream f(RPI5_DT_MODEL_PATH);
+    if (!f.is_open()) return PlatformFamily::UNKNOWN;
+    std::string model;
+    std::getline(f, model);
+    if (model.find("Raspberry Pi 5") != std::string::npos) return PlatformFamily::RPI5;
+    if (model.find("Compute Module 5 Lite") != std::string::npos) return PlatformFamily::CM5_LITE;
+    if (model.find("Compute Module 5") != std::string::npos) return PlatformFamily::CM5;
+    return PlatformFamily::UNKNOWN;
+}
+
+// Task 64: capability table driven by runtime detection. Declares, per family,
+// whether on-board RTC, CAN, wireless, and PCIe are present — so module
+// behavior no longer assumes a fixed board.
+struct PlatformCapabilities {
+    bool rtc{false};
+    bool can{false};        // native CAN (Pi5/CM5 have none; SPI MCP2515 HAT only)
+    bool wireless{false};
+    bool pcie{false};
+    int  gpio_pin_count{0};
+};
+
+inline PlatformCapabilities DetectCapabilities(PlatformFamily family)
+{
+    PlatformCapabilities caps;
+    switch (family) {
+        case PlatformFamily::RPI5:
+            caps.rtc = false;                 // no on-board RTC on Pi5 (HAT only)
+            caps.can = false;                 // MCP2515 HAT only
+            caps.wireless = true;             // built-in CYW43439
+            caps.pcie = true;                 // Gen 3 x1 via RP1
+            caps.gpio_pin_count = 28;
+            break;
+        case PlatformFamily::CM5:
+        case PlatformFamily::CM5_LITE:
+            caps.rtc = true;                  // on-board VBAT RTC
+            caps.can = false;
+            caps.wireless = false;            // SKU-dependent, on carrier
+            caps.pcie = true;                 // Gen 2 x1
+            caps.gpio_pin_count = 28;
+            break;
+        default:
+            caps.gpio_pin_count = 0;
+            break;
+    }
+    return caps;
+}

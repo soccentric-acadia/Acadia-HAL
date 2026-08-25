@@ -55,4 +55,5 @@ add_subdirectory(hdmi)
 add_subdirectory(wifi)
 add_subdirectory(typed_module_handler)
 add_subdirectory(vision_accelerator_metrics)
+add_subdirectory(platform_detection)
 
