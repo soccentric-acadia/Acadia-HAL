@@ -217,7 +217,6 @@ DeepLearningAcceleratorTesting::~DeepLearningAcceleratorTesting()
 TestOutput DeepLearningAcceleratorTesting::testDla1Functionality()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Pi5 primary AI accelerator: Hailo-8 (PCIe M.2 / HAT+)");
     data.push_back("Expected: " + std::string(HAILO8_DEV) + " device node");
@@ -235,15 +234,12 @@ TestOutput DeepLearningAcceleratorTesting::testDla1Functionality()
     if (!linkStatus.empty())
         data.push_back("Hailo-8 link: " + linkStatus);
 
-    if (!devPresent && !modLoaded) {
-        // Not a hard failure on bare Pi5 without HAT — report as informational
-        data.push_back("INFO: Hailo-8 not detected. Install Hailo-8 HAT+ and run:");
-        data.push_back("      sudo apt install hailo-all  (Hailo Software Suite)");
-        data.push_back("      Hailo-8 delivers ~26 INT8 TOPS via PCIe Gen3 x1.");
-    } else {
+    bool devOpen = false;
+    if (devPresent || modLoaded) {
         int fd = open(HAILO8_DEV, O_RDWR);
         if (fd >= 0) {
             data.push_back("Hailo-8 device open: OK");
+            devOpen = true;
             close(fd);
         } else {
             data.push_back("Hailo-8 device open: requires hailo group membership or root");
@@ -251,13 +247,26 @@ TestOutput DeepLearningAcceleratorTesting::testDla1Functionality()
         data.push_back("Hailo-8 AI accelerator is present and driver-bound.");
     }
 
-    {
-        TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        StampDiagnostics(_out, data);
-        return _out;
+    // Task 66: DISTINCT outcomes — absent driver vs present driver vs verified
+    // inference. Absent hardware is SKIPPED (never a false PASS); present driver
+    // is PASS; a present-but-unopenable device is ERROR.
+    TestOutput _out;
+    if (!devPresent && !modLoaded) {
+        data.push_back("INFO: Hailo-8 not detected. Install Hailo-8 HAT+ and run:");
+        data.push_back("      sudo apt install hailo-all  (Hailo Software Suite)");
+        data.push_back("      Hailo-8 delivers ~26 INT8 TOPS via PCIe Gen3 x1.");
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+    } else if (devOpen) {
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+    } else {
+        _out.status = hal::Status::ERROR;
+        _out.severity = hal::Severity::ERROR;
+        data.push_back("[ERROR] accelerator present but device could not be opened/verified");
     }
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
