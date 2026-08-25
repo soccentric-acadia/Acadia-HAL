@@ -388,7 +388,25 @@ class TypedModuleHandler : public IModuleHandler {
 
         std::string tname    = condition.test_name();
         bool        exp_pass = condition.expected_pass();
-        criteria.predicate   = [tname, exp_pass](const std::vector<::TestResult>& res) {
+        std::string expr     = condition.expression();
+        criteria.predicate   = [tname, exp_pass, expr](const std::vector<::TestResult>& res) {
+            // Task 58: freeform expression form ("cpu_temp_c > 80"). Resolve the
+            // metric to a real monitor reader's current value; reject invalid
+            // expressions by never firing.
+            if (!expr.empty()) {
+                return ::trEvaluateEventExpression(
+                    expr,
+                    [](const std::string& metric) -> double {
+                        for (const auto& mi : ::trPi5MonitorItems()) {
+                            if (mi.name == metric) {
+                                std::string v = mi.reader();
+                                try { return std::stod(v); }
+                                catch (...) { return -1.0; }
+                            }
+                        }
+                        return -1.0;  // unknown metric -> no value
+                    });
+            }
             if (tname.empty()) return false;
             for (const auto& r : res)
                 if (r.name == tname)

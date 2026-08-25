@@ -180,6 +180,37 @@ int main()
         EXPECT(found_unsupported, "unknown monitor name yields unsupported status");
     }
 
+    // Task 58: freeform event expressions ("cpu_temp_c > 80") parse, evaluate,
+    // reject invalid input, and never fire on malformed rules.
+    {
+        auto value_of = [](const std::string& m) -> double {
+            if (m == "cpu_temp_c") return 85.0;
+            if (m == "mem_avail_MB") return 400.0;
+            return -1.0;
+        };
+        EXPECT(::trEvaluateEventExpression("cpu_temp_c > 80", value_of),
+               "cpu_temp_c > 80 evaluates true (85 > 80)");
+        EXPECT(!::trEvaluateEventExpression("cpu_temp_c > 90", value_of),
+               "cpu_temp_c > 90 evaluates FALSE (85 not > 90)");
+        EXPECT(::trEvaluateEventExpression("cpu_temp_c <= 85", value_of),
+               "<= evaluates true");
+        EXPECT(::trEvaluateEventExpression("mem_avail_MB == 400", value_of),
+               "== evaluates true");
+        EXPECT(::trEvaluateEventExpression("mem_avail_MB >= 400", value_of),
+               ">= evaluates true");
+        // Invalid input is rejected (never fires).
+        EXPECT(!::trEvaluateEventExpression("cpu_temp_c", value_of),
+               "no operator -> invalid -> false");
+        EXPECT(!::trEvaluateEventExpression("cpu_temp_c >", value_of),
+               "missing number -> invalid -> false");
+        EXPECT(!::trEvaluateEventExpression("cpu temp_c > 80", value_of),
+               "space in metric name -> invalid -> false");
+        EXPECT(!::trEvaluateEventExpression("cpu_temp_c > abc", value_of),
+               "non-numeric rhs -> invalid -> false");
+        EXPECT(!::trEvaluateEventExpression("unknown_metric > 5", value_of),
+               "unknown metric -> no value -> false");
+    }
+
     if (g_failures != 0) {
         std::fprintf(stderr, "\n%d failure(s)\n", g_failures);
         return 1;
