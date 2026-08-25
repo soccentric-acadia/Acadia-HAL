@@ -143,7 +143,7 @@ static std::vector<MonitorItem> trPi5MonitorItems()
 //   <metric> <op> <number>   e.g. "cpu_temp_c > 80"
 // Supported ops: > >= < <= ==
 // Returns false for any invalid expression (so a malformed rule never fires).
-static bool trEvaluateEventExpression(const std::string& expr,
+static inline bool trEvaluateEventExpression(const std::string& expr,
                                       const std::function<double(const std::string&)>& value_of)
 {
     // Trim surrounding whitespace.

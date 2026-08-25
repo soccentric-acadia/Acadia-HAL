@@ -30,6 +30,7 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 #include <string>
 #include <thread>
 #include <vector>
@@ -235,6 +236,7 @@ class TypedModuleHandler : public IModuleHandler {
         grpc::ServerContext*                              ctx,
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
+        const std::string&                               session_id,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
         const auto up = TryUnpack(module_config, cfg);
@@ -249,7 +251,7 @@ class TypedModuleHandler : public IModuleHandler {
         int64_t  dur_ms      = common.run_forever() ? 0LL : common.duration_ms();
 
         auto hal_module = std::make_shared<HalClass>();
-        StoreActive(hal_module);
+        StoreActive(session_id, hal_module);
 
         std::mutex write_mu;
         uint64_t   seq = 0;
@@ -276,7 +278,7 @@ class TypedModuleHandler : public IModuleHandler {
             });
 
         WaitOrCancel(ctx, *hal_module);
-        ClearActive();
+        ClearActive(session_id);
         return grpc::Status::OK;
     }
 
@@ -288,6 +290,7 @@ class TypedModuleHandler : public IModuleHandler {
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
         const hal::common::MonitoringParams&             monitoring,
+        const std::string&                               session_id,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
         const auto up = TryUnpack(module_config, cfg);
@@ -324,7 +327,7 @@ class TypedModuleHandler : public IModuleHandler {
         }
 
         auto hal_module = std::make_shared<HalClass>();
-        StoreActive(hal_module);
+        StoreActive(session_id, hal_module);
 
         std::mutex write_mu;
         uint64_t   seq = 0;
@@ -366,7 +369,7 @@ class TypedModuleHandler : public IModuleHandler {
             });
 
         WaitOrCancel(ctx, *hal_module);
-        ClearActive();
+        ClearActive(session_id);
         return grpc::Status::OK;
     }
 
@@ -378,6 +381,7 @@ class TypedModuleHandler : public IModuleHandler {
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
         const hal::common::EventCondition&               condition,
+        const std::string&                               session_id,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
         const auto up = TryUnpack(module_config, cfg);
@@ -426,7 +430,7 @@ class TypedModuleHandler : public IModuleHandler {
         };
 
         auto hal_module = std::make_shared<HalClass>();
-        StoreActive(hal_module);
+        StoreActive(session_id, hal_module);
 
         std::mutex write_mu;
         uint64_t   seq = 0;
@@ -460,32 +464,46 @@ class TypedModuleHandler : public IModuleHandler {
             max_ms);
 
         WaitOrCancel(ctx, *hal_module);
-        ClearActive();
+        ClearActive(session_id);
         return grpc::Status::OK;
     }
 
     // ----------------------------------------------------------------
     // Stop
     // ----------------------------------------------------------------
-    void Stop() override {
+    // Task 60: session-scoped. Empty session_id stops all sessions for this
+    // module; a specific id stops only that session.
+    void Stop(const std::string& session_id) override {
         std::lock_guard<std::mutex> lk(active_mu_);
-        if (active_module_) active_module_->stop();
+        if (session_id.empty()) {
+            for (auto& kv : active_sessions_) kv.second->stop();
+        } else if (auto it = active_sessions_.find(session_id); it != active_sessions_.end()) {
+            it->second->stop();
+        }
     }
 
     // ----------------------------------------------------------------
     // Pause
     // ----------------------------------------------------------------
-    void Pause() override {
+    void Pause(const std::string& session_id) override {
         std::lock_guard<std::mutex> lk(active_mu_);
-        if (active_module_) active_module_->pause();
+        if (session_id.empty()) {
+            for (auto& kv : active_sessions_) kv.second->pause();
+        } else if (auto it = active_sessions_.find(session_id); it != active_sessions_.end()) {
+            it->second->pause();
+        }
     }
 
     // ----------------------------------------------------------------
     // Resume
     // ----------------------------------------------------------------
-    void Resume() override {
+    void Resume(const std::string& session_id) override {
         std::lock_guard<std::mutex> lk(active_mu_);
-        if (active_module_) active_module_->resume();
+        if (session_id.empty()) {
+            for (auto& kv : active_sessions_) kv.second->resume();
+        } else if (auto it = active_sessions_.find(session_id); it != active_sessions_.end()) {
+            it->second->resume();
+        }
     }
 
     // ----------------------------------------------------------------
@@ -541,14 +559,14 @@ class TypedModuleHandler : public IModuleHandler {
         }
     }
 
-    void StoreActive(std::shared_ptr<::TestBase> module) {
+    void StoreActive(const std::string& session_id, std::shared_ptr<::TestBase> module) {
         std::lock_guard<std::mutex> lk(active_mu_);
-        active_module_ = std::move(module);
+        active_sessions_[session_id] = std::move(module);
     }
 
-    void ClearActive() {
+    void ClearActive(const std::string& session_id) {
         std::lock_guard<std::mutex> lk(active_mu_);
-        active_module_.reset();
+        active_sessions_.erase(session_id);
     }
 
     std::string              module_id_;
@@ -556,7 +574,9 @@ class TypedModuleHandler : public IModuleHandler {
     std::string              source_path_;
 
     std::mutex               active_mu_;
-    std::shared_ptr<::TestBase> active_module_; // non-null while a background test is running
+    // Task 60: one active background module per session so concurrent runs of
+    // the same module are independently controllable.
+    std::unordered_map<std::string, std::shared_ptr<::TestBase>> active_sessions_;
 };
 
 } // namespace server
