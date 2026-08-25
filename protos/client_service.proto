@@ -166,8 +166,10 @@ message StateReport {
   string               board_id       = 1;
   RunState             overall_state  = 2;
   repeated ActiveRunInfo active_runs  = 3;
-  uint64               spool_bytes    = 4;
-  uint64               spool_cap_bytes = 5;
+  uint64               spool_bytes    = 4;  // current used bytes
+  uint64               spool_cap_bytes = 5; // configured capacity
+  uint64               spool_used_bytes = 6; // total used (results + logs)
+  double               spool_pressure   = 7; // 0..1 usage/capacity (task 76)
 }
 
 // Container for all client-to-server messages.
