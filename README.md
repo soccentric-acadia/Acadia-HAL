@@ -1,15 +1,15 @@
-# Acaida-HAL – Hardware Abstraction Library for Raspberry Pi 5
+# Acadia-HAL – Hardware Abstraction Library for Raspberry Pi 5
 
 ## Overview
 
-Acaida-HAL is a comprehensive hardware abstraction and testing suite targeting the **Raspberry
+Acadia-HAL is a comprehensive hardware abstraction and testing suite targeting the **Raspberry
 Pi 5** (BCM2712 SoC + RP1 south-bridge). It provides a modular, extensible architecture for
 testing and exercising hardware interfaces and system components commonly found in automotive
 and industrial applications.
 
-> **Port history**: Originally developed for NVIDIA Jetson AGX Orin (Tegra234). > Ported to
-Raspberry Pi 5 (BCM2712 + RP1) — all platform-specific paths, constants, > and device nodes
-updated for the Pi 5 hardware.
+> **Port history**: Originally developed for NVIDIA Jetson AGX Orin (Tegra234).
+> Ported to Raspberry Pi 5 (BCM2712 + RP1) — all platform-specific paths,
+> constants, and device nodes updated for the Pi 5 hardware.
 
 ### Target Platform
 
