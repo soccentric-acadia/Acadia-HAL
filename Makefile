@@ -220,7 +220,7 @@ cppcheck: check-cppcheck configure ## Run static analysis with cppcheck
 
 # lint = static analysis (cppcheck) + style conformance (clang-format --dry-run).
 # Warnings are treated as errors so CI fails on style/analysis violations.
-lint: check-clang-format check-cppcheck ## Run cppcheck + clang-format conformance (warnings-as-errors)
+lint: check-clang-format check-cppcheck configure ## Run cppcheck + clang-format conformance (warnings-as-errors)
 	@echo "Running cppcheck static analysis (lint)..."
 	cd $(NATIVE_BUILD_DIR) && ninja cppcheck
 	@echo "Checking clang-format conformance (dry-run)..."
@@ -303,6 +303,9 @@ fmt: format ## Alias for format
 # Targets are self-documenting: text after `## ` on a target line is picked up
 # by `make help` automatically, so the listing can never drift from the rules.
 .PHONY: help
+version: ## Print the project version (CONV-004)
+	@echo "1.0.0"
+
 help: ## Show this help
 	@printf '\n  \033[1m%s\033[0m\n' 'Acadia-HAL'
 	@printf '  Usage: make <target> [VAR=value ...]\n'
