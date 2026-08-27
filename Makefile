@@ -45,13 +45,21 @@ all: docker-build ## Alias for docker-build (default)
 # Deploy to remote target: $(1)=IP address
 # Fails fast if no address or credentials were provided.
 _require_deploy_env = $(if $(strip $(1)),,$(error deploy requires an IP (set IP_A/IP_B or ACADIA_TARGET_ADDRESS)))
+# HAL-062: versioned deploy path (no more /tmp staging). Each deploy lands in
+# /opt/acadia/hal/<version> with a SHA-256 manifest, so bench targets keep
+# multiple versions side by side and nothing silently overwrites a running one.
+HAL_VERSION := $(shell grep -m1 'ACUFullTest VERSION' CMakeLists.txt | sed 's/.*VERSION \([0-9.]*\).*/\1/')
+ACADIA_DEPLOY_ROOT ?= /opt/acadia/hal
+DEPLOY_DIR := $(ACADIA_DEPLOY_ROOT)/$(HAL_VERSION)
+
 define deploy_remote
 	$(call _require_deploy_env,$(1))
 	$(if $(and $(PASS),$(SSHPASS)),,$(if $(ACADIA_TARGET_SSH_KEY),,$(error deploy: no SSH credentials configured; set ACADIA_TARGET_SSH_KEY or ACADIA_TARGET_USER/ACADIA_TARGET_PASS)))
-	@echo "Deploying to $(1)..."
-	$(SSH) $(USER)@$(1) "rm -rf /tmp/acu-test && mkdir -p /tmp/acu-test"
-	$(SCP) -r $(CROSS_BUILD_DIR)/lib $(USER)@$(1):/tmp/acu-test/
-	$(SCP) -r $(CROSS_BUILD_DIR)/bin $(USER)@$(1):/tmp/acu-test/
+	@echo "Deploying HAL $(HAL_VERSION) to $(1):$(DEPLOY_DIR) ..."
+	$(SSH) $(USER)@$(1) "rm -rf $(DEPLOY_DIR) && mkdir -p $(DEPLOY_DIR)"
+	$(SCP) -r $(CROSS_BUILD_DIR)/lib $(USER)@$(1):$(DEPLOY_DIR)/
+	$(SCP) -r $(CROSS_BUILD_DIR)/bin $(USER)@$(1):$(DEPLOY_DIR)/
+	$(SSH) $(USER)@$(1) "cd $(DEPLOY_DIR) && find . -type f -not -name MANIFEST -exec sha256sum {} \; | sed 's|  \./|  |' > MANIFEST && echo 'version: $(HAL_VERSION)' >> MANIFEST && date -u '+deployed: %Y-%m-%dT%H:%M:%SZ' >> MANIFEST"
 endef
 
 # Run apps on remote target: $(1)=IP address
