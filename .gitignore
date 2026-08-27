@@ -33,6 +33,14 @@ massif.out.*
 # Cppcheck reports
 cppcheck_results.xml
 
+# Generated proto/gRPC code (HAL owns the .proto sources; never commit bindings)
+*.pb.cc
+*.pb.h
+*.grpc.pb.cc
+*.grpc.pb.h
+proto_gen/
+generated/
+
 build_*/
 build_*/**/*
 build
