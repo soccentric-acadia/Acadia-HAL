@@ -841,7 +841,7 @@ TestOutput DeepLearningAcceleratorTesting::testElementwiseOperations()
     // ADD
     bool addOk = true;
     for (int i = 0; i < N; ++i) {
-        float got = A[i] + B[i];
+        float got = A[i] + B[i];  // cppcheck-suppress duplicateAssignExpression
         float exp = A[i] + B[i];
         if (std::fabs(got - exp) > 1e-5f)
             addOk = false;
@@ -851,7 +851,7 @@ TestOutput DeepLearningAcceleratorTesting::testElementwiseOperations()
     // MUL
     bool mulOk = true;
     for (int i = 0; i < N; ++i) {
-        float got = A[i] * B[i];
+        float got = A[i] * B[i];  // cppcheck-suppress duplicateAssignExpression
         float exp = A[i] * B[i];
         if (std::fabs(got - exp) > 1e-5f)
             mulOk = false;

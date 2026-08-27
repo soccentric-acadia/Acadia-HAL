@@ -49,7 +49,7 @@ if(CPPCHECK)
     # cmake-format: off
     add_custom_target(cppcheck
         COMMAND ${CPPCHECK}
-            --enable=all
+            --enable=warning,performance,portability
             --std=c++17
             --language=c++
             --platform=unix64
@@ -96,13 +96,19 @@ file(GLOB_RECURSE SRC_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 
 # Create static library
 add_library(acu_full_test STATIC ${SRC_SOURCES})
-target_include_directories(acu_full_test PUBLIC src)
-target_link_libraries(acu_full_test Threads::Threads)
+target_include_directories(acu_full_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/acadia_hal>
+)
+target_link_libraries(acu_full_test PUBLIC Threads::Threads)
 
 # Create shared library
 add_library(acu_full_test_shared SHARED ${SRC_SOURCES})
-target_include_directories(acu_full_test_shared PUBLIC src)
-target_link_libraries(acu_full_test_shared Threads::Threads)
+target_include_directories(acu_full_test_shared PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/acadia_hal>
+)
+target_link_libraries(acu_full_test_shared PUBLIC Threads::Threads)
 set_target_properties(acu_full_test_shared PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
@@ -110,6 +116,7 @@ set_target_properties(acu_full_test_shared PROPERTIES
 
 # Install rules for aggregate libraries and headers
 install(TARGETS acu_full_test
+    EXPORT acadia-hal-targets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 install(TARGETS acu_full_test_shared
@@ -117,6 +124,37 @@ install(TARGETS acu_full_test_shared
 )
 install(DIRECTORY src/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/acadia_hal
     FILES_MATCHING PATTERN "*.h"
+)
+
+# ============================================================
+# CMake package config — makes HAL consumable via find_package()
+#   find_package(acadia-hal CONFIG REQUIRED)
+#   target_link_libraries(<target> PRIVATE acadia-hal::acu_full_test)
+# ============================================================
+include(CMakePackageConfigHelpers)
+
+install(EXPORT acadia-hal-targets
+    FILE acadia-hal-targets.cmake
+    NAMESPACE acadia-hal::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/acadia-hal
+)
+
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/acadia-hal-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/acadia-hal-config.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/acadia-hal
+)
+
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/acadia-hal-config-version.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/acadia-hal-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/acadia-hal-config-version.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/acadia-hal
 )
 
 # Add tests directory

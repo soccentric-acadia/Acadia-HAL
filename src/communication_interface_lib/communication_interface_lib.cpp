@@ -680,7 +680,7 @@ TestOutput CommunicationInterfaceTesting::testConsoledebugUart()
                 std::string baud;
                 if (comma != std::string::npos) {
                     baud = consoleDevice.substr(comma + 1);
-                    consoleDevice = consoleDevice.substr(0, comma);
+                    consoleDevice.resize(comma);
                 }
                 data.push_back("[PASS] Console UART: /dev/" + consoleDevice + (baud.empty() ? "" : " at " + baud + " baud"));
             }

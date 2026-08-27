@@ -181,7 +181,8 @@ static inline bool trEvaluateEventExpression(const std::string& expr,
     try { value = std::stod(val); }
     catch (...) { return false; }
 
-    const char* op = s.substr(op_pos, op_len).c_str();
+    const std::string op_str = s.substr(op_pos, op_len);
+    const char* op = op_str.c_str();
     if (!std::strcmp(op, ">"))  return value >  threshold;
     if (!std::strcmp(op, ">=")) return value >= threshold;
     if (!std::strcmp(op, "<"))  return value <  threshold;

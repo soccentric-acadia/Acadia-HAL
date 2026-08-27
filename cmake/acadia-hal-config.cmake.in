@@ -1,0 +1,15 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+
+include("${CMAKE_CURRENT_LIST_DIR}/acadia-hal-targets.cmake")
+
+# The shared library carries the SOVERSION suffix; the static library is the
+# canonical link target and provides the full hal:: public API.
+if(NOT TARGET acadia-hal::acu_full_test)
+    set(acadia-hal_LIBRARIES acadia-hal::acu_full_test)
+    set(acadia-hal_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/include/acadia_hal")
+endif()
+
+check_required_components(acadia-hal)
