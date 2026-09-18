@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-18 — Agent documentation and task workflow standardization
+
+- Replaced the detailed root `CLAUDE.md` with a canonical pointer and added
+  `AGENTS.md`.
+- Added a concise canonical document with Docker build and test instructions.
+- Added ignored local `Plan.md` and `Task.md` workflow artifacts.
+- Verified the required document shape and the declared `make build` and
+  `make test` targets.
+
 All notable changes to Acadia-HAL are documented here. Format: Keep a
 Changelog; versioning: SemVer. HAL version is the `project()` version in
 CMakeLists.txt.
