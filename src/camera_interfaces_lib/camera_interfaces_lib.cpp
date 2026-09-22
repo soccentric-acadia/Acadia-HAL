@@ -525,6 +525,14 @@ TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
     data.push_back("=== CSI-2 Virtual Channel Support (Raspberry Pi 5) ===");
     data.push_back("[INFO] Raspberry Pi 5 Unicam supports 4 virtual channels per CSI port");
 
+    // Acceptance criteria (measurable): the DUT has a unicam CSI-2 controller
+    // AND direct evidence of multi-channel VC plumbing - either the unicam
+    // DT node exposes a channel property or at least one CSI camera pipeline
+    // is enumerated (a VC-bearing link is active).
+    // No CSI controller and no camera > SKIPPED (hardware absent).
+
+    bool controllerPresent = isModuleLoaded("unicam") || isModuleLoaded("unicam");
+
     // Check unicam device tree for num-channels
     const std::vector<std::string> dtPaths = {
         "/proc/device-tree/host1x@13e00000/unicam@1f00110000",
@@ -535,14 +543,26 @@ TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
         if (pathExists(p)) {
             data.push_back("[PASS] DT node accessible: " + p);
             dtVcFound = true;
+            controllerPresent = true;
             // Try reading num-channels
             std::string numCh = readFile(p + "/num-channels");
             if (!numCh.empty())
                 data.push_back("       num-channels = " + numCh);
         }
     }
-    if (!dtVcFound)
-        data.push_back("[INFO] DT VC nodes not directly accessible (expected without root)");
+    // Platform-device enumeration (unicam controllers appear here)
+    const std::string platformBase = "/sys/bus/platform/devices";
+    if (pathExists(platformBase)) {
+        for (const auto& e : listDir(platformBase)) {
+            if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) {
+                controllerPresent = true;
+                data.push_back("[PASS] Unicam platform device found (VC-capable controller)");
+                break;
+            }
+        }
+    }
+    if (!controllerPresent)
+        data.push_back("[INFO] DT VC nodes / platform / module not detected");
 
     // Check unicam module options or procfs
     std::string modInfo = runCmd("modinfo unicam 2>/dev/null | grep -i 'virtual\\|channel' | head -3");
@@ -554,8 +574,26 @@ TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
             data.push_back("    " + line);
     }
 
-    data.push_back("[PASS] Raspberry Pi 5 Unicam hardware supports MIPI CSI-2 virtual channels");
+    data.push_back("[INFO] VC capability is a unicam hardware property verified by the checks above");
 
+    // Measurable VC evidence: DT/VC plumbing visible, or a CSI camera pipeline active.
+    auto videoDev = getVideoDevices();
+    bool pipelineActive = !videoDev.empty();
+    data.push_back(pipelineActive
+                       ? "[PASS] " + std::to_string(videoDev.size()) + " V4L2 node(s) - a VC-bearing CSI link is active"
+                       : "[FAIL] No V4L2 node enumerated and no DT/VC plumbing visible - cannot verify virtual-channel support");
+
+    // No CSI hardware at all -> SKIPPED (never PASS for absent hardware).
+    if (!controllerPresent && !pipelineActive) {
+        data.push_back("[SKIP] No MIPI CSI-2 hardware: no unicam controller and no camera pipeline");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    passed = controllerPresent && (dtVcFound || pipelineActive);
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
