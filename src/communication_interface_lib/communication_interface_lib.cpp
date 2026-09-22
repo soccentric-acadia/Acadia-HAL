@@ -732,16 +732,44 @@ TestOutput CommunicationInterfaceTesting::testConsoledebugUart()
 
     // Confirm ttyAMA0 exists
     std::ifstream ttyCheck("/dev/ttyAMA0");
-    if (ttyCheck.good() || access("/dev/ttyAMA0", F_OK) == 0) {
+    bool ttyPresent = ttyCheck.good() || access("/dev/ttyAMA0", F_OK) == 0;
+    if (ttyPresent)
         data.push_back("[PASS] /dev/ttyAMA0 present");
-    } else {
+    else
         data.push_back("[INFO] /dev/ttyAMA0 not present in current environment");
+
+    // Is there any serial hardware at all?
+    bool serialHw = ttyPresent || !consoleDevice.empty();
+    DIR* dir = ::opendir("/sys/bus/platform/devices");
+    if (dir) {
+        while (struct dirent* ent = ::readdir(dir)) {
+            if (std::string(ent->d_name).find(".serial") != std::string::npos) {
+                serialHw = true;
+                break;
+            }
+        }
+        ::closedir(dir);
     }
+
+    if (!serialHw) {
+        data.push_back("[SKIP] No serial/UART hardware on this DUT - console debug UART cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    bool consoleOk = !consoleDevice.empty() || ttyPresent;
+    if (consoleOk)
+        data.push_back("[PASS] Console/debug UART is configured and present");
+    else
+        data.push_back("[FAIL] Serial hardware exists but no console UART is configured and no tty node is present");
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = consoleOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = consoleOk ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
