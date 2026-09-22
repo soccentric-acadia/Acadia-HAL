@@ -1317,19 +1317,22 @@ TestOutput CommunicationInterfaceTesting::testAllI2cBuses()
     data.push_back("=== I2C Bus Enumeration (Pi5) ===");
 
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
+    // Acceptance criteria (measurable): every enumerated I2C bus must be
+    // openable/accessible. No /dev/i2c-* nodes: if the SoC declares I2C
+    // controllers, the i2c-dev binding is simply missing (environment) ->
+    // SKIPPED; if no I2C controllers are declared -> SKIPPED (no I2C domain).
     if (i2cDevs.empty()) {
-        data.push_back("[INFO] No /dev/i2c-* devices found");
-        data.push_back("[INFO] Ensure i2c-dev module is loaded: modprobe i2c-dev");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/i2c-* devices found");
+        data.push_back("[INFO] Ensure the i2c-dev module is loaded (modprobe i2c-dev) to bind the controllers");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    data.push_back("[INFO] Found " + std::to_string(i2cDevs.size()) + " I2C bus(es)");
+    data.push_back("[PASS] Found " + std::to_string(i2cDevs.size()) + " I2C bus(es)");
+    bool allOk = true;
     for (const auto& dev : i2cDevs) {
         std::string busNum = dev.substr(dev.rfind('-') + 1);
         std::string sysName = readFile("/sys/class/i2c-dev/i2c-" + busNum + "/name");
@@ -1338,7 +1341,8 @@ TestOutput CommunicationInterfaceTesting::testAllI2cBuses()
             data.push_back("[PASS] " + dev + ": accessible" + (sysName.empty() ? "" : " [" + sysName + "]"));
             close(fd);
         } else {
-            data.push_back("[WARN] " + dev + ": cannot open (" + strerror(errno) + ")" + (sysName.empty() ? "" : " [" + sysName + "]"));
+            data.push_back("[FAIL] " + dev + ": cannot open (" + strerror(errno) + ")" + (sysName.empty() ? "" : " [" + sysName + "]"));
+            allOk = false;
         }
     }
 
@@ -1348,8 +1352,8 @@ TestOutput CommunicationInterfaceTesting::testAllI2cBuses()
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
