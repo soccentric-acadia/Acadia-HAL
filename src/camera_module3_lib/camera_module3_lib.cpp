@@ -440,24 +440,52 @@ TestOutput CameraModule3Testing::testVideoStreaming()
     std::vector<std::string> data;
     data.push_back("=== Camera Module 3 Video Streaming (1080p30) ===");
 
+    // Acceptance criteria (measurable): a real 1080p30 H.264 capture
+    // executes and writes a non-empty video file. No camera attached ->
+    // SKIPPED; libcamera tooling absent -> SKIPPED (HAL-033); no file / empty
+    // capture -> FAIL.
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - video streaming cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
+
+    const std::string outPath = "/tmp/cm3_video.h264";
+    cm3RunCmd("rm -f " + outPath);
+    std::string tool = cm3RunCmd("command -v libcamera-vid 2>/dev/null");
+    if (tool.empty()) tool = cm3RunCmd("command -v rpicam-vid 2>/dev/null");
+    if (tool.empty()) {
+        data.push_back("[SKIP] libcamera-vid/rpicam-vid not installed - cannot execute video capture");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
     std::string out = cm3RunCmd(
-        "libcamera-vid --timeout 500 --width 1920 --height 1080 --framerate 30 "
-        "--output /tmp/cm3_video.h264 2>&1 | head -8");
-    bool ok = !out.empty() && out.find("ERROR") == std::string::npos;
-    data.push_back(out.empty() ? "[INFO] libcamera-vid not available"
-                               : (ok ? "[PASS] Video stream started:\n" + out
-                                     : "[INFO] Video output:\n" + out));
+        tool + " --timeout 500 --width 1920 --height 1080 --framerate 30 "
+               "--output " + outPath + " 2>&1 | head -8");
+    if (!out.empty())
+        data.push_back("[INFO] Capture tool output:\n" + out);
 
     struct stat st {};
-    if (stat("/tmp/cm3_video.h264", &st) == 0 && st.st_size > 0)
-        data.push_back("[PASS] /tmp/cm3_video.h264 written (" +
-                       std::to_string(st.st_size / 1024) + " KB)");
+    bool fileOk = (stat(outPath.c_str(), &st) == 0 && st.st_size > 0);
+    data.push_back(fileOk
+                       ? "[PASS] " + outPath + " written (" + std::to_string(st.st_size / 1024) + " KB) - 1080p30 H.264 stream succeeded"
+                       : "[FAIL] " + outPath + " was not written (or is empty) - the 1080p30 H.264 stream did not succeed");
 
-    data.push_back("[INFO] Pi5 H.264 encoding via V4L2 m2m (bcm2835-codec)");
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = fileOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = fileOk ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
