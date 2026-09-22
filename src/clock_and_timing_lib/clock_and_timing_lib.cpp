@@ -607,10 +607,24 @@ TestOutput ClockAndTimingTesting::testAudioClock()
         }
     }
 
-    if (!anyClk && !anyAudio)
-        data.push_back("WARN: No audio clock or device evidence found");
+    // Acceptance criteria (measurable): an audio clock domain is present on
+    // the DUT. Evidence: an audio-domain clock running in debugfs, an ALSA
+    // PCM device, or the APE/ALSA sound platform. No audio hardware at all ->
+    // SKIPPED (the DUT simply has no audio domain to verify).
+    if (!anyClk && !anyAudio) {
+        data.push_back("[SKIP] No audio clock or device evidence found - no audio domain on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
-    // Pass as long as no hard error — audio peripherals may not be populated
+    if (anyClk)
+        data.push_back("[PASS] At least one audio-domain clock is running");
+    if (anyAudio)
+        data.push_back("[PASS] Audio peripheral (ALSA PCM / platform device) is present");
+
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
