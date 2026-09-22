@@ -976,14 +976,12 @@ TestOutput CameraInterfacesTesting::testRaw12()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found — test skipped (camera hardware absent)");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/video* nodes found — no camera attached; RAW12 support cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool raw12Found = false;
@@ -1001,10 +999,12 @@ TestOutput CameraInterfacesTesting::testRaw12()
         }
     }
 
-    if (!raw12Found)
-        data.push_back("[INFO] RAW12 not reported by current sensor; Pi5 Unicam supports SRGGB12/SGRBG12");
+    if (raw12Found)
+        data.push_back("[PASS] At least one sensor reports RAW12 (SRGGB12/SGRBG12/SGBRG12/SBGGR12)");
+    else
+        data.push_back("[FAIL] No sensor reports RAW12 formats - the acceptance criterion is not met");
 
-    data.push_back("[INFO] RAW12 provides higher dynamic range for automotive imaging sensors");
+    passed = raw12Found;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
