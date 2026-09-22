@@ -49,6 +49,9 @@ jobs:
       - name: Test
         run: ctest --test-dir build -j$(nproc) --output-on-failure
 
+      - name: Verdict integrity gate (X-002)
+        run: ./scripts/verdict-integrity-gate.sh
+
   docker-build:
     name: Build Docker image
     runs-on: ubuntu-24.04

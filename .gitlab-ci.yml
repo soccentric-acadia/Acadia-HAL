@@ -28,3 +28,4 @@ test:
     - apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config protobuf-compiler libprotobuf-dev libprotoc-dev libgrpc++-dev libgrpc-dev libgtest-dev libyaml-cpp-dev
   script:
     - ctest --test-dir build/ci --output-on-failure
+    - ./scripts/verdict-integrity-gate.sh
