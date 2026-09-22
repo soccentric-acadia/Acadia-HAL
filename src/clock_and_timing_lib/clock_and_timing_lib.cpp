@@ -481,6 +481,12 @@ TestOutput ClockAndTimingTesting::testCameraClockOutput()
     std::vector<std::string> data;
     bool passed = true;
 
+    // Acceptance criteria (measurable): camera clock output is verifiable on
+    // a DUT that has a CSI camera domain. Evidence: a camera-domain debugfs
+    // clock with a non-zero rate, or an active camera pipeline
+    // (/dev/video0). No camera clock and no camera hardware -> SKIPPED;
+    // camera hardware present but no clock/pipeline evidence -> FAIL.
+
     // 1. Debug clock entries for CSI / VI
     const std::vector<std::string> clkCandidates = {
         "csi_clk",        "unicam_clk", "unicam_tsc_clk", "extperiph1_clk", "extperiph2_clk", "extperiph3_clk",
@@ -492,29 +498,57 @@ TestOutput ClockAndTimingTesting::testCameraClockOutput()
         if (rateHz == 0)
             continue;
         anyClk = true;
-        data.push_back("Camera clock '" + name + "': " + std::to_string(rateHz / 1'000'000UL) + " MHz");
+        data.push_back("[PASS] Camera clock '" + name + "': " + std::to_string(rateHz / 1'000'000UL) + " MHz");
     }
     if (!anyClk)
-        data.push_back("INFO: Camera debugfs clocks not accessible (may require root)");
+        data.push_back("[INFO] Camera debugfs clocks not accessible (may require root) or not running");
 
     // 2. V4L2 / media devices
     const std::vector<std::string> devicePaths = {"/dev/video0", "/dev/media0", "/sys/bus/platform/devices/13e00000.host1x",
                                                   "/sys/class/video4linux"};
 
     bool anyDevice = false;
+    bool activePipeline = false;
     for (const auto& p : devicePaths) {
         if (pathExists(p)) {
-            data.push_back("Camera/media device found: " + p);
+            data.push_back("[PASS] Camera/media device found: " + p);
             anyDevice = true;
+            if (p.find("video0") != std::string::npos) activePipeline = true;
+        }
+    }
+    // Unicam platform device (CSI-2 controller) also implies the domain.
+    if (!activePipeline) {
+        DIR* dir = ::opendir("/sys/bus/platform/devices");
+        if (dir) {
+            while (struct dirent* ent = ::readdir(dir)) {
+                std::string n = ent->d_name;
+                if (n.find("unicam") != std::string::npos || n.find("1f001100") != std::string::npos) {
+                    activePipeline = true;
+                    data.push_back("[PASS] Unicam CSI-2 controller platform device: " + n);
+                    break;
+                }
+            }
+            ::closedir(dir);
         }
     }
 
-    if (!anyClk && !anyDevice) {
-        data.push_back("WARN: No camera clock or device evidence; "
-                       "camera may not be connected");
-        // Treat as pass — the hardware interface exists on the SoC regardless
+    if (!anyClk && !anyDevice && !activePipeline) {
+        data.push_back("[SKIP] No camera clock or device evidence - camera hardware is not present on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    if (anyClk)
+        data.push_back("[PASS] At least one camera-domain clock is running");
+    else if (activePipeline)
+        data.push_back("[PASS] Active camera pipeline implies the camera clocks are running");
+    else
+        data.push_back("[FAIL] Camera hardware exists but no running camera clock or active pipeline is observable");
+
+    passed = anyClk || activePipeline;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
