@@ -2198,20 +2198,23 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
     std::vector<std::string> data;
     data.push_back("=== CAN Error Detection (Pi5) ===");
 
+    // Acceptance criteria (measurable): a CAN interface is present AND error
+    // detection is evidenced - either CAN error counters are exposed in sysfs
+    // (bus_error, error_warning, ...) or mttcan interrupt handlers are
+    // registered. No CAN interfaces -> SKIPPED (no CAN domain).
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
-        data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Pi5 mttcan detects: bit, stuff, CRC, form, and ACK errors");
-        data.push_back("[INFO] Error frames enabled with: ip link set canX type can berr-reporting on");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No CAN interfaces found - CAN error detection cannot be verified on this DUT");
+        data.push_back("[INFO] mttcan detects: bit, stuff, CRC, form, and ACK errors; "
+                       "enable error frames with: ip link set <can> type can berr-reporting on");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    bool countersExposed = false;
     for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
         std::string statsPath = iface + "/statistics/";
@@ -2223,13 +2226,15 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
         for (const auto& cnt : counters) {
             std::string val = readFile(statsPath + cnt);
             if (!val.empty()) {
+                countersExposed = true;
                 data.push_back("  " + cnt + " = " + val);
             }
         }
-
-        // Check rx/tx error counters in netlink (exposed via ip -details link show)
-        data.push_back("[PASS] " + ifName + ": mttcan error-detection hardware active");
-        data.push_back("       Enable error frames: cansend " + ifName + " 20000004#0000000000000000");
+        data.push_back([ifName, countersExposed]() {
+            return countersExposed
+                ? "[PASS] " + ifName + ": error counters exposed by the driver - detection hardware active"
+                : "[INFO] " + ifName + ": no CAN error counters exposed in sysfs";
+        }());
     }
 
     // Check for mttcan interrupts
@@ -2241,10 +2246,16 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
         }
     }
 
+    bool detectionOk = countersExposed || !canIrqs.empty();
+    if (detectionOk)
+        data.push_back("[PASS] CAN error-detection evidence measured (sysfs counters or mttcan IRQs)");
+    else
+        data.push_back("[FAIL] CAN interfaces present but no error-detection evidence (no sysfs counters, no mttcan IRQs)");
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = detectionOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = detectionOk ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
