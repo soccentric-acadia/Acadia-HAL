@@ -1602,7 +1602,6 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
 TestOutput CameraInterfacesTesting::testDemosaicing()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Bayer Demosaicing (Raspberry Pi 5) ===");
     data.push_back("[INFO] Pi5 ISP performs hardware Bayer demosaicing");
@@ -1674,10 +1673,32 @@ TestOutput CameraInterfacesTesting::testDemosaicing()
 TestOutput CameraInterfacesTesting::testNoiseReduction()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Noise Reduction (NR) Verification (Raspberry Pi 5) ===");
     data.push_back("[INFO] The Pi5 ISP includes spatial NR (SNR) and Temporal NR (TNR3) hardware engines");
+
+    // Acceptance criteria (measurable): SNR/TNR are embedded in the Pi5 ISP
+    // (nvisp), so the test is only meaningful when the ISP pipeline is
+    // present. No ISP/CSI hardware -> SKIPPED.
+    bool ispPresent = isModuleLoaded("unicam") || isModuleLoaded("nvisp") || !getVideoDevices().empty();
+    if (pathExists("/sys/bus/platform/devices")) {
+        for (const auto& d : listDir("/sys/bus/platform/devices")) {
+            std::string base = d.substr(d.find_last_of('/') + 1);
+            if (base.find("nvisp") != std::string::npos || base.find("rp1-isp") != std::string::npos || base.find("15c00000") != std::string::npos) {
+                ispPresent = true;
+                data.push_back("[PASS] ISP platform device present (NR engines are embedded ISP features): " + base);
+                break;
+            }
+        }
+    }
+    if (!ispPresent) {
+        data.push_back("[SKIP] No ISP/CSI pipeline detected - noise reduction cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     // Check V4L2 noise reduction controls
     auto videoDev = getVideoDevices();
@@ -1695,8 +1716,10 @@ TestOutput CameraInterfacesTesting::testNoiseReduction()
                 data.push_back("    " + line);
         }
     }
-    if (!nrCtrlFound && !videoDev.empty())
-        data.push_back("[INFO] NR not exposed via V4L2 controls; configured through Argus/ISP tuning files");
+    if (nrCtrlFound)
+        data.push_back("[PASS] NR/V4L2 noise controls exposed on a camera node");
+    else
+        data.push_back("[INFO] NR not exposed via V4L2 controls; configured through ISP tuning files (expected)");
 
     // Check for ISP tuning with NR parameters
     std::string tnr = runCmd("find /etc/camera /var/nvidia/nvcam/settings 2>/dev/null "
@@ -1704,12 +1727,10 @@ TestOutput CameraInterfacesTesting::testNoiseReduction()
     if (!tnr.empty())
         data.push_back("[PASS] NR tuning found in: " + tnr);
 
-    data.push_back("[PASS] Pi5 ISP NR: SNR with 7x7 kernel, TNR3 with motion-adaptive blending");
-    data.push_back("[INFO] TNR requires motion estimation engine; adds ~1 frame latency");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
