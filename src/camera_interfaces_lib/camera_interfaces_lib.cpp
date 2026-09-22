@@ -1439,12 +1439,35 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
 TestOutput CameraInterfacesTesting::testAutoFocus()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Auto Focus (AF) Verification (Raspberry Pi 5) ===");
     data.push_back("[INFO] AF requires a VCM/motor-driven lens; automotive sensors are typically fixed-focus");
 
+    // Acceptance criteria (measurable):
+    //   - no camera attached          -> SKIPPED (hardware absent)
+    //   - AF controls enumerated      -> PASS
+    //   - camera present, no AF ctrls -> SKIPPED, i.e. AF is not applicable
+    //     (fixed-focus automotive sensor; FAIL is not meaningful here)
+
     auto videoDev = getVideoDevices();
+    if (videoDev.empty()) {
+        data.push_back("[SKIP] No camera nodes present - AF cannot be verified (hardware absent)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (runCmd("command -v v4l2-ctl 2>/dev/null").empty()) {
+        data.push_back("[SKIP] v4l2-ctl unavailable; V4L2 AF controls cannot be enumerated");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
     bool afFound = false;
     for (const auto& dev : videoDev) {
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
@@ -1460,25 +1483,21 @@ TestOutput CameraInterfacesTesting::testAutoFocus()
         }
     }
 
-    if (!afFound && !videoDev.empty())
-        data.push_back("[INFO] No AF controls – camera likely fixed-focus (typical for ADAS)");
-    else if (videoDev.empty())
-        data.push_back("[INFO] No camera nodes present");
-
-    // Check for focuser device node (Pi5: /dev/focuser*)
-    for (int i = 0; i < 4; ++i) {
-        std::string foc = "/dev/focuser" + std::to_string(i);
-        if (pathExists(foc)) {
-            afFound = true;
-            data.push_back("[PASS] Focuser device node: " + foc);
-        }
+    if (afFound) {
+        data.push_back("[PASS] AF/VCM controls are exposed on at least one node");
+    } else {
+        data.push_back("[SKIP] No AF controls detected - fixed-focus sensor, auto focus is not applicable to this hardware");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    data.push_back("[INFO] The Pi5 supports AF via I2C VCM driver (e.g. DW9714) through Argus camera API");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
