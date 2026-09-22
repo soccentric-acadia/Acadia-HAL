@@ -870,14 +870,12 @@ TestOutput CameraInterfacesTesting::testRaw8()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found — test skipped (camera hardware absent)");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/video* nodes found — no camera attached; RAW8 support cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool raw8Found = false;
@@ -896,10 +894,12 @@ TestOutput CameraInterfacesTesting::testRaw8()
         }
     }
 
-    if (!raw8Found)
-        data.push_back("[INFO] RAW8 not reported by the current sensor; Pi5 Unicam supports SRGGB8/SGRBG8/SGBRG8/SBGGR8");
+    if (raw8Found)
+        data.push_back("[PASS] At least one sensor reports RAW8 (SRGGB8/SGRBG8/SGBRG8/SBGGR8)");
+    else
+        data.push_back("[FAIL] No sensor reports RAW8 formats - the acceptance criterion is not met");
 
-    data.push_back("[INFO] Pi5 ISP supports RAW8 Bayer formats on all CSI ports");
+    passed = raw8Found;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
