@@ -2046,17 +2046,18 @@ TestOutput CommunicationInterfaceTesting::testCanFd()
     std::vector<std::string> data;
     data.push_back("=== CAN FD (Flexible Data-Rate) Support (Pi5) ===");
 
+    // Acceptance criteria (measurable): a CAN interface is present AND
+    // CAN-FD capability is evidenced (sysfs fd attribute readable, or the
+    // CAN_RAW_FD_FRAMES socket option is accepted). No CAN interfaces ->
+    // SKIPPED (no CAN domain). Interfaces present but no FD evidence -> FAIL.
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
-        data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Pi5 mttcan supports CAN FD with up to 8 Mbps data phase");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No CAN interfaces found - CAN FD cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool anyFd = false;
@@ -2091,14 +2092,18 @@ TestOutput CommunicationInterfaceTesting::testCanFd()
         }
     }
 
-    if (!anyFd && !canIfaces.empty()) {
-        data.push_back("[INFO] CAN FD may need interface to be brought up with 'fd on'");
+    if (anyFd)
+        data.push_back("[PASS] CAN-FD capability measured on at least one interface (sysfs fd attr or CAN_RAW_FD_FRAMES)");
+    else {
+        data.push_back("[FAIL] CAN interfaces present but no CAN-FD capability evidence "
+                       "(no sysfs fd attribute, CAN_RAW_FD_FRAMES not accepted); "
+                       "bring the interface up with: ip link set <if> type can bitrate 500000 dbitrate 2000000 fd on");
     }
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = anyFd ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = anyFd ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
