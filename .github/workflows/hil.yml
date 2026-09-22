@@ -1,0 +1,50 @@
+name: hil
+
+# PAR-008: hardware-in-the-loop (HIL) pipeline for HAL/OS/Client on a real
+# Raspberry Pi 5 / CM5. Required before any HAL test result can be claimed
+# valid (X-002: verdict integrity needs real hardware).
+#
+# Runs ONLY on a self-hosted runner with the `rpi5-hil` label (a bench board
+# with the Acadia OS image flashed). Hosted runners have no hardware, so this
+# job is skipped elsewhere — reported honestly, never a false pass.
+
+on:
+  schedule:
+    - cron: "0 4 * * *" # 03:30 UTC nightly, after the E2E smoke
+  workflow_dispatch: {}
+  # PRs never run HIL (bench contention); releases run it via a manual dispatch.
+
+jobs:
+  hil-hal:
+    name: HAL verdicts on the bench RPi5
+    if: contains(runner.labels, 'rpi5-hil')
+    runs-on: [self-hosted, rpi5-hil]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build HAL test runner
+        run: |
+          cmake -S . -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+          ninja -C build -j"$(nproc)"
+      - name: Run the HAL module tests on the target
+        run: ctest --test-dir build -j1 --output-on-failure
+      - name: Verdict integrity gate
+        run: ./scripts/verdict-integrity-gate.sh
+      - name: Archive verdicts
+        if: always()
+        run: |
+          mkdir -p verdicts
+          ctest --test-dir build -j1 > verdicts/ctest.log 2>&1 || true
+          sha256sum verdicts/ctest.log
+        artifact-name: hal-verdicts
+
+  hil-client:
+    name: Client dispatch on the bench RPi5
+    if: contains(runner.labels, 'rpi5-hil')
+    runs-on: [self-hosted, rpi5-hil]
+    needs: [hil-hal]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the E2E smoke against the bench board
+        run: ./scripts/e2e-smoke.sh
