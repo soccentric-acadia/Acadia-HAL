@@ -252,6 +252,12 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
 
     data.push_back("=== CSI-2 D-PHY Operation (Raspberry Pi 5) ===");
 
+    // Acceptance criteria (measurable): the D-PHY camera pipeline is
+    // operational when the Unicam CSI-2 controller is present (kernel module
+    // loaded or platform device enumerated) AND at least one V4L2 video node
+    // is enumerated (a D-PHY camera is driving the pipeline).
+    // No CSI controller and no video node > SKIPPED (no CSI-2 hardware).
+
     // Check kernel module
     bool modLoaded = isModuleLoaded("unicam") || isModuleLoaded("unicam");
     if (modLoaded)
@@ -268,11 +274,14 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
 
     // Look for dphy sysfs entries under Unicam
     bool dphyFound = false;
+    bool controllerFound = modLoaded;
     const std::string unicamDev = "/sys/bus/platform/devices";
     if (pathExists(unicamDev)) {
         auto entries = listDir(unicamDev);
         for (const auto& e : entries) {
             if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) {
+                controllerFound = true;
+                data.push_back("[PASS] Unicam platform device found (D-PHY capable)");
                 // Check for phy_mode or dphy attribute
                 std::string phyMode = readFile(e + "/phy_mode");
                 if (!phyMode.empty()) {
@@ -288,7 +297,9 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
             }
         }
     }
-    if (!dphyFound)
+    if (dphyFound)
+        data.push_back("[PASS] D-PHY sysfs attributes exposed");
+    else if (controllerFound)
         data.push_back("[INFO] D-PHY sysfs attribute not directly exposed – typical for ISP/Unicam hardware");
 
     // Check that v4l2 nodes exist (implies camera pipeline including D-PHY subdev is up)
@@ -296,8 +307,19 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
     if (!videoDev.empty())
         data.push_back("[PASS] V4L2 nodes present – D-PHY pipeline operational");
     else
-        data.push_back("[INFO] No V4L2 nodes detected; connect a D-PHY camera to verify");
+        data.push_back("[FAIL] No V4L2 node enumerated – no D-PHY camera driving the pipeline");
 
+    // No CSI-2 hardware at all -> SKIPPED (never PASS for absent hardware).
+    if (!controllerFound && videoDev.empty()) {
+        data.push_back("[SKIP] No MIPI CSI-2 D-PHY hardware: controller absent and no V4L2 nodes");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    passed = controllerFound && !videoDev.empty();
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
