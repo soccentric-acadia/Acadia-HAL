@@ -596,20 +596,31 @@ TestOutput CommunicationInterfaceTesting::testUartDmaOperation()
     }
 
     if (foundControllers == 0) {
-        data.push_back("[INFO] No RP1 UART platform devices found – check kernel config");
+        data.push_back("[SKIP] No RP1 UART platform devices found on this DUT - UART DMA cannot be verified");
         data.push_back("[INFO] Expected at /sys/bus/platform/devices/3100000.serial etc.");
-    } else {
-        data.push_back("Summary: " + std::to_string(foundControllers) + " UART controllers found, " + std::to_string(dmaEnabled) +
-                       " with DMA DT property");
-    }
-
-    {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
-    } // DMA may be driver-configured; not a hard failure
+    }
+
+    bool dmaEvidence = dmaEnabled > 0 || !dmaIrqs.empty();
+    if (dmaEvidence)
+        data.push_back("[PASS] UART DMA capability measured (DT DMA property or GPCDMA interrupts registered)");
+    else
+        data.push_back("[FAIL] UART controllers present but no DMA evidence (neither DT DMA properties nor GPCDMA interrupts)");
+
+    data.push_back("Summary: " + std::to_string(foundControllers) + " UART controllers found, " + std::to_string(dmaEnabled) +
+                   " with DMA DT property");
+
+    {
+        TestOutput _out;
+        _out.status = dmaEvidence ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = dmaEvidence ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 }
 
 /**
