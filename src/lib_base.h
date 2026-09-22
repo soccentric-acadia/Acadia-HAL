@@ -142,6 +142,23 @@ struct EventCriteria
 };
 
 /**
+ * @struct ModuleRunConfig
+ * @brief Normalized per-run configuration delivered to a module by the Client.
+ * @details Carries the common configuration fields shared by every module
+ *          Config proto (hal.modules.<id>.Config) plus the selected test
+ *          list. Module-specific config fields, when introduced, are carried
+ *          by overriding configure() in the module class.
+ */
+struct ModuleRunConfig
+{
+    std::vector<std::string> test_names;  ///< Selected tests; empty = module default
+    int      interval_ms     = 1000;      ///< Cycle interval (LONG_TERM / MONITORING)
+    long long duration_ms    = 0;         ///< Total run time; 0 = run until stop()
+    bool     run_forever     = false;     ///< Ignore duration_ms; run until stop()
+    int      poll_interval_ms = 1000;     ///< Poll interval (EVENT_BASED)
+};
+
+/**
  * @class TestBase
  * @brief Base class for all testing classes
  * @details Provides four test modes:
@@ -206,6 +223,21 @@ class TestBase
                       long long max_duration_ms = 0);
 
     /**
+     * @brief Apply a per-run configuration delivered by the Client (HAL-001).
+     * @details Stores the normalized config (test selection + common timing
+     *          parameters) so runSelectedTests()/runAllTests() implementations
+     *          can honour it via config(). Modules with extra config fields
+     *          override this to decode them; the default stores the common
+     *          surface.
+     */
+    virtual void configure(const ModuleRunConfig& config) { module_config_ = config; }
+
+    /**
+     * @brief The last configuration applied via configure()
+     */
+    const ModuleRunConfig& config() const { return module_config_; }
+
+    /**
      * @brief Run a specific subset of tests by name
      */
     std::vector<TestResult> runSelectedTests(const std::vector<std::string>& testNames);
@@ -257,6 +289,11 @@ class TestBase
     std::atomic<bool> stopped_;
     std::atomic<bool> paused_{false};
     std::thread monitoring_thread_;
+
+  protected:
+    // HAL-001: configuration delivered by the Client (test selection + common
+    // timing). Accessible to module implementations via config().
+    ModuleRunConfig module_config_;
 };
 
 #endif // TEST_BASE_H
