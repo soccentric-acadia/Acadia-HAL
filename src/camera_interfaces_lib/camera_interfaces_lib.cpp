@@ -1878,11 +1878,33 @@ TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
 TestOutput CameraInterfacesTesting::testGammaCorrection()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Gamma Correction / Tone Mapping (Raspberry Pi 5) ===");
     data.push_back("[INFO] The Pi5 ISP implements an LUT-based gamma correction engine");
     data.push_back("[INFO] Supports sRGB gamma (2.2), linear, and custom tone curves");
+
+    // Acceptance criteria (measurable): the LUT-based gamma engine is an
+    // embedded Pi5 ISP (nvisp) stage, so the test is only meaningful when the
+    // ISP pipeline is present. No ISP/CSI hardware -> SKIPPED.
+    bool ispPresent = isModuleLoaded("unicam") || isModuleLoaded("nvisp") || !getVideoDevices().empty();
+    if (pathExists("/sys/bus/platform/devices")) {
+        for (const auto& d : listDir("/sys/bus/platform/devices")) {
+            std::string base = d.substr(d.find_last_of('/') + 1);
+            if (base.find("nvisp") != std::string::npos || base.find("rp1-isp") != std::string::npos || base.find("15c00000") != std::string::npos) {
+                ispPresent = true;
+                data.push_back("[PASS] ISP platform device present (gamma LUT is an embedded ISP stage): " + base);
+                break;
+            }
+        }
+    }
+    if (!ispPresent) {
+        data.push_back("[SKIP] No ISP/CSI pipeline detected - gamma correction cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     // Check for gamma config in tuning files
     std::string gammaFile = runCmd("find /etc/camera /var/nvidia/nvcam/settings 2>/dev/null "
@@ -1891,7 +1913,7 @@ TestOutput CameraInterfacesTesting::testGammaCorrection()
     if (!gammaFile.empty())
         data.push_back("[PASS] Gamma tuning found in: " + gammaFile);
     else
-        data.push_back("[INFO] Gamma tuning not found; default sRGB gamma applied by ISP");
+        data.push_back("[INFO] Gamma tuning not found; default sRGB gamma applied by ISP (embedded LUT)");
 
     // Check V4L2 gamma control
     auto videoDev = getVideoDevices();
@@ -1908,12 +1930,10 @@ TestOutput CameraInterfacesTesting::testGammaCorrection()
         }
     }
 
-    data.push_back("[PASS] Pi5 ISP gamma: 1024-entry 16-bit LUT, per-channel R/G/B independent curves");
-    data.push_back("[INFO] Argus API: ISourceSettings::setGainRange() and tone-curve controls");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
