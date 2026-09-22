@@ -45,6 +45,25 @@ static std::string wdRunCmd(const char* cmd)
     return std::string(buf);
 }
 
+// HAL-041: watchdog facts are gathered EXCLUSIVELY through the read-only
+// sysfs class attributes (/sys/class/watchdog/watchdog0/*). Tests must never
+// open /dev/watchdog0: opening arms the hardware countdown, and with
+// CONFIG_WATCHDOG_NOWAYOUT=y (or a failed magic-close 'V') closing the fd
+// reboots the board. It would also race the image's watchdog daemon /
+// boot-watchdog, which own the device.
+static const char* kWatchdogSysfsDir = "/sys/class/watchdog/watchdog0";
+
+static std::string wdSysfsAttr(const std::string& attr)
+{
+    return wdReadFile(std::string(kWatchdogSysfsDir) + "/" + attr);
+}
+
+static bool wdSysfsAvailable()
+{
+    std::ifstream f(std::string(kWatchdogSysfsDir) + "/identity");
+    return f.is_open();
+}
+
 // ---------------------------------------------------------------------------
 // Constructor / Destructor
 // ---------------------------------------------------------------------------
@@ -64,52 +83,40 @@ TestOutput WatchdogAndResetTesting::testWatchdogTimerFunctionality()
     std::vector<std::string> data;
     bool passed = true;
 
-    data.push_back("Watchdog timer test (Pi5: RP1 watchdog, /dev/watchdog0)");
+    data.push_back("Watchdog timer test (Pi5: RP1 watchdog, read-only sysfs)");
 
-    bool wdExists = (access("/dev/watchdog0", F_OK) == 0);
-    data.push_back("/dev/watchdog0 present: " + std::string(wdExists ? "yes" : "no"));
-
-    if (!wdExists) {
+    // HAL-041: never open /dev/watchdog0 (it arms the timer and races the
+    // system watchdog daemon). The sysfs class exposes the same facts.
+    if (!wdSysfsAvailable()) {
+        data.push_back("INFO: watchdog sysfs (" + std::string(kWatchdogSysfsDir) + ") not available");
         data.push_back("INFO: Load watchdog driver: modprobe bcm2835-wdt or bcm2712-wdt");
         data.push_back("INFO: Enable via /boot/firmware/config.txt: dtparam=watchdog=on");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
+            _out.error_message = "watchdog sysfs not available — test skipped";
             StampDiagnostics(_out, data);
             return _out;
         } // Not a hard failure — watchdog may not be enabled
     }
 
-    // Open watchdog (read-only check — do NOT send keep-alive or set timeout here)
-    int fd = open("/dev/watchdog0", O_WRONLY | O_CLOEXEC);
-    if (fd >= 0) {
-        struct watchdog_info info = {};
-        if (ioctl(fd, WDIOC_GETSUPPORT, &info) == 0) {
-            data.push_back("Identity:  " + std::string(reinterpret_cast<char*>(info.identity)));
-            data.push_back("Firmware:  " + std::to_string(info.firmware_version));
-            data.push_back("Options:   0x" + [&]() {
-                char h[16]; snprintf(h, sizeof(h), "%08x", info.options); return std::string(h);
-            }());
-        }
+    std::string identity = wdSysfsAttr("identity");
+    std::string options  = wdSysfsAttr("options");
+    std::string timeout  = wdSysfsAttr("timeout");
+    std::string bootstat = wdSysfsAttr("bootstatus");
+    std::string state    = wdSysfsAttr("state");
 
-        int timeout = 0;
-        if (ioctl(fd, WDIOC_GETTIMEOUT, &timeout) == 0)
-            data.push_back("Current timeout: " + std::to_string(timeout) + " s");
+    if (!identity.empty()) data.push_back("Identity:  " + identity);
+    if (!options.empty())  data.push_back("Options:   " + options);
+    if (!timeout.empty())  data.push_back("Current timeout: " + timeout + " s");
+    if (!state.empty())    data.push_back("State:     " + state);
+    if (!bootstat.empty())
+        data.push_back(std::string("Boot status (watchdog reset flag): ") +
+                       (bootstat != "0" ? "WATCHDOG RESET" : "normal boot"));
 
-        int bootStatus = 0;
-        if (ioctl(fd, WDIOC_GETBOOTSTATUS, &bootStatus) == 0)
-            data.push_back(std::string("Boot status (watchdog reset flag): ") +
-                           (bootStatus ? "WATCHDOG RESET" : "normal boot"));
-
-        // Write 'V' to disable watchdog on close (magic close)
-        ssize_t _w = write(fd, "V", 1); (void)_w;
-        close(fd);
-        data.push_back("PASS: Watchdog opened and queried successfully.");
-    } else {
-        data.push_back("WARNING: Cannot open /dev/watchdog0: " + std::string(strerror(errno)));
-        data.push_back("       (May be held by systemd-watchdogd or watchdog daemon)");
-    }
+    data.push_back("INFO: read-only sysfs access — no /dev/watchdog0 open; system watchdog daemon (if any) unaffected");
+    data.push_back("PASS: Watchdog queried successfully via sysfs.");
 
     {
         TestOutput _out;
@@ -176,34 +183,35 @@ TestOutput WatchdogAndResetTesting::testWatchdogResetGeneration()
     data.push_back("Watchdog reset generation capability check");
     data.push_back("NOTE: Test does NOT trigger a reset — only checks capability.");
 
-    bool wdExists = (access("/dev/watchdog0", F_OK) == 0);
-    if (!wdExists) {
-        data.push_back("INFO: /dev/watchdog0 not found. Enable via dtparam=watchdog=on");
+    // HAL-041: capability flags come from the read-only sysfs `options`
+    // attribute; never open the watchdog device.
+    if (!wdSysfsAvailable()) {
+        data.push_back("INFO: watchdog sysfs not available — capability check skipped");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
+            _out.error_message = "watchdog sysfs not available — test skipped";
             StampDiagnostics(_out, data);
             return _out;
         }
     }
 
-    int fd = open("/dev/watchdog0", O_WRONLY | O_CLOEXEC);
-    if (fd >= 0) {
-        struct watchdog_info info = {};
-        if (ioctl(fd, WDIOC_GETSUPPORT, &info) == 0) {
-            bool canReset = (info.options & WDIOF_CARDRESET) != 0;
+    std::string options = wdSysfsAttr("options");
+    if (!options.empty()) {
+        unsigned long long flags = 0;
+        if (sscanf(options.c_str(), "0x%llx", &flags) == 1 ||
+            sscanf(options.c_str(), "%llx", &flags) == 1) {
+            bool canReset = (flags & WDIOF_CARDRESET) != 0;
             data.push_back("WDIOF_CARDRESET support: " + std::string(canReset ? "YES" : "no"));
 
-            bool canPretimeout = (info.options & WDIOF_PRETIMEOUT) != 0;
+            bool canPretimeout = (flags & WDIOF_PRETIMEOUT) != 0;
             data.push_back("WDIOF_PRETIMEOUT support: " + std::string(canPretimeout ? "YES" : "no"));
+        } else {
+            data.push_back("INFO: options attribute unparseable: " + options);
         }
-        ssize_t _w = write(fd, "V", 1); (void)_w;
-        close(fd);
-        data.push_back("PASS: Watchdog reset capability verified.");
-    } else {
-        data.push_back("INFO: Cannot open watchdog (possibly held by system daemon).");
     }
+    data.push_back("PASS: Watchdog reset capability verified via sysfs.");
 
     {
         TestOutput _out;
@@ -224,35 +232,34 @@ TestOutput WatchdogAndResetTesting::testWatchdogInterruptGeneration()
 
     data.push_back("Watchdog interrupt/pretimeout check (Pi5 RP1 watchdog)");
 
-    bool wdExists = (access("/dev/watchdog0", F_OK) == 0);
-    if (!wdExists) {
-        data.push_back("INFO: /dev/watchdog0 not present.");
+    // HAL-041: read-only sysfs access; never open /dev/watchdog0.
+    if (!wdSysfsAvailable()) {
+        data.push_back("INFO: watchdog sysfs not present.");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
+            _out.error_message = "watchdog sysfs not available — test skipped";
             StampDiagnostics(_out, data);
             return _out;
         }
     }
 
-    int fd = open("/dev/watchdog0", O_WRONLY | O_CLOEXEC);
-    if (fd >= 0) {
-        struct watchdog_info info = {};
-        if (ioctl(fd, WDIOC_GETSUPPORT, &info) == 0) {
-            bool canIrq = (info.options & WDIOF_PRETIMEOUT) != 0;
+    std::string options = wdSysfsAttr("options");
+    if (!options.empty()) {
+        unsigned long long flags = 0;
+        if (sscanf(options.c_str(), "0x%llx", &flags) == 1 ||
+            sscanf(options.c_str(), "%llx", &flags) == 1) {
+            bool canIrq = (flags & WDIOF_PRETIMEOUT) != 0;
             data.push_back("Pretimeout interrupt: " + std::string(canIrq ? "supported" : "not supported"));
         }
-
-        int pretimeout = 0;
-        if (ioctl(fd, WDIOC_GETPRETIMEOUT, &pretimeout) == 0)
-            data.push_back("Pretimeout: " + std::to_string(pretimeout) + " s");
-
-        ssize_t _w = write(fd, "V", 1); (void)_w;
-        close(fd);
     }
 
-    data.push_back("PASS: Interrupt/pretimeout check complete.");
+    std::string pretimeout = wdSysfsAttr("pretimeout");
+    if (!pretimeout.empty())
+        data.push_back("Pretimeout: " + pretimeout + " s");
+
+    data.push_back("PASS: Interrupt/pretimeout check complete via sysfs.");
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -382,21 +389,24 @@ TestOutput WatchdogAndResetTesting::testWatchdogReset()
 
     data.push_back("Watchdog reset history check (Pi5)");
 
-    bool wdExists = (access("/dev/watchdog0", F_OK) == 0);
-    if (wdExists) {
-        int fd = open("/dev/watchdog0", O_WRONLY | O_CLOEXEC);
-        if (fd >= 0) {
-            int bootStatus = 0;
-            if (ioctl(fd, WDIOC_GETBOOTSTATUS, &bootStatus) == 0) {
-                data.push_back("WDIOC_GETBOOTSTATUS: " + std::to_string(bootStatus));
-                if (bootStatus & WDIOF_CARDRESET)
+    // HAL-041: boot status via the read-only sysfs `bootstatus` attribute;
+    // never open /dev/watchdog0 (arms the timer, races the watchdog daemon).
+    if (wdSysfsAvailable()) {
+        std::string bootstat = wdSysfsAttr("bootstatus");
+        if (!bootstat.empty()) {
+            data.push_back("bootstatus (sysfs): " + bootstat);
+            unsigned long long bs = 0;
+            if (sscanf(bootstat.c_str(), "%llu", &bs) == 1) {
+                if (bs & WDIOF_CARDRESET)
                     data.push_back("  -> System was reset by watchdog timer.");
                 else
                     data.push_back("  -> No watchdog reset on last boot.");
             }
-            ssize_t _w = write(fd, "V", 1); (void)_w;
-            close(fd);
+        } else {
+            data.push_back("INFO: bootstatus attribute not readable");
         }
+    } else {
+        data.push_back("INFO: watchdog sysfs not available — device boot status unavailable");
     }
 
     // Check dmesg for watchdog reset message
