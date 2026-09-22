@@ -2124,21 +2124,23 @@ TestOutput CommunicationInterfaceTesting::testVariousCanBitrates()
     static const std::vector<std::string> supportedBitrates = {"10000",  "25000",  "50000",  "100000", "125000",
                                                                "250000", "500000", "800000", "1000000"};
 
+    // Acceptance criteria (measurable): the configured (500 kbps) bitrate is
+    // actually applied to a CAN interface and the driver reports that rate.
+    // No CAN interfaces -> SKIPPED (no CAN domain).
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
-        data.push_back("[INFO] No CAN interfaces found; documenting supported bitrates");
+        data.push_back("[SKIP] No CAN interfaces found - CAN bitrate configuration cannot be verified on this DUT");
         for (const auto& br : supportedBitrates) {
-            data.push_back("[INFO] " + br + " bps: supported by mttcan");
+            data.push_back("[INFO] " + br + " bps: documented mttcan-supported rate");
         }
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    bool anyRateOk = false;
     for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
         // Task 61: actually APPLY a configured bitrate and MEASURE the
@@ -2158,21 +2160,28 @@ TestOutput CommunicationInterfaceTesting::testVariousCanBitrates()
         }
 
         data.push_back("[INFO] " + ifName + ": state=" + state);
-        if (!measured.empty()) {
-            data.push_back("[PASS] " + ifName + ": measured bitrate=" + measured + " bps (target 500000)");
+        bool rateOk = (measured == "500000");
+        if (rateOk) {
+            data.push_back("[PASS] " + ifName + ": measured bitrate=" + measured + " bps (target 500000, apply: " + applyResult + ")");
+            anyRateOk = true;
+        } else if (!measured.empty()) {
+            data.push_back("[FAIL] " + ifName + ": measured bitrate=" + measured + " bps (target 500000, apply: " + applyResult + ")");
         } else {
-            data.push_back("[ERROR] " + ifName + ": no bitrate reported by driver; "
-                           "cannot verify rate (apply: " + applyResult + ")");
+            data.push_back("[FAIL] " + ifName + ": no bitrate reported by driver - cannot verify rate (apply: " + applyResult + ")");
         }
         data.push_back("       Supported bitrates: 10k, 25k, 50k, 100k, 125k, "
                        "250k, 500k, 800k, 1000k bps");
         data.push_back("       CAN FD data phase: up to 8 Mbps");
     }
 
+    data.push_back(anyRateOk
+        ? "[PASS] At least one interface applied and reports the 500 kbps target rate"
+        : "[FAIL] No interface applied/reported the 500 kbps target rate");
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = anyRateOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = anyRateOk ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
