@@ -342,6 +342,17 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
 
     data.push_back("=== CSI-2 C-PHY Operation (Raspberry Pi 5) ===");
 
+    // Acceptance criteria (measurable): the DUT has a Pi5 Unicam CSI-2
+    // controller (kernel module loaded, platform device, or DT node) AND its
+    // CSI clocks are running (at least one "csi*" clock entry in debugfs).
+    // No CSI controller and no CSI clocks > SKIPPED (no CSI-2 hardware).
+    // (The Pi5 unicam is D-PHY/C-PHY capable; C-PHY capable-ness is a
+    // hardware property, verified by presence of the capable controller.)
+
+    bool controllerPresent = isModuleLoaded("unicam") || isModuleLoaded("unicam");
+    if (controllerPresent)
+        data.push_back("[PASS] Unicam kernel module loaded (C-PHY capable controller)");
+
     // Pi5 Unicam supports C-PHY; check via device-tree
     const std::vector<std::string> dtPaths = {
         "/proc/device-tree/host1x@13e00000/unicam@1f00110000",
@@ -351,6 +362,7 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
     for (const auto& p : dtPaths) {
         if (pathExists(p)) {
             dtFound = true;
+            controllerPresent = true;
             data.push_back("[PASS] Unicam DT node found: " + p);
             // Check for cphy compatible property
             std::string compat = readFile(p + "/compatible");
@@ -359,10 +371,22 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
             break;
         }
     }
-    if (!dtFound)
-        data.push_back("[INFO] Unicam device-tree node not directly readable (may need root)");
+    // Platform-device enumeration (unicam devices also appear here)
+    const std::string platformBase = "/sys/bus/platform/devices";
+    if (pathExists(platformBase)) {
+        for (const auto& e : listDir(platformBase)) {
+            if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) {
+                controllerPresent = true;
+                data.push_back("[PASS] Unicam platform device found (C-PHY capable controller)");
+                break;
+            }
+        }
+    }
+    if (!controllerPresent && !dtFound)
+        data.push_back("[INFO] Unicam device-tree/platform/module not detected");
 
     // Check /sys/kernel/debug/clk for csi clocks
+    bool csiClkFound = false;
     const std::string bpmpClk = "/sys/kernel/debug/clk";
     if (pathExists(bpmpClk)) {
         auto clkEntries = listDir(bpmpClk);
@@ -376,16 +400,26 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
             }
         }
         if (csiClkCount == 0)
-            data.push_back("[INFO] No CSI clock entries found in debugfs");
-        else
+            data.push_back("[FAIL] No CSI clock entries found in debugfs – CSI clocks not running");
+        else {
             data.push_back("[PASS] " + std::to_string(csiClkCount) + " CSI clock(s) found");
+            csiClkFound = true;
+        }
     } else {
-        data.push_back("[INFO] Pi5 firmware clock debug-fs not accessible");
+        data.push_back("[FAIL] /sys/kernel/debug/clk not accessible – cannot verify CSI clocks");
     }
 
-    // Raspberry Pi 5 supports C-PHY on its Unicam; report capability
-    data.push_back("[PASS] Raspberry Pi 5 Unicam hardware supports both D-PHY and C-PHY modes");
+    // No CSI hardware at all -> SKIPPED (never PASS for absent hardware).
+    if (!controllerPresent && !csiClkFound) {
+        data.push_back("[SKIP] No CSI-2 hardware: no unicam controller and no CSI clocks");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
+    passed = controllerPresent && csiClkFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
