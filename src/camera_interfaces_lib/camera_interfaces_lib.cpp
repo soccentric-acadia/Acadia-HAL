@@ -1199,6 +1199,10 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
     data.push_back("=== ISP Pipeline Processing (Raspberry Pi 5) ===");
     data.push_back("[INFO] Raspberry Pi 5 features a dedicated ISP with two pipelines (ISP-A and ISP-B)");
 
+    // Acceptance criteria (measurable): the Pi5 ISP platform device (nvisp /
+    // rp1-isp) is enumerated in sysfs. No ISP device and no CSI/unicam
+    // hardware > SKIPPED (no camera subsystem on this DUT).
+
     // 1. Check for ISP platform device
     bool ispFound = false;
     const std::vector<std::string> ispIds = {"nvisp", "isp", "rp1-isp", "15c00000"};
@@ -1222,7 +1226,7 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
         }
     }
     if (!ispFound)
-        data.push_back("[INFO] ISP platform device not directly visible in sysfs");
+        data.push_back("[FAIL] ISP platform device (nvisp/rp1-isp) not enumerated in sysfs");
 
     // 2. Check for V4L2 media device (ISP exposed via media controller)
     for (int i = 0; i < 8; ++i) {
@@ -1241,10 +1245,12 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
 
     // 3. Check NvMedia / RP1 Vi device
     const std::string viPath = "/dev/rp1-vi0";
-    if (pathExists(viPath))
+    if (pathExists(viPath)) {
         data.push_back("[PASS] RP1 VI device found: " + viPath);
-    else
+        ispFound = true;
+    } else {
         data.push_back("[INFO] /dev/rp1-vi0 not present (may use V4L2 video nodes instead)");
+    }
 
     // 4. Try querying ISP statistics via v4l2 (Pi5-specific ISP stats node)
     std::string ispStats = runCmd("v4l2-ctl --list-devices 2>/dev/null | grep -i 'isp\\|vi\\|unicam'");
@@ -1257,7 +1263,28 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
     } else
         data.push_back("[INFO] v4l2-ctl not available or no ISP V4L2 device listed");
 
-    data.push_back("[PASS] Pi5 CSI hardware: 2 pipelines");
+    // Is there any CSI camera hardware at all? (unicam controller or a sensor)
+    bool csiPresent = isModuleLoaded("unicam") || !getVideoDevices().empty();
+    if (isModuleLoaded("unicam") || pathExists("/sys/bus/platform/devices")) {
+        if (!csiPresent) {
+            for (const auto& e : listDir("/sys/bus/platform/devices")) {
+                if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) {
+                    csiPresent = true;
+                    break;
+                }
+            }
+        }
+    }
+    if (!ispFound && !csiPresent) {
+        data.push_back("[SKIP] No camera subsystem: no ISP platform device and no CSI/unicam hardware detected");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    passed = ispFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
