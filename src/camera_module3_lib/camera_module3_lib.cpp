@@ -294,24 +294,52 @@ TestOutput CameraModule3Testing::testStillCapture()
     std::vector<std::string> data;
     data.push_back("=== Camera Module 3 Still Capture ===");
 
-    std::string out = cm3RunCmd(
-        "libcamera-still --timeout 200 --output /tmp/cm3_still.jpg 2>&1 | head -10");
-    bool ok = !out.empty() && out.find("ERROR") == std::string::npos &&
-              out.find("error") == std::string::npos;
-    data.push_back(out.empty() ? "[INFO] libcamera-still not available"
-                               : (ok ? "[PASS] Still capture OK:\n" + out
-                                     : "[INFO] Still capture output:\n" + out));
+    // Acceptance criteria (measurable): a real still capture executes and
+    // writes a non-empty image file. No camera attached -> SKIPPED;
+    // libcamera tooling absent -> SKIPPED (HAL-033); capture / file failure
+    // -> FAIL.
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - still capture cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
 
-    // Check output file
+    const std::string outPath = "/tmp/cm3_still.jpg";
+    cm3RunCmd("rm -f " + outPath);
+    std::string tool = cm3RunCmd("command -v libcamera-still 2>/dev/null");
+    if (tool.empty()) tool = cm3RunCmd("command -v rpicam-still 2>/dev/null");
+    if (tool.empty()) {
+        data.push_back("[SKIP] libcamera-still/rpicam-still not installed - cannot execute a still capture");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    std::string out = cm3RunCmd(
+        tool + " --timeout 200 --output " + outPath + " 2>&1 | head -10");
+    if (!out.empty())
+        data.push_back("[INFO] Capture tool output:\n" + out);
+
+    // Check output file - measurable acceptance criterion.
     struct stat st {};
-    if (stat("/tmp/cm3_still.jpg", &st) == 0 && st.st_size > 0)
-        data.push_back("[PASS] /tmp/cm3_still.jpg written (" +
-                       std::to_string(st.st_size / 1024) + " KB)");
+    bool fileOk = (stat(outPath.c_str(), &st) == 0 && st.st_size > 0);
+    data.push_back(fileOk
+                       ? "[PASS] " + outPath + " written (" + std::to_string(st.st_size / 1024) + " KB)"
+                       : "[FAIL] " + outPath + " was not written (or is empty) - capture did not succeed");
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = fileOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = fileOk ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
