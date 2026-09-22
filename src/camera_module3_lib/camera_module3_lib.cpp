@@ -227,22 +227,60 @@ TestOutput CameraModule3Testing::testHdrMode()
     data.push_back("[INFO] IMX708 HDR uses staggered dual-exposure readout");
     data.push_back("[INFO] libcamera HDR control: --hdr (HdrModeMultiExposure / SingleExposure)");
 
-    std::string hdrInfo = cm3RunCmd(
-        "libcamera-hello --list-cameras 2>/dev/null | grep -i 'hdr'");
-    data.push_back(hdrInfo.empty() ? "[INFO] HDR not listed (camera absent or old libcamera)"
-                                   : "[PASS] HDR info: " + hdrInfo);
+    // Acceptance criteria (measurable): a camera is attached AND a real HDR
+    // still capture (libcamera-still --hdr) produces a non-empty image file.
+    // No camera -> SKIPPED; libcamera tooling absent -> SKIPPED (HAL-033);
+    // capture failure / empty file -> FAIL.
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - Camera Module 3 HDR cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
+
+    if (cm3RunCmd("command -v libcamera-still 2>/dev/null").empty() &&
+        cm3RunCmd("command -v rpicam-still 2>/dev/null").empty()) {
+        data.push_back("[SKIP] libcamera-still/rpicam-still not installed - HDR capture cannot be executed");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     // Try an HDR capture
+    const std::string outPath = "/tmp/cm3_hdr_test.jpg";
+    cm3RunCmd("rm -f " + outPath);
+    std::string tool = cm3RunCmd("command -v libcamera-still 2>/dev/null");
+    if (tool.empty()) tool = cm3RunCmd("command -v rpicam-still 2>/dev/null");
+    // Use rpicam-still if libcamera-still is not present (HAL-025).
     std::string hdrTest = cm3RunCmd(
-        "libcamera-still --timeout 100 --hdr --output /tmp/cm3_hdr_test.jpg 2>&1 | head -5");
+        tool + " --timeout 100 --hdr --output " + outPath + " 2>&1 | head -5");
     if (!hdrTest.empty())
         data.push_back("[INFO] HDR capture output: " + hdrTest);
 
-    data.push_back("[INFO] HDR tonemapping done in bcm2835-isp (not on-sensor)");
+    // Verify a non-empty image file was produced - measurable acceptance.
+    std::ifstream imgCheck(outPath, std::ios::binary | std::ios::ate);
+    bool hdrOk = false;
+    if (imgCheck) {
+        long sz = imgCheck.tellg();
+        hdrOk = (sz > 0);
+        data.push_back(hdrOk ? "[PASS] HDR still captured: " + std::to_string(sz) + " bytes"
+                             : "[FAIL] HDR capture produced an empty file");
+    } else {
+        data.push_back("[FAIL] HDR capture produced no image file - libcamera-still --hdr did not succeed");
+    }
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = hdrOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = hdrOk ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
