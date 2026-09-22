@@ -1910,16 +1910,40 @@ TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
         close(fd);
     }
 
-    if (!found) {
-        data.push_back("[INFO] Pi5 RP1 NDTM I2C controller supports repeated-start natively");
-        data.push_back("[PASS] Repeated-start supported via I2C_RDWR ioctl with chained messages");
+    // Acceptance criteria (measurable): at least one I2C adapter advertises
+    // full I2C (I2C_FUNC_I2C), which implies repeated-start / combined
+    // messages. No I2C buses -> SKIPPED (no I2C domain). Buses exist but
+    // none advertises the capability -> SKIPPED (driver does not expose the
+    // capability flag; cannot be verified).
+    bool hasRestart = false;
+    for (const auto& dev : i2cDevs) {
+        int fd = open(dev.c_str(), O_RDWR);
+        if (fd < 0) continue;
+#ifdef I2C_FUNCS
+        unsigned long funcs = 0;
+        if (ioctl(fd, I2C_FUNCS, &funcs) == 0 && (funcs & I2C_FUNC_I2C))
+            hasRestart = true;
+#endif
+        close(fd);
     }
 
-    data.push_back("[INFO] Use struct i2c_rdwr_ioctl_data with I2C_M_NOSTART=0 for repeated-start");
+    if (i2cDevs.empty()) {
+        data.push_back("[SKIP] No I2C buses present on this DUT - repeated-start cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back(hasRestart
+        ? "[PASS] At least one I2C adapter advertises full I2C (I2C_FUNC_I2C) - repeated-start supported"
+        : "[SKIP] I2C buses present but no adapter advertises I2C_FUNC_I2C - repeated-start capability cannot be verified");
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = hasRestart ? hal::Status::PASS : hal::Status::SKIPPED;
+        _out.severity = hasRestart ? hal::Severity::INFO : hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
