@@ -1252,17 +1252,19 @@ TestOutput CommunicationInterfaceTesting::testMultipleSpiDevices()
     data.push_back("=== Multiple SPI Devices per Bus (Pi5) ===");
 
     std::vector<std::string> devs = listDevNodes("/sys/bus/spi/devices", "spi");
+    // Acceptance criteria (measurable): at least one SPI slave device is
+    // registered and enumerable on a bus. No SPI slave devices at all (no
+    // peripheral attached) -> SKIPPED (hardware absent).
     if (devs.empty()) {
-        data.push_back("[INFO] No SPI slave devices registered in /sys/bus/spi/devices");
-        data.push_back("[INFO] Connect SPI peripherals and load appropriate drivers to populate this list");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No SPI slave devices registered in /sys/bus/spi/devices");
+        data.push_back("[INFO] Attach SPI peripherals and load their drivers to test this");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
+    data.push_back("[PASS] " + std::to_string(devs.size()) + " SPI slave device(s) registered");
 
     // Group by bus number
     std::map<int, std::vector<std::string>> busDev;
