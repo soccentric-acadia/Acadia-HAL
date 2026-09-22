@@ -942,14 +942,22 @@ TestOutput CommunicationInterfaceTesting::testSpiSlaveMode()
         }
     }
 
+    // Acceptance criteria (measurable): an SPI controller is actually
+    // configured in slave mode ('spi-slave' DT property). A controller
+    // configured that way -> PASS. None configured -> the DUT is not set up
+    // for SPI-slave operation, which is a configuration choice, not a
+    // hardware failure -> SKIPPED (not applicable to this DUT configuration).
     if (slaveCount == 0) {
-        data.push_back("[INFO] No SPI controllers configured in slave mode");
-        data.push_back("[INFO] Pi5 supports SPI slave mode via 'spi-slave' DT property");
-        data.push_back("[INFO] Slave mode requires kernel CONFIG_SPI_SLAVE=y");
-    } else {
-        data.push_back("[PASS] " + std::to_string(slaveCount) + " SPI controller(s) in slave mode");
+        data.push_back("[SKIP] No SPI controllers configured in slave mode");
+        data.push_back("[INFO] Slave mode is enabled via the 'spi-slave' DT property + CONFIG_SPI_SLAVE=y");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    data.push_back("[PASS] " + std::to_string(slaveCount) + " SPI controller(s) in slave mode");
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
