@@ -787,7 +787,7 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing(){
                 std::string state = readFile(r + "/state");
                 std::string voltage = readFile(r + "/microvolts");
                 bool enabled = state.find("enabled") != std::string::npos || (voltage != "0" && !voltage.empty());
-                data.push_back((enabled ? "[PASS] " : "[FAIL] ") + "Regulator: " + name + " state=" + state + " voltage=" + (voltage.empty() ? "N/A" : voltage + " uV"));
+                data.push_back(std::string(enabled ? "[PASS] " : "[FAIL] ") + "Regulator: " + name + " state=" + state + " voltage=" + (voltage.empty() ? "N/A" : voltage + " uV"));
                 camRegCount++;
             }
         }
