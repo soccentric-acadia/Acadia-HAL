@@ -1524,15 +1524,23 @@ TestOutput CommunicationInterfaceTesting::testStandardMode()
         }
     }
 
+    // Acceptance criteria (measurable): I2C standard mode (100 kHz) is
+    // declared for at least one bus (DT clock-frequency readable) or I2C buses
+    // are present (RP1 I2C controllers support 100 kHz by hardware default).
+    // No I2C domain at all -> SKIPPED.
     if (!found) {
         data.push_back("[INFO] I2C DT clock-frequency not readable; checking sysfs");
         std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
         if (i2cDevs.empty()) {
-            data.push_back("[INFO] No I2C devices; Pi5 I2C supports 100 kHz standard mode");
-        } else {
-            data.push_back("[PASS] " + std::to_string(i2cDevs.size()) +
-                           " I2C bus(es) present; standard mode 100 kHz supported by RP1 I2C");
+            data.push_back("[SKIP] No I2C buses present on this DUT - I2C standard mode cannot be verified");
+            TestOutput _out;
+            _out.status = hal::Status::SKIPPED;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
         }
+        data.push_back("[PASS] " + std::to_string(i2cDevs.size()) +
+                       " I2C bus(es) present; 100 kHz standard mode is the RP1 I2C hardware default");
     }
 
     {
