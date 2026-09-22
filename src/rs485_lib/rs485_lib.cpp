@@ -34,11 +34,12 @@ TestOutput Rs485Testing::testRs485PortPresent()
 {
     std::vector<std::string> data;
     data.push_back("=== RS-485 Port Presence ===");
-    bool passed = pathExists(RPI5_RS485_UART);
+    // HAL-501: use the dedicated RS-485 port (never the debug console).
+    bool passed = pathExists(acadia_rs485_uart());
     if (passed) {
-        data.push_back("[PASS] RS-485 UART present: " + std::string(RPI5_RS485_UART));
+        data.push_back("[PASS] RS-485 UART present: " + std::string(acadia_rs485_uart()));
     } else {
-        data.push_back("[FAIL] " + std::string(RPI5_RS485_UART) + " not present");
+        data.push_back("[FAIL] " + std::string(acadia_rs485_uart()) + " not present");
     }
     {
         TestOutput _out;
@@ -54,7 +55,7 @@ TestOutput Rs485Testing::testRs485ModeConfigure()
     std::vector<std::string> data;
     data.push_back("=== RS-485 Mode Configuration ===");
     bool passed = false;
-    int fd = open(RPI5_RS485_UART, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    int fd = open(acadia_rs485_uart(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd >= 0) {
         struct termios tio;
         if (tcgetattr(fd, &tio) == 0) {
@@ -85,13 +86,13 @@ TestOutput Rs485Testing::testRs485HalfDuplex()
     std::vector<std::string> data;
     data.push_back("=== RS-485 Half-Duplex (TIOCSRS485) ===");
     bool passed = false;
-    int fd = open(RPI5_RS485_UART, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    int fd = open(acadia_rs485_uart(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd >= 0) {
         struct serial_rs485 rs485conf;
         memset(&rs485conf, 0, sizeof(rs485conf));
         rs485conf.flags = SER_RS485_ENABLED | SER_RS485_RTS_ON_SEND;
         if (ioctl(fd, TIOCSRS485, &rs485conf) == 0) {
-            data.push_back("[PASS] RS485 mode enabled on " + std::string(RPI5_RS485_UART));
+            data.push_back("[PASS] RS485 mode enabled on " + std::string(acadia_rs485_uart()));
             passed = true;
         } else {
             data.push_back("[WARN] TIOCSRS485 not supported: " + std::string(strerror(errno)));

@@ -36,6 +36,7 @@
 
 #pragma once
 
+#include <cstdlib>
 #include <fstream>
 #include <string>
 
@@ -177,9 +178,18 @@ inline constexpr const char* RPI5_CAN_IFACE = "can0";
 inline constexpr const char* RPI5_CAN_SYSFS = "/sys/class/net";
 
 // ---------------------------------------------------------------------------
-// RS-485 — PL011 UART used in RS-485 half-duplex mode
+// RS-485 — dedicated half-duplex port; must NOT be the debug console
 // ---------------------------------------------------------------------------
-inline constexpr const char* RPI5_RS485_UART = "/dev/ttyAMA0";
+// HAL-501: /dev/ttyAMA0 is the debug console UART. RS-485 owns a different
+// port (default: the secondary UART). The active port is overridable at
+// runtime via the ACADIA_RS485_UART environment variable so integrations can
+// point it at whatever UART the RS-485 transceiver is wired to.
+inline constexpr const char* RPI5_RS485_UART = "/dev/ttyAMA10";
+inline const char* acadia_rs485_uart()
+{
+    const char* env = getenv("ACADIA_RS485_UART");
+    return (env && *env) ? env : RPI5_RS485_UART;
+}
 
 // ---------------------------------------------------------------------------
 // Analog input — IIO ADC devices (e.g. MCP3008 on SPI, or RP1 ADC)
