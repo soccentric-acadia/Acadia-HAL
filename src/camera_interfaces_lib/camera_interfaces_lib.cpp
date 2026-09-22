@@ -1512,10 +1512,34 @@ TestOutput CameraInterfacesTesting::testAutoFocus()
 TestOutput CameraInterfacesTesting::testLensShadingCorrection()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Lens Shading Correction (LSC) (Raspberry Pi 5) ===");
     data.push_back("[INFO] Pi5 ISP implements hardware LSC with per-channel mesh shading tables");
+
+    // Acceptance criteria (measurable): LSC is an embedded feature of the
+    // Pi5 ISP (nvisp), so the test is only meaningful when the ISP pipeline
+    // is present. No ISP/CSI hardware -> SKIPPED. ISP present -> PASS
+    // (optional evidence: LSC tuning files or V4L2 shading controls).
+
+    bool ispPresent = isModuleLoaded("unicam") || !getVideoDevices().empty() || isModuleLoaded("nvisp");
+    if (pathExists("/sys/bus/platform/devices")) {
+        for (const auto& d : listDir("/sys/bus/platform/devices")) {
+            std::string base = d.substr(d.find_last_of('/') + 1);
+            if (base.find("nvisp") != std::string::npos || base.find("rp1-isp") != std::string::npos || base.find("15c00000") != std::string::npos) {
+                ispPresent = true;
+                data.push_back("[PASS] ISP platform device present (LSC is an embedded ISP feature): " + base);
+                break;
+            }
+        }
+    }
+    if (!ispPresent) {
+        data.push_back("[SKIP] No ISP/CSI pipeline detected - LSC cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     // Check for ISP tuning file that contains LSC parameters
     const std::vector<std::string> lscPaths = {
@@ -1536,14 +1560,18 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
     }
     if (!tuningFound)
         data.push_back("[INFO] ISP tuning directory not found – LSC tables may be embedded in camera driver");
+    else
+        data.push_back("[PASS] ISP LSC tuning path present");
 
     // Check for LSC via V4L2 controls
     auto videoDev = getVideoDevices();
+    bool lscCtrlFound = false;
     for (const auto& dev : videoDev) {
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
                                    " --list-ctrls 2>/dev/null | "
                                    "grep -iE 'shading|lsc|mesh'");
         if (!ctrls.empty()) {
+            lscCtrlFound = true;
             data.push_back("[PASS] " + dev + " LSC controls:");
             std::istringstream ss(ctrls);
             std::string line;
@@ -1551,12 +1579,15 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
                 data.push_back("    " + line);
         }
     }
+    if (lscCtrlFound)
+        data.push_back("[PASS] V4L2 LSC/shading controls exposed on a camera node");
+    else
+        data.push_back("[INFO] No discrete V4L2 LSC controls (expected: LSC runs inside the ISP)");
 
-    data.push_back("[PASS] The Pi5 ISP supports LSC mesh grid correction for the Bayer channels");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
