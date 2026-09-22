@@ -118,9 +118,12 @@ inline constexpr const char* RPI5_ALSA_CARDS = "/proc/asound/cards";
 
 // ---------------------------------------------------------------------------
 // Debug / Serial — PL011 UART (AMA0 is the primary debug UART on Pi5)
+// X-005: allocations are owned by the fleet-wide table
+// (parent doc/uart-allocation.md). UART0 = debug console ONLY; the Pico W
+// link and RS-485 have their own UARTs — see RPI5_UART1 / acadia_rs485_uart().
 // ---------------------------------------------------------------------------
 inline constexpr const char* RPI5_DEBUG_UART = "/dev/ttyAMA0";
-// Secondary UART (mini-UART is /dev/ttyS0 but PL011 is preferred)
+// Secondary UART (Pico W co-processor link per the pin map)
 inline constexpr const char* RPI5_UART1 = "/dev/ttyAMA10";
 
 // ---------------------------------------------------------------------------
