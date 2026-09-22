@@ -443,6 +443,11 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
     data.push_back("=== Multiple Camera Simultaneous Operation (Raspberry Pi 5) ===");
     data.push_back("[INFO] Raspberry Pi 5 supports up to 16 simultaneous CSI-2 camera streams");
 
+    // Acceptance criteria (measurable): multi-cam operation requires at least
+    // two enumerated CSI camera devices AND the ISP/Video-Input platform
+    // device to be present. Zero attached cameras > SKIPPED (hardware absent),
+    // exactly one > FAIL (the multi-camera criterion is not met).
+
     // Enumerate all video nodes
     auto videoDev = getVideoDevices();
     data.push_back("[INFO] Detected " + std::to_string(videoDev.size()) + " /dev/video* node(s)");
@@ -463,12 +468,12 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
         }
     }
 
-    if (cameraCount > 1)
+    if (cameraCount >= 2)
         data.push_back("[PASS] " + std::to_string(cameraCount) + " camera device(s) enumerated for concurrent operation");
     else if (cameraCount == 1)
-        data.push_back("[PASS] 1 camera device found (connect more sensors to test multi-cam)");
+        data.push_back("[FAIL] Only 1 camera device enumerated – the multi-camera criterion (>= 2 sensors) is not met");
     else
-        data.push_back("[INFO] No cameras connected – hardware supports concurrent operation when cameras are attached");
+        data.push_back("[FAIL] No cameras connected – cannot verify concurrent camera operation");
 
     // Check ISP device (vi / nvisp)
     bool ispFound = false;
@@ -484,8 +489,19 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
         }
     }
     if (!ispFound)
-        data.push_back("[INFO] VI platform device not directly visible in sysfs (may be embedded)");
+        data.push_back("[FAIL] Video Input (VI) platform device not present in sysfs");
 
+    // Zero attached cameras -> SKIPPED (never PASS for absent hardware).
+    if (cameraCount == 0 && videoDev.empty()) {
+        data.push_back("[SKIP] No MIPI cameras attached – cannot verify concurrent camera operation");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    passed = (cameraCount >= 2) && ispFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
