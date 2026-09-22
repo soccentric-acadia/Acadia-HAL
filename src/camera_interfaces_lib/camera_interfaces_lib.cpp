@@ -1377,16 +1377,26 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
 
     data.push_back("=== Auto White Balance (AWB) Verification (Raspberry Pi 5) ===");
 
+    // Acceptance criteria (measurable): at least one camera node exposes
+    // V4L2 white-balance controls (white_balance/awb/color_temp/wb_).
+
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No camera nodes; AWB handled by Argus/ISP on the target SoC");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No camera nodes — no camera attached; AWB cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (runCmd("command -v v4l2-ctl 2>/dev/null").empty()) {
+        data.push_back("[SKIP] v4l2-ctl unavailable; V4L2 AWB controls cannot be enumerated");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool awbFound = false;
@@ -1404,17 +1414,12 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
         }
     }
 
-    if (!awbFound)
-        data.push_back("[INFO] AWB V4L2 controls not exposed; managed by nvargus/ISP on the target SoC");
-
-    // Check Argus daemon
-    std::string argus = runCmd("pgrep -x nvargus-daemon 2>/dev/null");
-    if (!argus.empty())
-        data.push_back("[PASS] nvargus-daemon (AWB engine) active, PID " + argus);
+    if (awbFound)
+        data.push_back("[PASS] V4L2 white-balance controls are exposed on at least one camera node");
     else
-        data.push_back("[INFO] nvargus-daemon not running");
+        data.push_back("[FAIL] No V4L2 white-balance controls exposed - the AWB criterion is not met");
 
-    data.push_back("[INFO] Pi5 ISP AWB: Grey-World, Perfect Reflector, and Bayesian estimation modes");
+    passed = awbFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
