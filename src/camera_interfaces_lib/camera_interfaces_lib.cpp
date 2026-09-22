@@ -1307,16 +1307,27 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
 
     data.push_back("=== Auto Exposure (AE) Verification (Raspberry Pi 5) ===");
 
+    // Acceptance criteria (measurable): at least one camera node exposes
+    // V4L2 auto-exposure controls (exposure/gain). No camera attached ->
+    // SKIPPED; camera attached but no AE controls -> FAIL.
+
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No camera nodes — test skipped (camera hardware absent)");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No camera nodes — no camera attached; AE cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (runCmd("command -v v4l2-ctl 2>/dev/null").empty()) {
+        data.push_back("[SKIP] v4l2-ctl unavailable; V4L2 AE controls cannot be enumerated");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool aeFound = false;
@@ -1335,22 +1346,16 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
         }
     }
 
-    if (!aeFound)
-        data.push_back("[INFO] AE V4L2 controls not exposed; on the target SoC, AE is handled by the Argus camera framework");
+    if (aeFound)
+        data.push_back("[PASS] V4L2 auto-exposure controls are exposed on at least one camera node");
+    else
+        data.push_back("[FAIL] No V4L2 auto-exposure controls exposed - the AE criterion is not met");
 
-    // Check for libargus or nvcamera service (Pi5 3A daemon)
-    std::string argus = runCmd("systemctl is-active nvargus-daemon 2>/dev/null");
-    if (argus == "active")
-        data.push_back("[PASS] nvargus-daemon (Pi5 3A / AE service) is active");
-    else {
-        std::string pid = runCmd("pgrep -x nvargus-daemon 2>/dev/null");
-        if (!pid.empty())
-            data.push_back("[PASS] nvargus-daemon running (PID " + pid + ")");
-        else
-            data.push_back("[INFO] nvargus-daemon not running; start with 'systemctl start nvargus-daemon'");
-    }
+    // Informational: platform 3A daemon (nvargus-daemon is the legacy Jetson
+    // name kept for tooling compatibility).
+    (void)runCmd("systemctl is-active nvargus-daemon 2>/dev/null");
 
-    data.push_back("[INFO] Pi5 ISP AE: supports shutter speed 1us-1s, analog gain 1x-16x");
+    passed = aeFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
