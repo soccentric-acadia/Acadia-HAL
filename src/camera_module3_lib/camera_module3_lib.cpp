@@ -172,30 +172,46 @@ TestOutput CameraModule3Testing::testAutofocus()
     data.push_back("[INFO] IMX708 supports phase-detection AF with VCM actuator");
     data.push_back("[INFO] AF modes: AfModeContinuous, AfModeAuto, AfModeManual");
 
+    // Acceptance criteria (measurable): a CSI camera is attached AND AF/VCM
+    // evidence is present (AF controls in the libcamera camera list, or a
+    // VCM actuator driver in dmesg). The IMX708 has PDAF, so an attached
+    // camera without AF evidence -> FAIL. No camera -> SKIPPED.
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - Camera Module 3 AF cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
+
     // libcamera-hello: check AF controls
     std::string afCtl = cm3RunCmd(
         "libcamera-hello --list-cameras 2>/dev/null | grep -i 'focus\\|vcm\\|af'");
     if (!afCtl.empty())
         data.push_back("[PASS] AF-related control found:\n" + afCtl);
     else
-        data.push_back("[INFO] AF control info not available (camera may be absent)");
+        data.push_back("[INFO] No AF/VCM control listed by libcamera");
 
     // Check for VCM I2C device (DW9807 or similar) — typically shows up in dmesg
     std::string vcmDmesg = cm3RunCmd("dmesg 2>/dev/null | grep -i 'vcm\\|dw9807\\|focus' | head -3");
     if (!vcmDmesg.empty())
         data.push_back("[PASS] VCM actuator in dmesg: " + vcmDmesg);
 
-    // Capture with AF: quick 100ms preview
-    std::string afTest = cm3RunCmd(
-        "libcamera-still --timeout 100 --autofocus-mode continuous "
-        "--output /tmp/cm3_af_test.jpg 2>&1 | head -5");
-    if (!afTest.empty())
-        data.push_back("[INFO] AF capture: " + afTest);
+    bool afEvidence = !afCtl.empty() || !vcmDmesg.empty();
+    if (afEvidence)
+        data.push_back("[PASS] AF/VCM evidence present on the attached camera");
+    else
+        data.push_back("[FAIL] Camera attached but no AF/VCM evidence - IMX708 PDAF is expected");
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = afEvidence ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = afEvidence ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
