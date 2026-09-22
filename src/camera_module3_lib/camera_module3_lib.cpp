@@ -387,33 +387,46 @@ TestOutput CameraModule3Testing::testPixelFormats()
     data.push_back("=== Camera Module 3 Pixel Formats ===");
     data.push_back("[INFO] Expected: SRGGB10 (RAW10), RG10, YUYV, RGB888, NV12");
 
-    bool vid0 = cm3PathExists(RPI5_CSI_DEVICE0);
-    if (vid0)
-    {
-        std::string fmts = cm3RunCmd(
-            "v4l2-ctl --device=/dev/video0 --list-formats 2>/dev/null");
-        if (!fmts.empty())
-        {
-            data.push_back("[PASS] v4l2 formats:\n" + fmts);
-            bool raw10 = fmts.find("RG10") != std::string::npos ||
-                         fmts.find("SRGGB10") != std::string::npos;
-            data.push_back(raw10 ? "[PASS] RAW10 format available"
-                                 : "[INFO] RAW10 format not found");
-            {
-                TestOutput _out;
-                _out.status = hal::Status::PASS;
-                _out.severity = hal::Severity::INFO;
-                StampDiagnostics(_out, data);
-                return _out;
-            }
-        }
+    // Acceptance criteria (measurable): the attached IMX708 camera advertises
+    // a RAW Bayer format (RAW10: RG10/SRGGB10/SGRBG10/SGBRG10/SBGGR10).
+    // No camera attached -> SKIPPED; attached but no RAW10 -> FAIL.
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - pixel formats cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
+
+    std::string fmts = cm3RunCmd("v4l2-ctl --device=/dev/video0 --list-formats 2>/dev/null");
+    if (!fmts.empty())
+        data.push_back("[PASS] v4l2 formats:\n" + fmts);
+    else if (cm3RunCmd("command -v v4l2-ctl 2>/dev/null").empty()) {
+        data.push_back("[SKIP] v4l2-ctl not installed - V4L2 pixel formats cannot be enumerated");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    data.push_back("[INFO] /dev/video0 not present; pixel format list unavailable");
+    bool raw10 = fmts.find("RG10") != std::string::npos ||
+                 fmts.find("SRGGB10") != std::string::npos ||
+                 fmts.find("SGRBG10") != std::string::npos ||
+                 fmts.find("SGBRG10") != std::string::npos ||
+                 fmts.find("SBGGR10") != std::string::npos;
+    data.push_back(raw10 ? "[PASS] RAW10 (10-bit Bayer) format advertised"
+                         : "[FAIL] Camera attached but no RAW10 Bayer format advertised");
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = raw10 ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = raw10 ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
