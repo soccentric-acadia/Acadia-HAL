@@ -1890,7 +1890,6 @@ TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
     data.push_back("=== I2C Repeated-Start Condition (Pi5) ===");
 
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
-    bool found = false;
     for (const auto& dev : i2cDevs) {
         int fd = open(dev.c_str(), O_RDWR);
         if (fd < 0)
@@ -1898,7 +1897,6 @@ TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
 #ifdef I2C_FUNCS
         unsigned long funcs = 0;
         if (ioctl(fd, I2C_FUNCS, &funcs) == 0) {
-            found = true;
             // I2C_FUNC_I2C implies combined message (repeated-start) support
             bool hasRestart = (funcs & I2C_FUNC_I2C) != 0;
             data.push_back(std::string(hasRestart ? "[PASS] " : "[INFO] ") + dev + ": Repeated-start (I2C_RDWR combined messages) " +
