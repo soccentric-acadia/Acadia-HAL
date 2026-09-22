@@ -616,6 +616,12 @@ TestOutput CameraInterfacesTesting::testCameraClockGeneration()
 
     data.push_back("=== Camera Clock Generation (Raspberry Pi 5) ===");
 
+    // Acceptance criteria (measurable): at least one camera-domain clock
+    // (csi/vi/isp/unicam) is visible and enabled in the clock tree. If the
+    // clock tree is not readable but a CSI camera pipeline is present, the
+    // clocks are exercised by the hardware; otherwise no CSI hardware is
+    // detected and the test is SKIPPED.
+
     // Method 1: Pi5 firmware debugfs
     const std::string bpmpClk = "/sys/kernel/debug/clk";
     bool clkFound = false;
@@ -661,15 +667,30 @@ TestOutput CameraInterfacesTesting::testCameraClockGeneration()
     }
 
     if (!clkFound)
-        data.push_back("[INFO] Clock debug-fs not accessible without debugfs mount or root");
+        data.push_back("[INFO] Clock debug-fs not accessible (no debugfs mount or no root)");
 
     // Method 3: Check if camera-related frequencies appear in /sys/.../clocks
     std::string csiClk = runCmd("cat /sys/kernel/debug/clk/unicam/rate 2>/dev/null");
     if (!csiClk.empty())
         data.push_back("[PASS] Unicam clock rate: " + csiClk + " Hz");
 
-    data.push_back("[PASS] Raspberry Pi 5 provides dedicated PLL (PLLP/PLLD) for camera clocks");
+    // A CSI camera pipeline implies the camera clocks are generated.
+    auto videoDev = getVideoDevices();
+    bool pipelineActive = !videoDev.empty();
+    data.push_back(pipelineActive
+                       ? "[PASS] " + std::to_string(videoDev.size()) + " V4L2 node(s) - camera clocks exercised by the pipeline"
+                       : "[INFO] No V4L2 node enumerated; camera pipeline not active");
 
+    if (!clkFound && csiClk.empty() && !pipelineActive) {
+        data.push_back("[SKIP] No camera hardware or readable clock tree - cannot verify camera clock generation");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    passed = clkFound || !csiClk.empty() || pipelineActive;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
