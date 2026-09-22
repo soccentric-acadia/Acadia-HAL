@@ -647,18 +647,39 @@ TestOutput CommunicationInterfaceTesting::testUartInterruptHandling()
         }
     }
 
-    if (!foundAny) {
-        data.push_back("[INFO] No UART interrupts found in /proc/interrupts");
-        data.push_back("[INFO] This is expected on a host build or if UART is idle");
-    } else {
-        data.push_back("[INFO] UART interrupt handlers are registered and active");
+    // Acceptance criteria (measurable): UART interrupt handlers are
+    // registered in /proc/interrupts. No UART hardware at all -> SKIPPED.
+    bool uartHw = false;
+    DIR* dir = ::opendir("/sys/bus/platform/devices");
+    if (dir) {
+        while (struct dirent* ent = ::readdir(dir)) {
+            std::string n = ent->d_name;
+            if (n.find(".serial") != std::string::npos) {
+                uartHw = true;
+                break;
+            }
+        }
+        ::closedir(dir);
+    }
+    if (foundAny && uartHw)
+        data.push_back("[PASS] UART interrupt handlers are registered and active");
+
+    if (!uartHw) {
+        data.push_back("[SKIP] No UART platform devices on this DUT - UART interrupt handling cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    data.push_back("[INFO] Pi5 RP1 UART uses level-triggered GIC interrupts");
+    if (!foundAny)
+        data.push_back("[FAIL] UART hardware present but no UART IRQ registered in /proc/interrupts");
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = foundAny ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = foundAny ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
