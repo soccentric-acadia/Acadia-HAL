@@ -1203,18 +1203,38 @@ TestOutput CommunicationInterfaceTesting::testSpiDmaTransfers()
     // Check GPCDMA in interrupts
     auto dmaIrqs = grepInterrupts("gpcdma");
     if (!dmaIrqs.empty()) {
-        data.push_back("[INFO] GPCDMA engine active – " + std::to_string(dmaIrqs.size()) + " interrupt(s) registered");
+        data.push_back("[PASS] GPCDMA engine active – " + std::to_string(dmaIrqs.size()) + " interrupt(s) registered");
     }
 
-    if (dmaCount == 0) {
-        data.push_back("[INFO] SPI DMA not detected via DT; driver may use auto-threshold DMA");
-        data.push_back("[INFO] Pi5 RP1 SPI uses DMA for transfers > 64 bytes");
+    // Acceptance criteria (measurable): SPI DMA is evidenced by either a DT
+    // DMA property on an SPI controller or an active GPCDMA engine.
+    // No SPI hardware at all -> SKIPPED.
+    bool spiHw = dmaCount > 0;
+    for (const auto& path : spiDtPaths) {
+        std::ifstream statusFile(path + "/status");
+        // If the DT node itself exists (even without a dmas property) the HW is declared
+        if (statusFile.is_open()) spiHw = true;
     }
+    if (!spiHw && ::access("/dev/spidev0.0", F_OK) == 0) spiHw = true;
+
+    if (!spiHw) {
+        data.push_back("[SKIP] No SPI controllers found on this DUT - SPI DMA cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (dmaCount > 0 || !dmaIrqs.empty())
+        data.push_back("[PASS] SPI DMA capability measured (DT DMA property or active GPCDMA engine)");
+    else
+        data.push_back("[FAIL] SPI controllers present but no DMA evidence (no DT DMA property, no GPCDMA engine)");
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = (dmaCount > 0 || !dmaIrqs.empty()) ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = (dmaCount > 0 || !dmaIrqs.empty()) ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
