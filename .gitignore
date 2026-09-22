@@ -51,3 +51,4 @@ build
 # Per-task working artifacts.
 Plan.md
 Task.md
+_CPack_Packages/
