@@ -768,6 +768,12 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing(){
 
     data.push_back("=== Camera Power Sequencing (Raspberry Pi 5) ===");
 
+    // Acceptance criteria (measurable): the power-on sequence has reached the
+    // camera sensor, i.e. a camera node is enumerated. If camera-domain
+    // regulators are present we also require them to report an enabled state
+    // or a non-zero voltage. No camera regulators and no camera node =>
+    // SKIPPED (no camera power domain detected).
+
     // 1. Check camera regulators via sysfs
     const std::string regClass = "/sys/class/regulator";
     int camRegCount = 0;
@@ -780,7 +786,8 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing(){
                 name.find("vdig") != std::string::npos) {
                 std::string state = readFile(r + "/state");
                 std::string voltage = readFile(r + "/microvolts");
-                data.push_back("[PASS] Regulator: " + name + " state=" + state + " voltage=" + (voltage.empty() ? "N/A" : voltage + " uV"));
+                bool enabled = state.find("enabled") != std::string::npos || (voltage != "0" && !voltage.empty());
+                data.push_back((enabled ? "[PASS] " : "[FAIL] ") + "Regulator: " + name + " state=" + state + " voltage=" + (voltage.empty() ? "N/A" : voltage + " uV"));
                 camRegCount++;
             }
         }
@@ -810,13 +817,35 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing(){
 
     // 3. Check if camera devices appear after power-on (V4L2 nodes)
     auto videoDev = getVideoDevices();
-    if (!videoDev.empty())
+    bool camPowered = !videoDev.empty();
+    if (camPowered)
         data.push_back("[PASS] Camera sensor powered and enumerated: " + std::to_string(videoDev.size()) + " node(s)");
     else
-        data.push_back("[INFO] No camera nodes – attach sensors to validate power sequencing");
+        data.push_back("[FAIL] No camera node enumerated - power sequencing did not reach the sensor");
 
-    data.push_back("[INFO] Pi5 camera power: AVDD(2.8V) -> DVDD(1.2V) -> IOVDD(1.8V) -> XCLK -> NRESET");
+    if (camRegCount == 0 && !camPowered) {
+        data.push_back("[SKIP] No camera power domain: no camera regulators and no camera node detected");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
+    passed = camPowered;
+    if (camRegCount > 0) {
+        // Regulators visible: require them to be enabled (voltage > 0).
+        for (const auto& r : listDir(regClass)) {
+            std::string name = readFile(r + "/name");
+            if (name.find("cam") != std::string::npos || name.find("CAM") != std::string::npos || name.find("vana") != std::string::npos ||
+                name.find("vdig") != std::string::npos) {
+                std::string state = readFile(r + "/state");
+                std::string voltage = readFile(r + "/microvolts");
+                if (state.find("enabled") == std::string::npos && (voltage.empty() || voltage == "0"))
+                    passed = false;
+            }
+        }
+    }
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
