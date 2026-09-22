@@ -1451,12 +1451,26 @@ TestOutput CommunicationInterfaceTesting::testI2cSlaveMode()
         close(fd);
     }
 
+    // Acceptance criteria (measurable): an I2C bus advertises slave-mode
+    // capability (I2C_FUNC_SLAVE / slave driver bound) -> PASS. I2C buses
+    // exist but none expose slave mode -> the DUT is a typical master-role
+    // configuration, so this is not a failure -> SKIPPED (not applicable to
+    // this DUT configuration). No I2C buses at all -> SKIPPED (no I2C domain).
     if (!slaveCapability) {
-        data.push_back("[INFO] I2C slave mode not detected on current buses");
-        data.push_back("[INFO] Pi5 supports I2C slave via i2c-slave-eeprom or custom driver");
-        data.push_back("[INFO] Enable via: echo eeprom 0x64 > /sys/bus/i2c/devices/i2c-N/new_device");
+        if (i2cDevs.empty()) {
+            data.push_back("[SKIP] No I2C buses present - I2C slave mode cannot be verified");
+        } else {
+            data.push_back("[SKIP] I2C slave mode not detected on current buses (master-role configuration)");
+            data.push_back("[INFO] Slave mode is opt-in via e.g. i2c-slave-eeprom or a custom slave driver");
+        }
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    data.push_back("[PASS] I2C slave-mode capability measured on at least one bus");
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
