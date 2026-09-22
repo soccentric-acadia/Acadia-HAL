@@ -924,14 +924,12 @@ TestOutput CameraInterfacesTesting::testRaw10()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found — test skipped (camera hardware absent)");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/video* nodes found — no camera attached; RAW10 support cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool raw10Found = false;
@@ -949,10 +947,12 @@ TestOutput CameraInterfacesTesting::testRaw10()
         }
     }
 
-    if (!raw10Found)
-        data.push_back("[INFO] RAW10 not reported by the current sensor; Pi5 Unicam supports SRGGB10");
+    if (raw10Found)
+        data.push_back("[PASS] At least one sensor reports RAW10 (SRGGB10/SGRBG10/SGBRG10/SBGGR10)");
+    else
+        data.push_back("[FAIL] No sensor reports RAW10 formats - the acceptance criterion is not met");
 
-    data.push_back("[INFO] 10-bit Bayer RAW is the most common format for camera pipelines on the Pi5");
+    passed = raw10Found;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
