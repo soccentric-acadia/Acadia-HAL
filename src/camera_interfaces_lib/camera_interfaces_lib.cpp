@@ -1028,14 +1028,12 @@ TestOutput CameraInterfacesTesting::testRaw14()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found — test skipped (camera hardware absent)");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/video* nodes found — no camera attached; RAW14 support cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool raw14Found = false;
@@ -1053,10 +1051,12 @@ TestOutput CameraInterfacesTesting::testRaw14()
         }
     }
 
-    if (!raw14Found)
-        data.push_back("[INFO] RAW14 not reported by the current sensor; Pi5 Unicam supports 14-bit Bayer");
+    if (raw14Found)
+        data.push_back("[PASS] At least one sensor reports RAW14 (SRGGB14/SGRBG14/SGBRG14/SBGGR14)");
+    else
+        data.push_back("[FAIL] No sensor reports RAW14 formats - the acceptance criterion is not met");
 
-    data.push_back("[INFO] RAW14 offers the highest bit depth for HDR camera sensors on the Pi5");
+    passed = raw14Found;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
