@@ -136,6 +136,13 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
 
     data.push_back("=== CSI-2 Lane Functionality (Raspberry Pi 5) ===");
 
+    // Acceptance criteria (measurable):
+    //   1. The Pi5 Unicam (CSI-2) controller is present: platform device with
+    //      "unicam" in its name, or the unicam kernel module is loaded.
+    //   2. At least one V4L2 video node is enumerated.
+    // If neither the controller nor any video node exists, the DUT has no
+    // MIPI CSI-2 hardware and the test is SKIPPED (never PASS).
+
     // --- 1. Check Unicam driver is present ---
     // Pi5: unicam platform device path
     const std::string unicamBase = "/sys/bus/platform/devices";
@@ -158,15 +165,16 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
             unicamFound = true;
             data.push_back("[PASS] Unicam kernel module is loaded");
         } else {
-            data.push_back("[WARN] Unicam platform device/module not detected (non-fatal on dev host)");
+            data.push_back("[FAIL] Unicam platform device and kernel module not detected");
+            passed = false;
         }
     }
 
     // --- 2. Check V4L2 camera devices ---
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[WARN] No /dev/video* nodes found – no cameras connected");
-        // Not a hard failure on a development host; pass with warning
+        data.push_back("[FAIL] No /dev/video* nodes enumerated – no CSI-2 camera sensor present");
+        passed = false;
     } else {
         data.push_back("[PASS] Found " + std::to_string(videoDev.size()) + " V4L2 video node(s)");
         for (const auto& dev : videoDev) {
@@ -208,7 +216,18 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
         auto dtEntries = listDir(dtCamera);
         data.push_back("       " + std::to_string(dtEntries.size()) + " sub-entries in camera DT node");
     } else {
-        data.push_back("[INFO] /proc/device-tree/unicam not found");
+        data.push_back("[INFO] /proc/device-tree/unicam not found (informational)");
+    }
+
+    // No CSI-2 hardware at all -> SKIPPED (an IV&V system must not PASS a
+    // test for hardware that the DUT does not have).
+    if (!unicamFound && videoDev.empty()) {
+        data.push_back("[SKIP] No MIPI CSI-2 hardware: unicam controller absent and no V4L2 video nodes");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     {
