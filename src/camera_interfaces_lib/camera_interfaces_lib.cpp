@@ -1081,14 +1081,12 @@ TestOutput CameraInterfacesTesting::testYuv422()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes — test skipped (camera hardware absent)");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/video* nodes — no camera attached; YUV 4:2:2 support cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool yuvFound = false;
@@ -1119,10 +1117,12 @@ TestOutput CameraInterfacesTesting::testYuv422()
         }
     }
 
-    if (!yuvFound)
-        data.push_back("[INFO] YUV 4:2:2 format not listed by the current sensor; the ISP can output YUYV/UYVY");
+    if (yuvFound)
+        data.push_back("[PASS] At least one sensor/ISP reports a YUV 4:2:2 format");
+    else
+        data.push_back("[FAIL] No sensor or ISP reports a YUV 4:2:2 format - the acceptance criterion is not met");
 
-    data.push_back("[INFO] YUV 4:2:2 is commonly used for serializer/deserializer camera links on the Pi5");
+    passed = yuvFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
