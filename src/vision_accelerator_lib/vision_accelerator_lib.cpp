@@ -596,7 +596,7 @@ TestOutput VisionAcceleratorTesting::testPvaPowerConsumption()
 
 /**
  * @brief 5-dimensional addressing (N/A on Pi5) — DMA multi-dim stride proxy.
- * @details Jetson PVA DMA supports 5D addressing (N/C/D/H/W strides).
+ * @details Jetson PVA DMA supports 5D addressing (N/C/D/H/W strides) — legacy naming; the capability probe below maps to Pi5.
  *          Pi5 DMA4 supports 2D stride (rows × cols).  Documents limitation.
  */
 TestOutput VisionAcceleratorTesting::test5dimensionalAddressing()

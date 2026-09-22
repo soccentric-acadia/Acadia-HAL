@@ -2,7 +2,7 @@
  * @file power_management_lib.cpp
  * @brief Implementation file for PowerManagementTesting class — Raspberry Pi 5
  *        Pi5 PMIC: MXL7704 (multi-phase PMIC), USB-C PD input (5V/3A min, 5A recommended).
- *        No 12V ASIL rails (Jetson concept). No battery. 5V supply rail only.
+ *        No 12V ASIL rails (a legacy Jetson concept). No battery. 5V supply rail only.
  * @author sandesh ghimire
  * @copyright (C) Soccentric LLC */
 
@@ -323,7 +323,7 @@ TestOutput PowerManagementTesting::test12vAsilQsLRail()
     bool passed = true;
 
     data.push_back("12V ASIL QS-L rail check");
-    data.push_back("NOTE: Pi5 does NOT have 12V ASIL safety rails (Jetson AGX Orin concept).");
+    data.push_back("NOTE: Pi5 does NOT have 12V ASIL safety rails (a legacy Jetson concept).");
     data.push_back("Pi5 input: 5V DC via USB-C (27W PD) or 5V GPIO header (max 3A).");
 
     // Check MXL7704 PMIC rails via hwmon

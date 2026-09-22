@@ -935,7 +935,7 @@ TestOutput PcieTesting::testSecondaryPcieLinkTraining()
     int totalSecondary = 0;
 
     data.push_back("=== Secondary PCIe Link Training (Pi5) ===");
-    data.push_back("[INFO] Orin has up to 5 independent PCIe root port controllers");
+    data.push_back("[INFO] BCM2712 (Pi5) has a single PCIe Gen3 root complex; CM5 adds a second lane via the connector");
 
     for (const auto& device : devices) {
         // BDF format: DDDD:BB:DD.F - extract bus number (BB, hex)

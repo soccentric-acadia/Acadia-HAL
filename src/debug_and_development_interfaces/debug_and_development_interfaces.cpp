@@ -2,7 +2,7 @@
  * @file debug_and_development_interfaces.cpp
  * @brief Implementation file for DebugAndDevelopmentInterfaces class
  * @details Provides real hardware tests for debug and development interfaces
- *          on the Raspberry Pi 5 platform (Cortex-A78AE, Orin SoC).
+ *          on the Raspberry Pi 5 platform (Cortex-A76, BCM2712).
  * @author sandesh ghimire
  * @copyright (C) Soccentric LLC */
 
@@ -129,7 +129,7 @@ DebugAndDevelopmentInterfaces::~DebugAndDevelopmentInterfaces()
  *     "jtag-generic" or RP1 JTAG driver is loaded.
  *  2. CoreSight sysfs bus is available (a prerequisite for JTAG debug).
  *  3. debugfs mount is accessible (JTAG operation commonly requires debugfs).
- *  4. RP1-fuse driver is present (provides jtag-disable fuse readback on Orin).
+ *  4. RP1-fuse driver is present (provides jtag-disable fuse readback on the target SoC).
  *
  * @return TestOutput with pass/fail and diagnostic data.
  */
@@ -235,7 +235,7 @@ TestOutput DebugAndDevelopmentInterfaces::testSerialWireDebug()
     // 3. Count CTI devices (Cross-Trigger Interface – needed for SWD halt/resume)
     int ctiCount = countMatchingEntries(CORESIGHT_BUS_PATH, "cti");
     data.push_back("CoreSight CTI devices found: " + std::to_string(ctiCount));
-    // Pi5 (Orin SoC) typically exposes 12+ CTI instances
+    // Pi5 (BCM2712) typically exposes 12+ CTI instances
     if (ctiCount == 0) {
         passed = false;
         data.push_back("FAIL: No CTI devices found – SWD halt/resume control unavailable.");
@@ -365,7 +365,7 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugUart()
 /**
  * @brief Test the ARM CoreSight Trace Port (ETM/ETF/ETR/TPIU) on Pi5.
  *
- * The Pi5 (Orin SoC) incorporates embedded CoreSight trace:
+ * The Pi5 (BCM2712) incorporates embedded CoreSight trace:
  *  - ETM  (Embedded Trace Macrocell)  – one per CPU cluster / core
  *  - ETF  (Embedded Trace FIFO/buffer)
  *  - TPIU (Trace Port Interface Unit) – drives external trace connector
@@ -483,12 +483,12 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
  *  - /proc/sys/kernel/perf_event_paranoid   – access control level
  *  - /sys/bus/event_source/devices/         – PMU device enumeration
  *  - /sys/bus/event_source/devices/armv8_*  – ARM PMU
- *  - /sys/bus/event_source/devices/gpu_*    – GPU PMU (Ampere GPU on Orin)
+ *  - /sys/bus/event_source/devices/gpu_*    – GPU PMU (Ampere GPU on the target SoC)
  *
  * Checks:
  *  1. perf_event_paranoid is readable and not fully locked (!=3/-1 only in debug builds).
  *  2. At least one ARM PMU event source exists.
- *  3. Orin GPU PMU event source exists.
+ *  3. GPU PMU event source availability is platform-specific.
  *  4. Number of hardware counters reported per PMU.
  *
  * @return TestOutput with pass/fail and diagnostic data.
@@ -620,7 +620,7 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
     bool fusePresent = isDir(TEGRA_OTP_PATH);
     data.push_back(std::string("RP1-fuse sysfs: ") + (fusePresent ? "present" : "not found"));
     if (!fusePresent) {
-        // Try alternative path used on older L4T/Orin BSPs
+        // Try alternative path used on older BSPs
         std::string altFusePath = "/sys/devices/platform/13800000.efuse";
         bool altPresent = isDir(altFusePath);
         if (!altPresent) {
@@ -665,14 +665,14 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
     // /sys/devices/platform/rp1-fuse/chip_id or /proc/device-tree/compatible
     std::string chipId = readLine(std::string(TEGRA_OTP_PATH) + "/chip_id");
     if (!chipId.empty()) {
-        data.push_back("RP1 chip_id: " + chipId + " (expected: 0x23 / 35 = Orin)");
+        data.push_back("RP1 chip_id: " + chipId + " (expected: 0x23 / 35 (BCM2712))");
     } else {
         // Fallback: read from device-tree compatible
         std::string dtcompat = readLine("/proc/device-tree/compatible");
         if (!dtcompat.empty()) {
             data.push_back("DT compatible: " + dtcompat);
             if (dtcompat.find("orin") == std::string::npos && dtcompat.find("t234") == std::string::npos) {
-                data.push_back("  WARN: DT compatible does not mention Orin/T234.");
+                data.push_back("  WARN: DT compatible does not mention the target SoC/T234.");
             }
         } else {
             data.push_back("  INFO: chip_id and DT compatible not readable.");

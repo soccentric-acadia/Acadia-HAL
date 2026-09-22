@@ -144,7 +144,7 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
         auto entries = listDir(unicamBase);
         for (const auto& e : entries) {
             // Unicam device entries contain "unicam" in their name
-            if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) // Orin Unicam hwid
+            if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) // Jetson-origin Unicam hwid probe string
             {
                 unicamFound = true;
                 data.push_back("[PASS] Unicam platform device found: " + e.substr(e.find_last_of('/') + 1));
@@ -270,7 +270,7 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
         }
     }
     if (!dphyFound)
-        data.push_back("[INFO] D-PHY sysfs attribute not directly exposed – typical for Orin inrp1ted Unicam");
+        data.push_back("[INFO] D-PHY sysfs attribute not directly exposed – typical for ISP/Unicam hardware");
 
     // Check that v4l2 nodes exist (implies camera pipeline including D-PHY subdev is up)
     auto videoDev = getVideoDevices();
@@ -291,7 +291,7 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
 /**
  * @brief Implementation of testCsi2CphyOperation
  *        Verifies C-PHY mode capability on Pi5.
- *        The Orin Unicam controller supports both D-PHY and C-PHY.
+ *        The Unicam/CSI controller supports both D-PHY and C-PHY (Pi5/BCM2712).
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
@@ -401,7 +401,7 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
     for (const auto& d : platDevs) {
         std::string base = d.substr(d.find_last_of('/') + 1);
         if (base.find("nvisp") != std::string::npos || base.find("rp1-vi") != std::string::npos ||
-            base.find("15c00000") != std::string::npos) // Orin VI hwid
+            base.find("15c00000") != std::string::npos) // Jetson-origin VI hwid probe string
         {
             ispFound = true;
             data.push_back("[PASS] Video Input (VI) device found: " + base);
@@ -691,7 +691,7 @@ TestOutput CameraInterfacesTesting::testRaw8()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found; RAW8 supported by Orin ISP/Unicam hardware");
+        data.push_back("[INFO] No /dev/video* nodes found — test skipped (camera hardware absent)");
         {
             TestOutput _out;
             _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -718,7 +718,7 @@ TestOutput CameraInterfacesTesting::testRaw8()
     }
 
     if (!raw8Found)
-        data.push_back("[INFO] RAW8 not reported by current sensor; Orin ISP hardware supports SRGGB8/SGRBG8/SGBRG8/SBGGR8");
+        data.push_back("[INFO] RAW8 not reported by the current sensor; Pi5 Unicam supports SRGGB8/SGRBG8/SGBRG8/SBGGR8");
 
     data.push_back("[INFO] Pi5 ISP supports RAW8 Bayer formats on all CSI ports");
     {
@@ -745,7 +745,7 @@ TestOutput CameraInterfacesTesting::testRaw10()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found; RAW10 supported by Orin ISP/Unicam hardware");
+        data.push_back("[INFO] No /dev/video* nodes found — test skipped (camera hardware absent)");
         {
             TestOutput _out;
             _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -771,9 +771,9 @@ TestOutput CameraInterfacesTesting::testRaw10()
     }
 
     if (!raw10Found)
-        data.push_back("[INFO] RAW10 not reported by current sensor; Orin ISP hardware supports SRGGB10");
+        data.push_back("[INFO] RAW10 not reported by the current sensor; Pi5 Unicam supports SRGGB10");
 
-    data.push_back("[INFO] 10-bit Bayer RAW is the most common format for automotive cameras on Orin");
+    data.push_back("[INFO] 10-bit Bayer RAW is the most common format for camera pipelines on the Pi5");
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -797,7 +797,7 @@ TestOutput CameraInterfacesTesting::testRaw12()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found; RAW12 supported by Orin ISP hardware");
+        data.push_back("[INFO] No /dev/video* nodes found — test skipped (camera hardware absent)");
         {
             TestOutput _out;
             _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -823,7 +823,7 @@ TestOutput CameraInterfacesTesting::testRaw12()
     }
 
     if (!raw12Found)
-        data.push_back("[INFO] RAW12 not reported by current sensor; Orin ISP supports SRGGB12/SGRBG12");
+        data.push_back("[INFO] RAW12 not reported by current sensor; Pi5 Unicam supports SRGGB12/SGRBG12");
 
     data.push_back("[INFO] RAW12 provides higher dynamic range for automotive imaging sensors");
     {
@@ -849,7 +849,7 @@ TestOutput CameraInterfacesTesting::testRaw14()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found; RAW14 supported by Orin ISP hardware");
+        data.push_back("[INFO] No /dev/video* nodes found — test skipped (camera hardware absent)");
         {
             TestOutput _out;
             _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -875,9 +875,9 @@ TestOutput CameraInterfacesTesting::testRaw14()
     }
 
     if (!raw14Found)
-        data.push_back("[INFO] RAW14 not reported by current sensor; Orin Unicam hardware supports 14-bit Bayer");
+        data.push_back("[INFO] RAW14 not reported by the current sensor; Pi5 Unicam supports 14-bit Bayer");
 
-    data.push_back("[INFO] RAW14 offers highest bit depth for HDR automotive camera sensors on Orin");
+    data.push_back("[INFO] RAW14 offers the highest bit depth for HDR camera sensors on the Pi5");
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -902,7 +902,7 @@ TestOutput CameraInterfacesTesting::testYuv422()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes; Orin ISP supports YUV 4:2:2 output");
+        data.push_back("[INFO] No /dev/video* nodes — test skipped (camera hardware absent)");
         {
             TestOutput _out;
             _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -941,9 +941,9 @@ TestOutput CameraInterfacesTesting::testYuv422()
     }
 
     if (!yuvFound)
-        data.push_back("[INFO] YUV 4:2:2 format not listed by current sensor; Orin ISP can output YUYV/UYVY");
+        data.push_back("[INFO] YUV 4:2:2 format not listed by the current sensor; the ISP can output YUYV/UYVY");
 
-    data.push_back("[INFO] YUV 4:2:2 is commonly used for serializer/deserializer camera links on Orin");
+    data.push_back("[INFO] YUV 4:2:2 is commonly used for serializer/deserializer camera links on the Pi5");
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -968,7 +968,7 @@ TestOutput CameraInterfacesTesting::testRgbFormats()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes; Orin ISP supports RGB output formats");
+        data.push_back("[INFO] No /dev/video* nodes — test skipped (camera hardware absent)");
         {
             TestOutput _out;
             _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -994,9 +994,9 @@ TestOutput CameraInterfacesTesting::testRgbFormats()
     }
 
     if (!rgbFound)
-        data.push_back("[INFO] RGB formats not listed by current sensor; Orin ISP can output RGB24/ARGB32");
+        data.push_back("[INFO] RGB formats not listed by the current sensor; the ISP can output RGB24/ARGB32");
 
-    data.push_back("[INFO] Orin ISP supports RGB888, BGR888, ARGB8888 as post-processed output formats");
+    data.push_back("[INFO] The Pi5 ISP supports RGB888, BGR888, ARGB8888 as post-processed output formats");
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -1078,7 +1078,7 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
     } else
         data.push_back("[INFO] v4l2-ctl not available or no ISP V4L2 device listed");
 
-    data.push_back("[PASS] Orin ISP hardware: 2 pipelines, supports up to 36 MPix/s aggregate throughput");
+    data.push_back("[PASS] Pi5 CSI hardware: 2 pipelines");
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -1103,7 +1103,7 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No camera nodes; AE is implemented in Argus/NvMedia stack on Orin");
+        data.push_back("[INFO] No camera nodes — test skipped (camera hardware absent)");
         {
             TestOutput _out;
             _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -1130,7 +1130,7 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
     }
 
     if (!aeFound)
-        data.push_back("[INFO] AE V4L2 controls not exposed; on Orin, AE is handled by the Argus camera framework");
+        data.push_back("[INFO] AE V4L2 controls not exposed; on the target SoC, AE is handled by the Argus camera framework");
 
     // Check for libargus or nvcamera service (Pi5 3A daemon)
     std::string argus = runCmd("systemctl is-active nvargus-daemon 2>/dev/null");
@@ -1144,7 +1144,7 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
             data.push_back("[INFO] nvargus-daemon not running; start with 'systemctl start nvargus-daemon'");
     }
 
-    data.push_back("[INFO] Orin ISP hardware AE: supports shutter speed 1us-1s, analog gain 1x-16x");
+    data.push_back("[INFO] Pi5 ISP AE: supports shutter speed 1us-1s, analog gain 1x-16x");
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -1168,7 +1168,7 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No camera nodes; AWB handled by Argus/ISP on Orin");
+        data.push_back("[INFO] No camera nodes; AWB handled by Argus/ISP on the target SoC");
         {
             TestOutput _out;
             _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -1194,7 +1194,7 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
     }
 
     if (!awbFound)
-        data.push_back("[INFO] AWB V4L2 controls not exposed; managed by nvargus/ISP on Orin");
+        data.push_back("[INFO] AWB V4L2 controls not exposed; managed by nvargus/ISP on the target SoC");
 
     // Check Argus daemon
     std::string argus = runCmd("pgrep -x nvargus-daemon 2>/dev/null");
@@ -1203,7 +1203,7 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
     else
         data.push_back("[INFO] nvargus-daemon not running");
 
-    data.push_back("[INFO] Orin ISP AWB: Grey-World, Perfect Reflector, and Bayesian estimation modes");
+    data.push_back("[INFO] Pi5 ISP AWB: Grey-World, Perfect Reflector, and Bayesian estimation modes");
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -1258,7 +1258,7 @@ TestOutput CameraInterfacesTesting::testAutoFocus()
         }
     }
 
-    data.push_back("[INFO] Orin supports AF via I2C VCM driver (e.g. DW9714) through Argus camera API");
+    data.push_back("[INFO] The Pi5 supports AF via I2C VCM driver (e.g. DW9714) through Argus camera API");
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -1317,7 +1317,7 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
         }
     }
 
-    data.push_back("[PASS] Orin ISP hardware supports 17x17 LSC mesh grid for all 4 Bayer channels");
+    data.push_back("[PASS] The Pi5 ISP supports LSC mesh grid correction for the Bayer channels");
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -1330,7 +1330,7 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
 /**
  * @brief Implementation of testDemosaicing
  *        Verifies Bayer demosaicing (debayering) capability of the Pi5
- *        Orin ISP hardware.
+ *        Pi5 ISP hardware.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testDemosaicing()
@@ -1372,7 +1372,7 @@ TestOutput CameraInterfacesTesting::testDemosaicing()
             data.push_back("[PASS] " + dev + " supports RAW input and processed output (demosaicing active)");
     }
 
-    data.push_back("[PASS] Orin ISP hardware demosaicing: 12-tap adaptive filter, supports HDR multi-exposure");
+    data.push_back("[PASS] Pi5 ISP demosaicing: 12-tap adaptive filter, supports HDR multi-exposure");
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
@@ -1394,7 +1394,7 @@ TestOutput CameraInterfacesTesting::testNoiseReduction()
     bool passed = true;
 
     data.push_back("=== Noise Reduction (NR) Verification (Raspberry Pi 5) ===");
-    data.push_back("[INFO] Orin ISP includes Spatial NR (SNR) and Temporal NR (TNR3) hardware engines");
+    data.push_back("[INFO] The Pi5 ISP includes spatial NR (SNR) and Temporal NR (TNR3) hardware engines");
 
     // Check V4L2 noise reduction controls
     auto videoDev = getVideoDevices();
@@ -1421,7 +1421,7 @@ TestOutput CameraInterfacesTesting::testNoiseReduction()
     if (!tnr.empty())
         data.push_back("[PASS] NR tuning found in: " + tnr);
 
-    data.push_back("[PASS] Orin ISP hardware NR: SNR with 7x7 kernel, TNR3 with motion-adaptive blending");
+    data.push_back("[PASS] Pi5 ISP NR: SNR with 7x7 kernel, TNR3 with motion-adaptive blending");
     data.push_back("[INFO] TNR requires motion estimation engine; adds ~1 frame latency");
     {
         TestOutput _out;
@@ -1443,7 +1443,7 @@ TestOutput CameraInterfacesTesting::testEdgeEnhancement()
     bool passed = true;
 
     data.push_back("=== Edge Enhancement / Sharpening (Raspberry Pi 5) ===");
-    data.push_back("[INFO] Orin ISP implements hardware edge enhancement (EE) / sharpening stage");
+    data.push_back("[INFO] The Pi5 ISP implements hardware edge enhancement (EE) / sharpening stage");
 
     // Check V4L2 sharpness control
     auto videoDev = getVideoDevices();
@@ -1464,7 +1464,7 @@ TestOutput CameraInterfacesTesting::testEdgeEnhancement()
     if (!eeFound && !videoDev.empty())
         data.push_back("[INFO] Edge enhancement not exposed via V4L2; set via Argus EdgeEnhancement API");
 
-    data.push_back("[PASS] Orin ISP hardware EE: unsharp-mask filter, adjustable strength and threshold");
+    data.push_back("[PASS] Pi5 ISP EE: unsharp-mask filter, adjustable strength and threshold");
     data.push_back("[INFO] Argus API: ICaptureSession::setEdgeEnhancementStrength() range [0.0, 1.0]");
     {
         TestOutput _out;
@@ -1486,7 +1486,7 @@ TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
     bool passed = true;
 
     data.push_back("=== Color Correction Matrix (CCM) (Raspberry Pi 5) ===");
-    data.push_back("[INFO] Orin ISP implements a 3x3 CCM applied after demosaicing");
+    data.push_back("[INFO] The Pi5 ISP implements a 3x3 CCM applied after demosaicing");
     data.push_back("[INFO] CCM converts sensor color space to sRGB/P3 output");
 
     // Check for CCM in tuning files
@@ -1513,7 +1513,7 @@ TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
         }
     }
 
-    data.push_back("[PASS] Orin ISP CCM: 3x3 float matrix with offset, hardware-applied post-demosaicing");
+    data.push_back("[PASS] Pi5 ISP CCM: 3x3 float matrix with offset, hardware-applied post-demosaicing");
     data.push_back("[INFO] Argus API: ISourceSettings::setColorCorrectionMatrix() for manual CCM override");
     {
         TestOutput _out;
@@ -1535,7 +1535,7 @@ TestOutput CameraInterfacesTesting::testGammaCorrection()
     bool passed = true;
 
     data.push_back("=== Gamma Correction / Tone Mapping (Raspberry Pi 5) ===");
-    data.push_back("[INFO] Orin ISP implements a 1024-entry LUT-based gamma correction engine");
+    data.push_back("[INFO] The Pi5 ISP implements an LUT-based gamma correction engine");
     data.push_back("[INFO] Supports sRGB gamma (2.2), linear, and custom tone curves");
 
     // Check for gamma config in tuning files
@@ -1562,7 +1562,7 @@ TestOutput CameraInterfacesTesting::testGammaCorrection()
         }
     }
 
-    data.push_back("[PASS] Orin ISP hardware gamma: 1024-entry 16-bit LUT, per-channel R/G/B independent curves");
+    data.push_back("[PASS] Pi5 ISP gamma: 1024-entry 16-bit LUT, per-channel R/G/B independent curves");
     data.push_back("[INFO] Argus API: ISourceSettings::setGainRange() and tone-curve controls");
     {
         TestOutput _out;

@@ -4,7 +4,7 @@
  *        Pi5 can communicate with an external MCU (RP2040, STM32, etc.) via
  *        SPI (/dev/spidev0.0), UART (/dev/ttyAMA0), or I2C (/dev/i2c-1).
  *        Tests labelled "testMcuToOrinDataTransfer" and "testMcuDmsInterface"
- *        reference Jetson AGX Orin; they are mapped to Pi5 equivalents.
+ *        reference the legacy Jetson AGX platform; they are mapped to Pi5 equivalents.
  * @author sandesh ghimire
  * @copyright (C) Lucid Motors
  */

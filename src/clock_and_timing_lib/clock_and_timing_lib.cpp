@@ -218,7 +218,7 @@ TestOutput ClockAndTimingTesting::testSystemClockAccuracy()
  *
  * Strategy (Raspberry Pi 5):
  *  1. Look for the PCIe reference clock in /sys/kernel/debug/clk/.
- *     Known clock names on Orin: "pcie_ref", "pcie_ref_clk", "pcie0_ref".
+ *     Candidate clock names (platform-specific; Jetson BSP names kept as probe strings).
  *  2. Verify the clock is enabled (enable-count > 0).
  *  3. Verify the rate is in [99 MHz, 101 MHz].
  *  4. As a fallback verify at least one PCIe device appears on the bus
@@ -228,7 +228,7 @@ TestOutput ClockAndTimingTesting::testPcieReferenceClock()
 {
     std::vector<std::string> data;
 
-    // Candidate clock names used by different Orin kernel versions
+    // Candidate clock names used by different kernel BSPs (Jetson-origin probe strings)
     const std::vector<std::string> candidates = {"pcie_ref", "pcie_ref_clk", "pcie0_ref", "pciex1_ref", "pciex4_ref"};
 
     bool foundClk = false;
@@ -321,7 +321,7 @@ TestOutput ClockAndTimingTesting::testUsbReferenceClock()
 {
     std::vector<std::string> data;
 
-    // Candidate clock names on Orin (vary by BSP version)
+    // Candidate clock names (vary by BSP version; Jetson-origin names probed defensively)
     const std::vector<std::string> candidates = {"xusb_core_clk", "xusb_ss_clk", "xusb_fs_clk",
                                                  "usb2_trk_clk",  "usb_ref",     "xusb_falcon_clk"};
 
@@ -671,7 +671,7 @@ TestOutput ClockAndTimingTesting::testPllLockStatus()
  *  - Standard deviation (jitter)
  *  - Min / max interval
  *
- * Pass criterion: jitter (1-sigma) < 10 µs for CLOCK_MONOTONIC on Orin,
+ * Pass criterion: jitter (1-sigma) < 10 µs for CLOCK_MONOTONIC on BCM2712 (Pi5),
  * which is very conservative given the Arm architecture timer resolution.
  */
 TestOutput ClockAndTimingTesting::testClockJitterMeasurements()
