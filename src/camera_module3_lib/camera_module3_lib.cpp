@@ -117,34 +117,46 @@ TestOutput CameraModule3Testing::testSensorResolution()
     data.push_back("[INFO] IMX708 full resolution: 4608 × 2592 (12.3 MP)");
     data.push_back("[INFO] Binned modes: 2304×1296 (2×2), 1152×648 (4×4)");
 
+    // Acceptance criteria (measurable): a CSI camera is attached AND it
+    // advertises its full mode (4608/2592) in the V4L2/libcamera format list.
+    // No camera attached -> SKIPPED (Module 3 hardware absent).
+
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - Camera Module 3 resolution cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
+
     // v4l2-ctl: list formats
+    bool fullRes = false;
     std::string fmts = cm3RunCmd("v4l2-ctl --device=/dev/video0 --list-formats-ext 2>/dev/null | head -20");
     if (!fmts.empty())
     {
         data.push_back("[PASS] v4l2-ctl formats:\n" + fmts);
-        bool fullRes = fmts.find("4608") != std::string::npos ||
-                       fmts.find("2592") != std::string::npos;
+        fullRes = fmts.find("4608") != std::string::npos ||
+                  fmts.find("2592") != std::string::npos;
         data.push_back(fullRes ? "[PASS] Full 4608×2592 resolution advertised"
-                               : "[INFO] 4608×2592 not found in format list");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+                               : "[FAIL] 4608×2592 not found in the format list");
     }
 
-    // Fallback: libcamera-hello --list-cameras is more verbose
-    std::string lcInfo = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
-    bool fullRes = lcInfo.find("4608") != std::string::npos;
-    data.push_back(fullRes ? "[PASS] 4608 found in libcamera camera info"
-                           : "[INFO] Resolution info not available without camera");
+    // Fallback: libcamera camera info also carries mode geometry
+    if (!fullRes) {
+        fullRes = lcList.find("4608") != std::string::npos;
+        data.push_back(fullRes ? "[PASS] 4608 found in libcamera camera info"
+                               : "[FAIL] Full 4608×2592 resolution not advertised by the camera");
+    }
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = fullRes ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = fullRes ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
