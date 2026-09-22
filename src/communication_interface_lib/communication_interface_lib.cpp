@@ -2005,18 +2005,19 @@ TestOutput CommunicationInterfaceTesting::testCan20b()
     std::vector<std::string> data;
     data.push_back("=== CAN 2.0B Extended Frame (29-bit ID) Test (Pi5) ===");
 
+    // Acceptance criteria (measurable): at least one CAN interface is
+    // present; the mttcan controller supports 2.0B extended (29-bit) frames.
+    // No CAN interfaces -> SKIPPED (no CAN hardware/domain on this DUT).
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
-        data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Pi5 mttcan supports CAN 2.0B extended 29-bit IDs");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No CAN interfaces found - CAN 2.0B cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
+    data.push_back("[PASS] " + std::to_string(canIfaces.size()) + " CAN interface(s) present");
 
     for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
