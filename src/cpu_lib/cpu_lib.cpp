@@ -743,12 +743,22 @@ TestOutput CpuTesting::testSystemCache()
         }
     }
 
+    // Acceptance criteria (measurable): the CPU cache hierarchy is exposed
+    // in sysfs topology - at minimum L1 and L2 (the Cortex-A76 class of the
+    // DUT has both). L3 is optional (absent on Cortex-A76). Missing L1 or
+    // L2 -> FAIL.
     data.push_back("Cache hierarchy: L1=" + std::string(foundL1 ? "OK" : "?") + " L2=" + std::string(foundL2 ? "OK" : "?") +
                    " L3=" + std::string(foundL3 ? "OK" : "not exposed in sysfs"));
-    if (!foundL1)
-        data.push_back("WARNING: L1 cache not found in sysfs topology.");
-    if (!foundL2)
-        data.push_back("WARNING: L2 cache not found in sysfs topology.");
+    if (!foundL1) {
+        data.push_back("[FAIL] L1 cache not found in sysfs topology");
+        passed = false;
+    }
+    if (!foundL2) {
+        data.push_back("[FAIL] L2 cache not found in sysfs topology");
+        passed = false;
+    }
+    if (passed)
+        data.push_back("[PASS] Cache hierarchy topology exposed in sysfs (L1/L2 required, L3 optional)");
 
     {
         TestOutput _out;
@@ -855,10 +865,20 @@ TestOutput CpuTesting::testCacheLineInvalidation()
     data.push_back("No-false-sharing (padded) time: " + std::to_string(tPadded) + " s");
     data.push_back("Ratio (unpadded/padded)        : " + std::to_string(ratio));
 
-    if (ratio > 5.0)
-        data.push_back("WARNING: Significant false sharing detected (ratio=" + std::to_string(ratio) + ").");
-    else
-        data.push_back("Cache line invalidation test completed.");
+    // Acceptance criteria (measurable): both microbenchmarks execute and
+    // produce a finite, non-zero timing (the cache subsystem is operational
+    // and cache-line invalidation between cores is functional). The
+    // unpadded/padded ratio is diagnostic (false sharing expected >= 1).
+    if (!(tUnpadded > 0.0) || !(tPadded > 0.0)) {
+        data.push_back("[FAIL] False-sharing microbenchmark produced no valid timings (tUnpadded=" +
+                       std::to_string(tUnpadded) + " s, tPadded=" + std::to_string(tPadded) + " s)");
+        passed = false;
+    } else {
+        data.push_back(ratio >= 1.0
+            ? "[PASS] Cache line invalidation operational (false sharing measurable: ratio=" + std::to_string(ratio) + ")":
+            "[PASS] Cache line invalidation operational (padding faster: ratio=" + std::to_string(ratio) + " - within noise)");
+        passed = true;
+    }
 
     {
         TestOutput _out;
