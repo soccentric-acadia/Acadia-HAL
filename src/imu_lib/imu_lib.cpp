@@ -14,7 +14,10 @@
 #include "../platform_rpi5.h"
 
 #include <array>
+#include <cerrno>
+#include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
@@ -66,6 +69,18 @@ static std::vector<std::string> imuListIioDevices()
     closedir(dir);
     return devs;
 }
+
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool imuParseDouble(const std::string& s, double& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    double v = strtod(s.c_str(), &end);
+    if (end == s.c_str()) return false;
+    out = v;
+    return true;
+}
 // ---------------------------------------------------------------------------
 
 /**
@@ -92,7 +107,6 @@ TestOutput ImuTesting::test3axisAccelerometer()
     data.push_back("[INFO] Pi5 has no built-in IMU; checking IIO /sys/bus/iio/devices/");
 
     auto devs = imuListIioDevices();
-    bool found = false;
     for (const auto& dev : devs)
     {
         // Check for accel channels
@@ -106,23 +120,56 @@ TestOutput ImuTesting::test3axisAccelerometer()
             std::string yRaw  = imuReadFile(dev + "/in_accel_y_raw");
             std::string zRaw  = imuReadFile(dev + "/in_accel_z_raw");
             std::string scale = imuReadFile(dev + "/in_accel_scale");
-            data.push_back("[PASS] Accelerometer: " + name);
+            data.push_back("Accelerometer: " + name);
             data.push_back("[INFO]   X=" + xRaw + " Y=" + yRaw + " Z=" + zRaw +
                            " scale=" + scale + " m/s²");
-            found = true;
+
+            // Acceptance criteria (measurable): the raw readings must parse
+            // and, when a scale is available, the gravity magnitude must be
+            // plausible (0.5–30 m/s², i.e. roughly 0.05–3 g for a stationary
+            // board).
+            double x = 0, y = 0, z = 0, sc = 1.0;
+            if (imuParseDouble(xRaw, x) && imuParseDouble(yRaw, y) && imuParseDouble(zRaw, z))
+            {
+                bool scaleOk = imuParseDouble(scale, sc) && sc > 0.0;
+                if (scaleOk)
+                {
+                    double magnitude = std::sqrt(x * x + y * y + z * z) * sc;
+                    data.push_back("[INFO]   gravity magnitude: " + std::to_string(magnitude) + " m/s²");
+                    if (magnitude < 0.5 || magnitude > 30.0)
+                    {
+                        data.push_back("[FAIL] Accelerometer gravity magnitude out of range (" +
+                                       std::to_string(magnitude) + " m/s²) — sensor fault or scaling error");
+                        TestOutput _out;
+                        _out.status = hal::Status::FAIL;
+                        _out.severity = hal::Severity::ERROR;
+                        StampDiagnostics(_out, data);
+                        return _out;
+                    }
+                }
+                data.push_back("[PASS] 3-axis accelerometer present and readings valid" +
+                               std::string(scaleOk ? "" : " (scale unavailable — magnitude not verified)"));
+                TestOutput _out;
+                _out.status = hal::Status::PASS;
+                _out.severity = hal::Severity::INFO;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            data.push_back("[FAIL] Accelerometer raw readings unparseable (X='" + xRaw + "', Y='" + yRaw + "', Z='" + zRaw + "')");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
         }
     }
-    if (!found)
-        data.push_back("[WARN] No IIO accelerometer found (connect external IMU via I2C/SPI)");
 
-    data.push_back("[INFO] Typical Pi5 IMU wiring: ICM-42688 on /dev/i2c-1 (GPIO 2/3)");
-    {
-        TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        StampDiagnostics(_out, data);
-        return _out;
-    }
+    data.push_back("[SKIP] No IIO 3-axis accelerometer present (connect an external IMU via I2C/SPI, e.g. ICM-42688 on /dev/i2c-1)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -134,7 +181,6 @@ TestOutput ImuTesting::test3axisGyroscope()
     data.push_back("=== 3-Axis Gyroscope (Pi5 + External IMU / IIO) ===");
 
     auto devs = imuListIioDevices();
-    bool found = false;
     for (const auto& dev : devs)
     {
         bool hasX = !imuReadFile(dev + "/in_anglvel_x_raw").empty();
@@ -147,22 +193,37 @@ TestOutput ImuTesting::test3axisGyroscope()
             std::string yRaw  = imuReadFile(dev + "/in_anglvel_y_raw");
             std::string zRaw  = imuReadFile(dev + "/in_anglvel_z_raw");
             std::string scale = imuReadFile(dev + "/in_anglvel_scale");
-            data.push_back("[PASS] Gyroscope: " + name);
+            data.push_back("Gyroscope: " + name);
             data.push_back("[INFO]   X=" + xRaw + " Y=" + yRaw + " Z=" + zRaw +
                            " scale=" + scale + " rad/s");
-            found = true;
+
+            // Acceptance criteria (measurable): raw readings must parse into
+            // finite values.
+            double x = 0, y = 0, z = 0;
+            if (imuParseDouble(xRaw, x) && imuParseDouble(yRaw, y) && imuParseDouble(zRaw, z))
+            {
+                data.push_back("[PASS] 3-axis gyroscope present with parseable angular-velocity readings");
+                TestOutput _out;
+                _out.status = hal::Status::PASS;
+                _out.severity = hal::Severity::INFO;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            data.push_back("[FAIL] Gyroscope raw readings unparseable (X='" + xRaw + "', Y='" + yRaw + "', Z='" + zRaw + "')");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
         }
     }
-    if (!found)
-        data.push_back("[WARN] No IIO gyroscope found");
 
-    {
-        TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        StampDiagnostics(_out, data);
-        return _out;
-    }
+    data.push_back("[SKIP] No IIO 3-axis gyroscope found — external IMU required");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -174,7 +235,6 @@ TestOutput ImuTesting::test3axisMagnetometer()
     data.push_back("=== 3-Axis Magnetometer (Pi5 + External Compass / IIO) ===");
 
     auto devs = imuListIioDevices();
-    bool found = false;
     for (const auto& dev : devs)
     {
         bool hasX = !imuReadFile(dev + "/in_magn_x_raw").empty();
@@ -187,22 +247,55 @@ TestOutput ImuTesting::test3axisMagnetometer()
             std::string yRaw  = imuReadFile(dev + "/in_magn_y_raw");
             std::string zRaw  = imuReadFile(dev + "/in_magn_z_raw");
             std::string scale = imuReadFile(dev + "/in_magn_scale");
-            data.push_back("[PASS] Magnetometer: " + name);
+            data.push_back("Magnetometer: " + name);
             data.push_back("[INFO]   X=" + xRaw + " Y=" + yRaw + " Z=" + zRaw +
                            " scale=" + scale + " Gauss");
-            found = true;
+
+            // Acceptance criteria (measurable): raw readings must parse and
+            // the field magnitude must be plausible (0.1–1000 µT; Earth
+            // field ~25–65 µT plus local distortion).
+            double x = 0, y = 0, z = 0, sc = 1.0;
+            if (imuParseDouble(xRaw, x) && imuParseDouble(yRaw, y) && imuParseDouble(zRaw, z))
+            {
+                bool scaleOk = imuParseDouble(scale, sc) && sc > 0.0;
+                bool magOk = true;
+                if (scaleOk)
+                {
+                    double magnitude = std::sqrt(x * x + y * y + z * z) * sc;
+                    data.push_back("[INFO]   field magnitude: " + std::to_string(magnitude) + " µT");
+                    magOk = magnitude >= 0.1 && magnitude <= 1000.0;
+                }
+                if (!magOk)
+                {
+                    data.push_back("[FAIL] Magnetometer field magnitude out of plausible range — sensor fault or scaling error");
+                    TestOutput _out;
+                    _out.status = hal::Status::FAIL;
+                    _out.severity = hal::Severity::ERROR;
+                    StampDiagnostics(_out, data);
+                    return _out;
+                }
+                data.push_back("[PASS] 3-axis magnetometer present with valid readings");
+                TestOutput _out;
+                _out.status = hal::Status::PASS;
+                _out.severity = hal::Severity::INFO;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            data.push_back("[FAIL] Magnetometer raw readings unparseable (X='" + xRaw + "', Y='" + yRaw + "', Z='" + zRaw + "')");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
         }
     }
-    if (!found)
-        data.push_back("[WARN] No IIO magnetometer found (external compass HAT required)");
 
-    {
-        TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        StampDiagnostics(_out, data);
-        return _out;
-    }
+    data.push_back("[SKIP] No IIO magnetometer found — external compass HAT required");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -214,7 +307,6 @@ TestOutput ImuTesting::testImuDataRate()
     data.push_back("=== IMU Data Rate (Pi5 IIO) ===");
 
     auto devs = imuListIioDevices();
-    bool found = false;
     for (const auto& dev : devs)
     {
         std::string sampFreq   = imuReadFile(dev + "/in_accel_sampling_frequency");
@@ -222,23 +314,43 @@ TestOutput ImuTesting::testImuDataRate()
         if (!sampFreq.empty())
         {
             std::string name = imuReadFile(dev + "/name");
-            data.push_back("[PASS] " + name + " sampling frequency: " + sampFreq + " Hz");
+            double freq = 0.0;
+            if (!imuParseDouble(sampFreq, freq) || freq <= 0.0)
+            {
+                data.push_back("[FAIL] " + name + " sampling frequency value invalid: '" + sampFreq + "'");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            data.push_back(name + " sampling frequency: " + sampFreq + " Hz");
             if (!availFreqs.empty())
                 data.push_back("[INFO] Available frequencies: " + availFreqs);
-            found = true;
+            if (freq >= 100.0)
+            {
+                data.push_back("[PASS] IMU output data rate " + std::to_string(freq) + " Hz (≥100 Hz IMU-grade rate)");
+                TestOutput _out;
+                _out.status = hal::Status::PASS;
+                _out.severity = hal::Severity::INFO;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            data.push_back("[FAIL] Sampling frequency " + std::to_string(freq) + " Hz below the 100 Hz IMU-grade minimum");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
         }
     }
-    if (!found)
-        data.push_back("[WARN] No IIO device with sampling_frequency found");
 
-    data.push_back("[INFO] ICM-42688 supports up to 32 kHz ODR; typical HAT: 200–1000 Hz");
-    {
-        TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        StampDiagnostics(_out, data);
-        return _out;
-    }
+    data.push_back("[SKIP] No IIO device with sampling_frequency — external IMU required (ICM-42688 supports up to 32 kHz ODR)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -250,7 +362,6 @@ TestOutput ImuTesting::testImuAccuracy()
     data.push_back("=== IMU Accuracy (Pi5 IIO) ===");
 
     auto devs = imuListIioDevices();
-    bool found = false;
     for (const auto& dev : devs)
     {
         std::string name = imuReadFile(dev + "/name");
@@ -261,27 +372,25 @@ TestOutput ImuTesting::testImuAccuracy()
         std::string gyOff = imuReadFile(dev + "/in_anglvel_x_calibbias");
         if (!axOff.empty() || !gyOff.empty())
         {
-            data.push_back("[PASS] " + name + " calibration bias registers accessible");
+            data.push_back(name + " calibration bias registers accessible");
             if (!axOff.empty()) data.push_back("[INFO]   Accel X bias: " + axOff);
             if (!gyOff.empty()) data.push_back("[INFO]   Gyro  X bias: " + gyOff);
-            found = true;
+            data.push_back("[PASS] Bias-correction registers accessible (accuracy characterisable on this sensor)");
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
         }
-        else
-        {
-            data.push_back("[INFO] " + name + ": no calibbias attributes");
-        }
+        data.push_back("[INFO] " + name + ": no calibbias attributes");
     }
-    if (!found)
-        data.push_back("[WARN] No IIO device found for accuracy assessment");
 
-    data.push_back("[INFO] Accuracy characterisation requires Allan variance analysis");
-    {
-        TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        StampDiagnostics(_out, data);
-        return _out;
-    }
+    data.push_back("[SKIP] No IIO IMU with calibbias attributes — accuracy characterisation (Allan variance) cannot be performed");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -312,17 +421,22 @@ TestOutput ImuTesting::testImuCalibration()
                        (hasCalib ? ": calibbias writeable" : ": no calibbias attrs"));
     }
 
-    if (!found)
-        data.push_back("[WARN] No IIO IMU found for calibration test");
-
-    data.push_back("[INFO] Full 6-axis calibration requires known motion fixture");
+    if (found)
     {
+        data.push_back("[PASS] Calibration interface (calibbias registers) accessible on the connected IMU (full 6-axis calibration still requires a known motion fixture)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No IIO IMU with calibbias attributes — calibration interface cannot be verified");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -334,7 +448,6 @@ TestOutput ImuTesting::testImuTemperatureCompensation()
     data.push_back("=== IMU Temperature Compensation (Pi5 IIO) ===");
 
     auto devs = imuListIioDevices();
-    bool found = false;
     for (const auto& dev : devs)
     {
         std::string tempRaw   = imuReadFile(dev + "/in_temp_raw");
@@ -343,25 +456,46 @@ TestOutput ImuTesting::testImuTemperatureCompensation()
         if (!tempRaw.empty())
         {
             std::string name = imuReadFile(dev + "/name");
-            double raw  = std::stod(tempRaw);
-            double scale = tempScale.empty() ? 1.0 : std::stod(tempScale);
-            double off   = tempOff.empty()   ? 0.0 : std::stod(tempOff);
+            double raw = 0.0, scale = 1.0, off = 0.0;
+            if (!imuParseDouble(tempRaw, raw) ||
+                (!tempScale.empty() && !(imuParseDouble(tempScale, scale) && scale != 0.0)) ||
+                (!tempOff.empty() && !imuParseDouble(tempOff, off)))
+            {
+                data.push_back("[FAIL] " + name + " temperature channel unparseable (raw='" +
+                               tempRaw + "', scale='" + tempScale + "', offset='" + tempOff + "')");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
             double tempC = (raw + off) * scale;
-            data.push_back("[PASS] " + name + " die temp: " + std::to_string(tempC) + " °C");
-            found = true;
+            if (tempC < -40.0 || tempC > 125.0)
+            {
+                data.push_back("[FAIL] " + name + " die temperature out of sensor range: " +
+                               std::to_string(tempC) + " °C — compensation data invalid");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            data.push_back("[PASS] " + name + " die temp readable and in range: " +
+                           std::to_string(tempC) + " °C (used by IMU firmware for TC correction)");
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
         }
     }
-    if (!found)
-        data.push_back("[WARN] No IIO temperature channel found (no IMU connected)");
 
-    data.push_back("[INFO] On-die temperature used by IMU firmware for TC correction");
-    {
-        TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        StampDiagnostics(_out, data);
-        return _out;
-    }
+    data.push_back("[SKIP] No IIO temperature channel found — no IMU connected");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
