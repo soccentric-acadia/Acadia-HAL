@@ -117,14 +117,17 @@ inline constexpr const char* RPI5_I2S_DEVICE = "/sys/bus/platform/devices/1f000a
 inline constexpr const char* RPI5_ALSA_CARDS = "/proc/asound/cards";
 
 // ---------------------------------------------------------------------------
-// Debug / Serial — PL011 UART (AMA0 is the primary debug UART on Pi5)
-// X-005: allocations are owned by the fleet-wide table
-// (parent doc/uart-allocation.md). UART0 = debug console ONLY; the Pico W
-// link and RS-485 have their own UARTs — see RPI5_UART1 / acadia_rs485_uart().
+// Debug / Serial — T-P15: allocations are owned by the fleet-wide table
+// (Acadia-Hardware doc/uart-allocation.md; pin-map rev-c is the projection):
+//   /dev/ttyAMA10  dedicated debug-header UART  = OS debug console (RESERVED)
+//   /dev/ttyAMA0   GPIO14/15                    = RS-485 (HAL-501: never the
+//                                                  console — satisfied)
+//   /dev/ttyAMA2   GPIO0/1 (uart2 overlay)      = Pico W co-processor link
+// The pin-map drift gate (tools/check_pin_map.py) pins these constants.
 // ---------------------------------------------------------------------------
-inline constexpr const char* RPI5_DEBUG_UART = "/dev/ttyAMA0";
-// Secondary UART (Pico W co-processor link per the pin map)
-inline constexpr const char* RPI5_UART1 = "/dev/ttyAMA10";
+inline constexpr const char* RPI5_DEBUG_UART = "/dev/ttyAMA10";
+// Pico W co-processor link (RP1 UART2 via the uart2 overlay)
+inline constexpr const char* RPI5_UART1 = "/dev/ttyAMA2";
 
 // ---------------------------------------------------------------------------
 // Thermal — BCM2712 thermal zones
@@ -183,11 +186,12 @@ inline constexpr const char* RPI5_CAN_SYSFS = "/sys/class/net";
 // ---------------------------------------------------------------------------
 // RS-485 — dedicated half-duplex port; must NOT be the debug console
 // ---------------------------------------------------------------------------
-// HAL-501: /dev/ttyAMA0 is the debug console UART. RS-485 owns a different
-// port (default: the secondary UART). The active port is overridable at
-// runtime via the ACADIA_RS485_UART environment variable so integrations can
-// point it at whatever UART the RS-485 transceiver is wired to.
-inline constexpr const char* RPI5_RS485_UART = "/dev/ttyAMA10";
+// HAL-501 + T-P15: RS-485 owns RP1 UART0 (GPIO14/15, /dev/ttyAMA0). The
+// debug console lives on the dedicated debug-header UART (/dev/ttyAMA10),
+// so the two never collide. The active port is overridable at runtime via
+// the ACADIA_RS485_UART environment variable so integrations can point it
+// at whatever UART the RS-485 transceiver is wired to.
+inline constexpr const char* RPI5_RS485_UART = "/dev/ttyAMA0";
 inline const char* acadia_rs485_uart()
 {
     const char* env = getenv("ACADIA_RS485_UART");

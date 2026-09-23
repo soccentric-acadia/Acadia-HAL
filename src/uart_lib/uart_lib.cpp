@@ -35,7 +35,9 @@ TestOutput UartTesting::testUartPortPresent()
     std::vector<std::string> data;
     data.push_back("=== UART Port Presence ===");
     bool passed = false;
-    const char* devs[] = { RPI5_DEBUG_UART, RPI5_UART1, "/dev/ttyS0" };
+    // T-P15: /dev/ttyS0 does not exist on the Pi 5 (BCM2711 mini-UART is
+    // gone) — enumerate only the allocated nodes (console + Pico link).
+    const char* devs[] = { RPI5_DEBUG_UART, RPI5_UART1 };
     int found = 0;
     for (const char* d : devs) {
         if (pathExists(d)) {

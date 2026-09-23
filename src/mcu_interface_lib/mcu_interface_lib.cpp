@@ -419,7 +419,9 @@ TestOutput McuInterfaceTesting::testSecondaryMcuRedundancy()
     data.push_back(spi1 ? "[PASS] Secondary MCU: /dev/spidev1.0" : "[INFO] No secondary SPI MCU (/dev/spidev1.0)");
 
     // Check for second UART
-    bool uart1 = mcuPathExists("/dev/ttyAMA1") || mcuPathExists("/dev/ttyAMA10");
+    // T-P15: the Pico co-processor link is RP1 UART2 (GPIO0/1, uart2
+    // overlay) = /dev/ttyAMA2; ttyAMA10 is the reserved debug-header console.
+    bool uart1 = mcuPathExists("/dev/ttyAMA1") || mcuPathExists("/dev/ttyAMA2");
     data.push_back(uart1 ? "[PASS] Secondary UART found" : "[INFO] No secondary UART MCU path");
 
     {
