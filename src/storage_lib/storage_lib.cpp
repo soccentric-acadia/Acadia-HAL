@@ -741,6 +741,7 @@ TestOutput StorageTesting::testEmmcTemperatureMonitoring()
 TestOutput StorageTesting::testNvmeSsdDetection()
 {
     std::vector<std::string> data;
+    bool passed = true;
 
     data.push_back("NVMe SSD detection (Pi5 PCIe Gen3 x1 M.2 M-key)");
 
