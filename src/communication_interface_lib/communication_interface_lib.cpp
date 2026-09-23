@@ -2273,18 +2273,19 @@ TestOutput CommunicationInterfaceTesting::testCanBusoffRecovery()
     std::vector<std::string> data;
     data.push_back("=== CAN Bus-Off Recovery (Pi5) ===");
 
+    // Acceptance criteria (measurable): a CAN interface is bound; the mttcan
+    // controller implements bus-off recovery per ISO 11898-1 (restart /
+    // restart-ms configuration is the acceptance path). No CAN interfaces ->
+    // SKIPPED (no CAN domain).
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
-        data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Pi5 mttcan supports automatic bus-off recovery");
-        data.push_back("[INFO] Manual: ip link set canX type can restart-ms 100");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] No CAN interfaces found - bus-off recovery cannot be verified on this DUT");
+        data.push_back("[INFO] mttcan supports automatic recovery: ip link set <can> type can restart-ms 100");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     for (const auto& iface : canIfaces) {
@@ -2292,17 +2293,16 @@ TestOutput CommunicationInterfaceTesting::testCanBusoffRecovery()
         std::string busOff = readFile(iface + "/statistics/bus_off");
         std::string restarts = readFile(iface + "/statistics/restarts");
 
-        data.push_back("[PASS] " + ifName + ": bus-off recovery supported by mttcan");
-        if (!busOff.empty()) {
+        if (!busOff.empty())
             data.push_back("  bus_off events: " + busOff);
-        }
-        if (!restarts.empty()) {
+        if (!restarts.empty())
             data.push_back("  controller restarts: " + restarts);
-        }
         data.push_back("  Config: ip link set " + ifName + " type can restart-ms 100   (auto-recovery in 100ms)");
         data.push_back("  Manual: ip link set " + ifName + " type can restart");
     }
 
+    data.push_back("[PASS] " + std::to_string(canIfaces.size()) +
+                   " CAN interface(s) bound - bus-off recovery per ISO 11898-1 (mttcan)");
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
@@ -2324,7 +2324,22 @@ TestOutput CommunicationInterfaceTesting::testCanMessageFiltering()
     std::vector<std::string> data;
     data.push_back("=== CAN Message Filtering (Pi5) ===");
 
-#if defined(__linux__) && defined(CAN_RAW)
+    // Acceptance criteria (measurable): the CAN stack accepts the
+    // CAN_RAW_FILTER and CAN_RAW_ERR_FILTER socket options on a live CAN_RAW
+    // socket. Socket cannot be created (CAN modules not loaded / no CAN) ->
+    // SKIPPED. Options rejected -> FAIL.
+#if !defined(__linux__) || !defined(CAN_RAW)
+    data.push_back("[SKIP] Linux CAN socket headers not available in build environment");
+    {
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+#endif
+
+    bool filterOk = false;
     int s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
     if (s >= 0) {
         // Test standard frame filter
@@ -2338,34 +2353,42 @@ TestOutput CommunicationInterfaceTesting::testCanMessageFiltering()
             data.push_back("[PASS] CAN_RAW_FILTER: 2-entry filter set successfully");
             data.push_back("       Filter 0: ID=0x123 mask=0x7FF (11-bit standard)");
             data.push_back("       Filter 1: ID=0x456 mask=0x1FFFFFFF (29-bit extended)");
+            filterOk = true;
         } else {
-            data.push_back("[WARN] CAN_RAW_FILTER setsockopt: " + std::string(strerror(errno)));
+            data.push_back("[FAIL] CAN_RAW_FILTER setsockopt: " + std::string(strerror(errno)));
         }
 
         // Test error mask filter
         can_err_mask_t errMask = CAN_ERR_MASK; // Full error mask – detects busoff, arb-lost, controller errors
         if (setsockopt(s, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &errMask, sizeof(errMask)) == 0) {
             data.push_back("[PASS] CAN_RAW_ERR_FILTER: error frame filter set");
+            filterOk = true;
         } else {
-            data.push_back("[WARN] CAN_RAW_ERR_FILTER: " + std::string(strerror(errno)));
+            data.push_back("[FAIL] CAN_RAW_ERR_FILTER: " + std::string(strerror(errno)));
         }
 
         close(s);
     } else {
-        data.push_back("[INFO] CAN socket creation failed (" + std::string(strerror(errno)) + ") – CAN modules may not be loaded");
+        data.push_back("[SKIP] CAN socket creation failed (" + std::string(strerror(errno)) + ") - CAN modules may not be loaded on this DUT");
         data.push_back("[INFO] Load: modprobe can can_raw mttcan");
+        {
+            TestOutput _out;
+            _out.status = hal::Status::SKIPPED;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
     }
-#else
-    data.push_back("[INFO] Linux CAN socket headers not available in build environment");
-#endif
 
-    data.push_back("[INFO] Pi5 mttcan hardware supports 128-entry Rx acceptance filter");
-    data.push_back("[INFO] Hardware filters: standard (11-bit) and extended (29-bit) ID ranges");
-    data.push_back("[INFO] Software filters: via CAN_RAW_FILTER on CAN_RAW socket");
+    if (filterOk)
+        data.push_back("[PASS] CAN message filtering measured via accepted CAN_RAW socket options");
+    else
+        data.push_back("[FAIL] CAN message filtering not available - required socket options were rejected");
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
+        _out.status = filterOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = filterOk ? hal::Severity::INFO : hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
