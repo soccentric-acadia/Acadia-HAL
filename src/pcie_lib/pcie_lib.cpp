@@ -414,13 +414,21 @@ TestOutput PcieTesting::testPcieHotplugSupport()
         }
     }
 
-    if (slotCount == 0 && hotplugBridges == 0) {
-        data.push_back("[INFO] No OS-managed hotplug slots (expected on Pi5 embedded PCIe)");
-        data.push_back("[INFO] Physical hotplug is handled by platform firmware/GPIO");
-    } else {
-        data.push_back("Found " + std::to_string(slotCount) + " slot(s), " + std::to_string(hotplugBridges) + " hotplug-capable bridge(s)");
+    // Acceptance criteria (measurable): hotplug support is demonstrated by
+    // OS-managed slots or hotplug-capable bridges being present. Pi5's fixed
+    // embedded topology has neither -> SKIPPED (not applicable), never a PASS.
+    if (slotCount == 0 && hotplugBridges == 0)
+    {
+        data.push_back("[SKIP] No OS-managed hotplug slots and no hotplug-capable bridges — hotplug is not applicable to this embedded fixed-topology DUT (platform firmware/GPIO handles it)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    data.push_back("[PASS] Hotplug path present: " + std::to_string(slotCount) + " slot(s), " +
+                   std::to_string(hotplugBridges) + " hotplug-capable bridge(s)");
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
@@ -1010,6 +1018,7 @@ TestOutput PcieTesting::testPcieX4Bandwidth()
     std::vector<std::string> devices = getPcieDevices();
     std::vector<std::string> data;
     bool found = false;
+    bool degraded = false;
 
     data.push_back("=== PCIe x1 Bandwidth (Pi5) ===");
     data.push_back("[INFO] Pi5 Gen3 x4: ~8 GB/s theoretical (128b/130b encoding)");
@@ -1051,29 +1060,47 @@ TestOutput PcieTesting::testPcieX4Bandwidth()
             char buf[256];
             snprintf(buf, sizeof(buf), "%.2f GB/s [%s x%d%s]", bwGBps, gen.c_str(), width, atMax ? " FULL" : " DEGRADED");
 
-            std::string pfx = (atMax && gtps >= 16.0) ? "[PASS]" : (atMax) ? "[INFO]" : "[WARN]";
+            std::string pfx = (atMax && gtps >= 16.0) ? "[PASS]" : (atMax) ? "[INFO]" : "[FAIL]";
             data.push_back(pfx + " " + devName + ": " + buf);
             if (!atMax)
+            {
                 data.push_back("       Running at x" + std::to_string(width) + " of x" + std::to_string(maxWidth) +
-                               " - check slot/connector");
+                               " - link degraded, check slot/connector");
+                degraded = true;
+            }
             found = true;
         }
         catch (...) {
         }
     }
 
-    if (!found) {
-        data.push_back("[INFO] No x4 (or wider) PCIe devices detected");
-        data.push_back("[INFO] Connect an NVMe, capture card, or other x4 device to test");
+    if (degraded)
+    {
+        data.push_back("[FAIL] x4-or-wider device(s) running below maximum negotiated lane width");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (!found)
+    {
+        data.push_back("[SKIP] No x4 (or wider) PCIe devices detected — connect an NVMe, capture card, or other x4 device to test");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    data.push_back("[PASS] x4-or-wider device(s) enumerated with full-width links and valid bandwidth estimate");
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
-    } // Not a failure when device is simply absent
+    }
 }
 
 /**
@@ -1193,39 +1220,45 @@ TestOutput PcieTesting::testConcurrentPcieX8AndX4Operation()
 
     auto report = [&](const std::vector<std::string>& devs, const std::string& label) {
         if (!devs.empty()) {
-            data.push_back("[PASS] " + label + " devices: " + std::to_string(devs.size()));
+            data.push_back("[INFO] " + label + " devices: " + std::to_string(devs.size()));
             for (const auto& d : devs)
                 data.push_back("  - " + d);
         } else {
             data.push_back("[INFO] No " + label + " devices connected");
         }
     };
-    report(x1devs_wide, "x1");
+    report(x1devs_wide, "x8-or-wider");
     report(x4devs, "x4");
     report(x1devs, "x1");
 
     int totalActive = static_cast<int>(x1devs_wide.size() + x4devs.size() + x1devs.size());
-    if (!x1devs_wide.empty() && !x4devs.empty())
-        data.push_back("[PASS] Concurrent x8 + x4 operation confirmed");
-    else if (totalActive >= 2)
-        data.push_back("[INFO] Multiple PCIe devices active - concurrent controller operation verified");
-    else if (totalActive == 1)
-        data.push_back("[INFO] Single device only - connect additional PCIe device for full concurrency test");
-    else
-        data.push_back("[WARN] No active PCIe links found");
 
-    // Check kernel log for PCIe errors
+    // Acceptance criteria (measurable): concurrent operation requires at
+    // least two active links with zero PCIe errors in the kernel log.
+    // Single device -> SKIPPED; none -> SKIP; kernel-log errors -> FAIL.
     std::string errOut = executeCommand("dmesg 2>/dev/null | grep -Ei 'pci[e].*error|pci[e].*failed|pci[e].*timeout' | tail -5");
-    if (!errOut.empty()) {
-        data.push_back("[WARN] PCIe issues in dmesg:");
+    if (!errOut.empty())
+    {
+        data.push_back("[FAIL] PCIe errors in kernel log during operation:");
         std::istringstream iss(errOut);
         std::string line;
         while (std::getline(iss, line))
             if (!line.empty())
                 data.push_back("  " + line);
-    } else {
-        data.push_back("[PASS] No PCIe errors in kernel log");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
     }
+    data.push_back("[PASS] No PCIe errors in kernel log");
+
+    if (totalActive >= 2)
+        data.push_back("[PASS] Multiple PCIe devices active — concurrent controller operation verified");
+    else if (totalActive == 1)
+        data.push_back("[SKIP] Single active device — connect an additional PCIe device for a concurrency test");
+    else
+        data.push_back("[SKIP] No active PCIe links — nothing to verify concurrently");
 
     {
         TestOutput _out;
@@ -1472,13 +1505,20 @@ TestOutput PcieTesting::testPcieSwitchCompatibility()
     data.push_back("Found " + std::to_string(bridgeCount) + " PCI bridge(s), " + std::to_string(switchCount) +
                    " identified 3rd-party PCIe switch chip(s)");
 
-    if (bridgeCount == 0) {
-        data.push_back("[INFO] No PCI bridges detected - Pi5 using direct endpoint connections");
-        data.push_back("[INFO] This is the expected embedded configuration");
-    } else {
-        data.push_back("[PASS] PCI bridge(s) enumerated and accessible");
+    // Acceptance criteria (measurable): the Pi5 embedded topology connects
+    // endpoints directly (no bridges/switches). With no bridge present there
+    // is nothing to exercise -> SKIPPED; bridges enumerated -> PASS.
+    if (bridgeCount == 0)
+    {
+        data.push_back("[SKIP] No PCI bridges/switches present — direct endpoint configuration (expected embedded topology); switch compatibility cannot be exercised");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    data.push_back("[PASS] " + std::to_string(bridgeCount) + " PCI bridge(s) enumerated and accessible");
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
