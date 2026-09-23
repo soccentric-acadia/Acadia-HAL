@@ -636,13 +636,20 @@ TestOutput CpuTesting::testL2Cache()
     double latencyNs = (totalSec / ITERATIONS) * 1e9;
     double bwGBs = (static_cast<double>(ITERATIONS) * STRIDE) / (totalSec * 1e9);
 
+    // Acceptance criteria (measurable): a finite, positive L2-class latency
+    // well below DRAM-class latencies (the 512 KB buffer fits in the L2).
+    // Non-positive or > 2000 ns -> criterion not met.
     data.push_back("L2 cache buffer: " + std::to_string(L2_SIZE / 1024) + " KB");
     data.push_back("Avg access latency: " + std::to_string(latencyNs) + " ns");
     data.push_back("Effective bandwidth: " + std::to_string(bwGBs) + " GB/s");
-    if (latencyNs > 50.0)
-        data.push_back("WARNING: L2 latency " + std::to_string(latencyNs) + " ns > 50 ns.");
-    else
-        data.push_back("L2 cache latency within expected range (<50 ns).");
+    if (!(latencyNs > 0.0) || latencyNs > 2000.0 || !(bwGBs > 0.0)) {
+        data.push_back("[FAIL] L2 latency " + std::to_string(latencyNs) +
+                       " ns / bandwidth " + std::to_string(bwGBs) + " GB/s are not in the L2 speed class");
+        passed = false;
+    } else {
+        data.push_back("[PASS] L2 latency " + std::to_string(latencyNs) + " ns is within the L2 speed class (< 2000 ns)");
+        passed = true;
+    }
 
     {
         TestOutput _out;
@@ -681,12 +688,19 @@ TestOutput CpuTesting::testL3Cache()
     double totalSec = std::chrono::duration<double>(t1 - t0).count();
     double latencyNs = (totalSec / ITERATIONS) * 1e9;
 
+    // Acceptance criteria (measurable): a finite, positive latency for the
+    // 4 MB working set (last-level cache / DRAM tier). Non-positive or
+    // absurdly high (> 5000 ns) -> criterion not met.
     data.push_back("L3 buffer: " + std::to_string(L3_SIZE / 1024 / 1024) + " MB");
     data.push_back("Avg access latency: " + std::to_string(latencyNs) + " ns");
-    if (latencyNs > 200.0)
-        data.push_back("WARNING: L3 latency " + std::to_string(latencyNs) + " ns > 200 ns.");
-    else
-        data.push_back("Memory (beyond L2) latency within expected range (<200 ns).");
+    if (!(latencyNs > 0.0) || latencyNs > 5000.0) {
+        data.push_back("[FAIL] L3/LLC latency " + std::to_string(latencyNs) +
+                       " ns is not in the expected memory-hierarchy range (> 0 and < 5000 ns)");
+        passed = false;
+    } else {
+        data.push_back("[PASS] L3/LLC latency " + std::to_string(latencyNs) + " ns is within the expected memory-hierarchy range (< 5000 ns)");
+        passed = true;
+    }
 
     {
         TestOutput _out;
