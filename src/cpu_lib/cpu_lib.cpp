@@ -525,8 +525,17 @@ TestOutput CpuTesting::testCpuPowerStatesAndTransitions()
     std::string onlineVal = readSysfsLine("/sys/devices/system/cpu/cpu1/online");
     data.push_back("CPU1 online state: " + (onlineVal.empty() ? "(unavailable)" : onlineVal));
 
-    if (coresWithIdle == 0)
-        data.push_back("WARNING: No cpuidle states found - may require kernel config.");
+    // Acceptance criteria (measurable): at least one core exposes cpuidle
+    // states, demonstrating that CPU power-state management is operational
+    // on this kernel/host.
+    if (coresWithIdle > 0) {
+        data.push_back("[PASS] " + std::to_string(coresWithIdle) + "/" + std::to_string(CPU_CORES) +
+                       " core(s) expose cpuidle states");
+        passed = true;
+    } else {
+        data.push_back("[FAIL] No cpuidle states found on any core - CPU power-state management is not operational");
+        passed = false;
+    }
 
     {
         TestOutput _out;
