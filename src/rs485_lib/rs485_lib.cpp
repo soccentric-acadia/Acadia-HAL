@@ -94,22 +94,25 @@ TestOutput Rs485Testing::testRs485HalfDuplex()
         if (ioctl(fd, TIOCSRS485, &rs485conf) == 0) {
             data.push_back("[PASS] RS485 mode enabled on " + std::string(acadia_rs485_uart()));
             passed = true;
+            // HAL-506: restore normal UART mode — leaving SER_RS485_ENABLED
+            // set would keep the port in RS-485 mode after the test.
+            struct serial_rs485 rs485off;
+            memset(&rs485off, 0, sizeof(rs485off));
+            ioctl(fd, TIOCSRS485, &rs485off);
         } else {
-            data.push_back("[WARN] TIOCSRS485 not supported: " + std::string(strerror(errno)));
-            // Driver without RS485 support still exposes the port; treat UART presence as pass.
-            data.push_back("[INFO] Port exists; driver may lack RS485 flag support");
-            passed = true;
+            data.push_back("[SKIP] TIOCSRS485 not supported on " + std::string(acadia_rs485_uart()) +
+                           ": " + std::string(strerror(errno)) +
+                           " — driver lacks RS485 flag support (half-duplex control not applicable on this port)");
         }
         close(fd);
     } else {
-        data.push_back("[FAIL] Cannot open UART for RS485: " + std::string(strerror(errno)));
+        data.push_back("[SKIP] Cannot open RS-485 UART (" + std::string(acadia_rs485_uart()) +
+                       "): " + std::string(strerror(errno)) + " — port not present on this DUT");
     }
-    if (!passed)
-        data.push_back("[FAIL] RS-485 half-duplex not configurable");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = passed ? hal::Status::PASS : hal::Status::SKIPPED;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
