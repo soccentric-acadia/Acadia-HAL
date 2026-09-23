@@ -21,6 +21,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 // ---------------------------------------------------------------------------
@@ -102,9 +103,46 @@ TestOutput ReliabilityTesting::testBurninTesting()
     std::string throttlePre = relRunCmd("vcgencmd get_throttled 2>/dev/null");
     data.push_back("[INFO] Throttle before: " + (throttlePre.empty() ? "N/A" : throttlePre));
 
-    // 5-second stress across 4 cores
-    int rc = system("for i in 1 2 3 4; do (dd if=/dev/zero bs=1M count=512 2>/dev/null | md5sum &); done; sleep 5; kill $(jobs -p) 2>/dev/null; true");
-    (void)rc;
+    // HAL-511: a C++ worker pool (joined before continuing) replaces the old
+    // `system("... dd | md5sum & ... kill $(jobs -p)")` shell-out, whose jobs
+    // ran in subshells so `kill` killed nothing — leaking 4 CPU-bound
+    // processes per run. Burn-in duration is configurable via
+    // ACADIA_BURNIN_SECONDS (default 5; real burn-in is hours — run the
+    // LONG_TERM mode with a large duration for a true burn-in).
+    int burninSeconds = 5;
+    {
+        const char* env = getenv("ACADIA_BURNIN_SECONDS");
+        if (env && *env) {
+            char* end = nullptr;
+            long v = strtol(env, &end, 10);
+            if (end != env && v > 0 && v <= 3600)
+                burninSeconds = static_cast<int>(v);
+        }
+    }
+    data.push_back("[INFO] Burn-in proxy duration: " + std::to_string(burninSeconds) + " s (set ACADIA_BURNIN_SECONDS for a longer soak)");
+
+    {
+        std::atomic<bool> stopWorkers{false};
+        std::vector<std::thread> workers;
+        for (int i = 0; i < RPI5_CPU_CORES; ++i) {
+            workers.emplace_back([&stopWorkers]() {
+                // CPU + memory stress until stopWorkers or the deadline.
+                std::vector<char> buf(4 * 1024 * 1024, 0x5A);
+                volatile unsigned long long sink = 0;
+                while (!stopWorkers.load()) {
+                    for (size_t k = 0; k < buf.size(); k += 64)
+                        sink += static_cast<unsigned char>(buf[k]);
+                }
+                (void)sink;
+            });
+        }
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(burninSeconds);
+        while (std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        stopWorkers.store(true);
+        for (auto& t : workers) t.join(); // no leaked processes
+    }
 
     std::string throttlePost = relRunCmd("vcgencmd get_throttled 2>/dev/null");
     data.push_back("[INFO] Throttle after:  " + (throttlePost.empty() ? "N/A" : throttlePost));

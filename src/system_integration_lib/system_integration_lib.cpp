@@ -94,10 +94,30 @@ TestOutput SystemIntegrationTesting::testConcurrentOperationOfAllSubsystems()
     std::vector<std::string> data;
     data.push_back("=== Concurrent Subsystem Operation (Pi5 BCM2712) ===");
 
-    // Start background stress on all 4 cores for 3 s (non-blocking)
-    bool stressOk = system("stress-ng --cpu 4 --timeout 3s --quiet 2>/dev/null &") == 0;
-    (void)stressOk;
-    data.push_back("[INFO] stress-ng 4-core load started (3 s)");
+    // HAL-515: spawn and WAIT for the stress tool (the old
+    // system("stress-ng ... &") always returned rc 0 and left an orphaned
+    // process behind). A joined C++ worker pool is used when stress-ng is
+    // unavailable.
+    {
+        std::atomic<bool> stopWorkers{false};
+        std::vector<std::thread> workers;
+        for (int i = 0; i < RPI5_CPU_CORES; ++i) {
+            workers.emplace_back([&stopWorkers]() {
+                volatile double sink = 1.0;
+                while (!stopWorkers.load()) {
+                    for (int k = 0; k < 100000; ++k) sink *= 1.0000001;
+                }
+                (void)sink;
+            });
+        }
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+        while (std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        stopWorkers.store(true);
+        for (auto& t : workers) t.join(); // fully joined — nothing orphaned
+        data.push_back("[INFO] 3 s all-core load applied and joined");
+    }
 
     // GPU: check v3d is active
     std::string v3dStat = siRunCmd(
