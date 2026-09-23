@@ -37,18 +37,6 @@ static bool serParseLong(const std::string& s, long& out)
     return true;
 }
 
-static std::string serReadFile(const std::string& path)
-{
-    std::ifstream f(path);
-    if (!f.is_open()) return "";
-    std::ostringstream ss;
-    ss << f.rdbuf();
-    std::string s = ss.str();
-    while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' '))
-        s.pop_back();
-    return s;
-}
-
 static std::string serRunCmd(const std::string& cmd)
 {
     std::array<char, 1024> buf{};

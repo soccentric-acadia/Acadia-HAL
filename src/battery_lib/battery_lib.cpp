@@ -109,12 +109,16 @@ TestOutput BatteryTesting::testBatteryChargeLevel()
         std::string enow = readSysfs(std::string(RPI5_BATTERY_SUPPLY) + "/" + s + "/energy_now");
         if (!cap.empty()) {
             data.push_back("[PASS] " + s + " capacity=" + cap + "%");
-            try {
-                capPercent = static_cast<double>(std::stoi(cap));
-            } catch (...) {}
+            long capVal;
+            if (batParseLong(cap, capVal))
+                capPercent = static_cast<double>(capVal);
             read = true;
         } else if (!enow.empty()) {
-            data.push_back("[INFO] " + s + " energy_now=" + enow + " uWh");
+            long enowVal;
+            if (batParseLong(enow, enowVal))
+                data.push_back("[INFO] " + s + " energy_now=" + enow + " uWh (" + std::to_string(enowVal) + " uWh)");
+            else
+                data.push_back("[INFO] " + s + " energy_now=" + enow + " uWh");
             read = true;
         }
     }
