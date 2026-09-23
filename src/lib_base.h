@@ -3,14 +3,15 @@
  * @brief Base class for all testing classes
  * @author sandesh ghimire
  * @copyright (C) Soccentric LLC */
-#ifndef TEST_BASE_H
-#define TEST_BASE_H
+#pragma once
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <utility>
@@ -21,14 +22,14 @@
  * @enum TestMode
  * @brief Enumeration for test modes
  */
+// HAL-002: values match protos/common.proto ExecutionMode (1..4) so the HAL
+// enum can be mapped to the wire enum 1:1 without magic-number translation.
 enum class TestMode
 {
-    
-    SINGLE_SHOT = 0,  ///< Run all tests once (synchronous)
-    MONITORING  = 2,  ///< Run tests repeatedly at an interval until stop() is called
-    LONG_TERM   = 1,  ///< Run tests at an interval for a fixed duration, then stop
-    
-    EVENT_BASED = 3   ///< Run tests continuously, fire a callback when criteria are met
+    SINGLE_SHOT = 1,  ///< Run all tests once (synchronous)
+    LONG_TERM   = 2,  ///< Run tests at an interval for a fixed duration, then stop
+    MONITORING  = 3,  ///< Run tests repeatedly at an interval until stop() is called
+    EVENT_BASED = 4   ///< Run tests continuously, fire a callback when criteria are met
 };
 
 // ============================================================
@@ -156,6 +157,7 @@ struct ModuleRunConfig
     long long duration_ms    = 0;         ///< Total run time; 0 = run until stop()
     bool     run_forever     = false;     ///< Ignore duration_ms; run until stop()
     int      poll_interval_ms = 1000;     ///< Poll interval (EVENT_BASED)
+    int      test_timeout_ms  = 30000;    ///< HAL-014: per-test watchdog timeout
 };
 
 /**
@@ -168,6 +170,12 @@ struct ModuleRunConfig
  *   EVENT          — run continuously, fire a callback when criteria are met (background thread)
  *
  * For background modes, call stop() to abort early, or wait for isRunning() to return false.
+ *
+ * @threadSafety HAL-010 contract: TestBase instances are NOT thread-safe for
+ * concurrent test execution. The background loop and each external caller
+ * must be serialised by the owner (the Client adapter layer holds a
+ * per-module mutex). Control APIs (stop/pause/resume) are safe to call from
+ * any thread while a background loop is running; they only touch atomics.
  */
 class TestBase
 {
@@ -286,8 +294,20 @@ class TestBase
     // Block the calling thread while paused_ is set (honours stopped_ to exit early).
     void waitWhilePaused();
 
+    // HAL-013: sleep until `deadline` (steady_clock), waking early on stop()
+    // or pause()/resume() via the class condition variable instead of a
+    // 50 ms polling loop.
+    void sleepUntil(std::chrono::steady_clock::time_point deadline);
+
     std::atomic<bool> stopped_;
     std::atomic<bool> paused_{false};
+    // HAL-003: number of test cycles currently executing (inside
+    // runAllTestsSafe). The base destructor waits (bounded) for this to
+    // reach zero before the derived class is fully destroyed, so a
+    // background cycle can never touch a half-destroyed derived object.
+    std::atomic<int> cycles_in_flight_{0};
+    std::mutex wake_mu_;
+    std::condition_variable wake_cv_;
     std::thread monitoring_thread_;
 
   protected:
@@ -296,4 +316,3 @@ class TestBase
     ModuleRunConfig module_config_;
 };
 
-#endif // TEST_BASE_H
