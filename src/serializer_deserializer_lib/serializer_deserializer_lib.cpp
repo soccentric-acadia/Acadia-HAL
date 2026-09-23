@@ -15,7 +15,9 @@
 #include "../platform_rpi5.h"
 
 #include <array>
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -23,7 +25,19 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
-[[maybe_unused]] static std::string serReadFile(const std::string& path)
+[[maybe_unused]] // Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool serParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
+}
+
+static std::string serReadFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open()) return "";
@@ -185,18 +199,29 @@ TestOutput SerializerDeserializerTesting::testLinkSpeed()
     // media-ctl pipeline
     std::string pipe = serRunCmd("media-ctl -p 2>/dev/null | grep -A2 'CSI-2\\|csi2\\|unicam' | head -6");
     data.push_back(pipe.empty() ? "[INFO] media-ctl not available or no CSI-2 pipeline"
-                                : "[PASS] CSI-2 pipeline:\n" + pipe);
+                                : "[INFO] CSI-2 pipeline:\n" + pipe);
 
     // CSI-2 D-PHY lane speed: Pi5 Unicam supports up to 1 Gbps/lane x 4 lanes = 4 Gbps
     data.push_back("[INFO] Pi5 Unicam: D-PHY max 1 Gbps/lane, up to 4 lanes = 4 Gbps aggregate");
 
+    // Acceptance criteria (measurable): a configured CSI-2 link requires an
+    // active media pipeline AND a negotiated V4L2 format on the capture node.
+    if (!pipe.empty() && !fmt.empty())
     {
+        data.push_back("[PASS] CSI-2 link configured (pipeline enumerated, V4L2 format negotiated)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No CSI-2 pipeline / camera configured on this DUT — link speed cannot be verified without a connected camera (GMSL/FPD-Link SerDes is not standard on Pi5)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -209,22 +234,44 @@ TestOutput SerializerDeserializerTesting::testErrorDetection()
 
     // Unicam error stats in dmesg
     std::string crcErr = serRunCmd("dmesg 2>/dev/null | grep -c -i 'unicam.*crc\\|csi.*error\\|unicam.*err'");
-    data.push_back(crcErr == "0" ? "[PASS] No CSI-2/Unicam CRC errors in dmesg"
-                                 : "[WARN] CSI-2 error events: " + crcErr);
-
-    // V4L2 event errors
     std::string v4lErr = serRunCmd("dmesg 2>/dev/null | grep -c -i 'v4l2.*error\\|video.*error'");
-    data.push_back(v4lErr == "0" ? "[PASS] No V4L2 errors in dmesg"
-                                 : "[WARN] V4L2 errors: " + v4lErr);
-
-    data.push_back("[INFO] MIPI CSI-2 D-PHY has built-in ECC (1-bit correction, 2-bit detection)");
+    long crcN = -1, v4lN = -1;
+    bool logReadable = serParseLong(crcErr, crcN) && serParseLong(v4lErr, v4lN);
+    if (!logReadable)
     {
+        data.push_back("[SKIP] Kernel log (dmesg) unreadable — CSI-2 error counters cannot be measured");
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back(crcN == 0 ? "[PASS] No CSI-2/Unicam CRC errors in dmesg"
+                             : "[FAIL] CSI-2 error events: " + std::to_string(crcN));
+    data.push_back(v4lN == 0 ? "[PASS] No V4L2 errors in dmesg"
+                             : "[FAIL] V4L2 errors: " + std::to_string(v4lN));
+
+    data.push_back("[INFO] MIPI CSI-2 D-PHY has built-in ECC (1-bit correction, 2-bit detection)");
+
+    // Acceptance criteria (measurable proxies): zero CSI-2 and zero V4L2
+    // error events in the kernel log.
+    if (crcN > 0 || v4lN > 0)
+    {
+        data.push_back("[FAIL] CSI-2/V4L2 error events present — link integrity compromised");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] No CSI-2/V4L2 error events (link integrity clean)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -247,17 +294,31 @@ TestOutput SerializerDeserializerTesting::testDeserializationFunctionality()
                                   : "[PASS] V4L2 sub-devices: " + subdev);
 
     // Check libcamera for Pi camera module
-    std::string lcCams = serRunCmd("libcamera-hello --list-cameras 2>/dev/null | head -5");
+    std::string lcCams = serRunCmd("rpicam-hello --list-cameras 2>/dev/null | head -5");
+    if (lcCams.empty())
+        lcCams = serRunCmd("libcamera-hello --list-cameras 2>/dev/null | head -5");
     data.push_back(lcCams.empty() ? "[INFO] No libcamera cameras found"
-                                  : "[PASS] libcamera cameras:\n" + lcCams);
+                                  : "[INFO] libcamera cameras:\n" + lcCams);
 
+    // Acceptance criteria (measurable): the deserialization path requires
+    // the Unicam receiver driver bound and a V4L2 sub-device (sensor) bound
+    // to it. Neither -> SKIP.
+    if (!unicamBound.empty() && !subdev.empty())
     {
+        data.push_back("[PASS] CSI-2 deserialization path bound (Unicam driver + V4L2 sub-device present)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] Unicam driver not bound or no V4L2 sub-device — no deserializer/camera path on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -281,13 +342,25 @@ TestOutput SerializerDeserializerTesting::testClockRecovery()
     data.push_back("[INFO] vcgencmd core clock: " + (mclk.empty() ? "N/A" : mclk));
     data.push_back("[INFO] Camera MCLK = 24 MHz from XTAL; link clock embedded in D-PHY");
 
+    // Acceptance criteria (measurable): a CDR lock register is not readable
+    // on Pi5 Unicam; the observable evidence is a camera clock source in the
+    // device tree (MCLK path exists). Nothing -> SKIP.
+    if (!camClk.empty())
     {
+        data.push_back("[PASS] Camera clock path configured in device tree (D-PHY CDR has a valid reference clock; lock state itself is not software-readable on Unicam)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No camera clock alias in the device tree and no CDR status register — clock recovery cannot be verified without an attached CSI-2 camera");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -307,31 +380,50 @@ TestOutput SerializerDeserializerTesting::testMultistreamSupport()
     data.push_back("[INFO] CSI-2 media-ctl entities: " + padCount);
 
     // Check for multicamera support via libcamera
-    std::string cams = serRunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    std::string cams = serRunCmd("rpicam-hello --list-cameras 2>/dev/null");
+    if (cams.empty())
+        cams = serRunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    int camCount = 0;
     if (!cams.empty())
     {
-        int camCount = 0;
         std::istringstream ss(cams);
         std::string line;
         while (std::getline(ss, line))
-            if (line.find("Available cameras") != std::string::npos ||
-                line.find("camera") != std::string::npos)
+            if (line.find(":") != std::string::npos &&
+                (line.find("Available cameras") != std::string::npos ||
+                 line.find("camera") != std::string::npos))
                 camCount++;
-        data.push_back("[INFO] libcamera camera enumeration result: " + std::to_string(camCount) + " line(s)");
+        data.push_back("[INFO] libcamera camera enumeration result: " + std::to_string(camCount) + " camera(s)");
     }
     else
     {
         data.push_back("[INFO] libcamera not available or no cameras connected");
     }
 
-    data.push_back("[INFO] For multi-stream (GMSL-2) use MAX96724 deser + imx390 sensors on VC0–3");
+    long entities = 0;
+    bool havePipeline = serParseLong(padCount, entities) && entities > 0;
+
+    // Acceptance criteria (measurable): multi-stream requires at least two
+    // cameras on the CSI-2 pipeline (virtual channels VC0-3). Fewer -> SKIP.
+    if (camCount >= 2 && havePipeline)
     {
+        data.push_back("[PASS] Multi-camera CSI-2 path present (" + std::to_string(camCount) +
+                       " camera(s) across the CSI-2 pipeline — virtual-channel capable)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] Multi-stream not verifiable (" + std::to_string(camCount) +
+                   " camera(s), pipeline " + (havePipeline ? "present" : "absent") +
+                   ") — attach a multi-camera/SerDes setup (GMSL-2: MAX96724 + imx390 on VC0–3)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
