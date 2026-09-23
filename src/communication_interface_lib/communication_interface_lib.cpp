@@ -56,6 +56,32 @@ std::string readFile(const std::string& path)
 }
 
 /** Return all entries in a directory whose name starts with @p prefix. */
+
+// HAL-505: destructive UART tests (baud/parity/stop-bits/flow-control) must
+// only touch an allow-listed port. ACADIA_UART_TEST_PORTS is a
+// comma-separated list; the console (ttyAMA0) and gpsd/MCU-owned ports are
+// excluded by configuration. termios is always restored by the callers.
+static std::vector<std::string> commTestPorts(std::vector<std::string>& data)
+{
+    const char* env = getenv("ACADIA_UART_TEST_PORTS");
+    std::vector<std::string> ports;
+    if (env && *env) {
+        std::string s(env);
+        size_t start = 0;
+        while (start <= s.size()) {
+            size_t comma = s.find(',', start);
+            std::string p = s.substr(start, comma == std::string::npos ? std::string::npos : comma - start);
+            if (!p.empty()) ports.push_back(p);
+            if (comma == std::string::npos) break;
+            start = comma + 1;
+        }
+    }
+    if (ports.empty()) {
+        data.push_back("[SKIP] ACADIA_UART_TEST_PORTS not configured — refusing to reconfigure every UART (console, gpsd and MCU links may be attached); set an explicit allow-list to run this test");
+    }
+    return ports;
+}
+
 std::vector<std::string> listDevNodes(const std::string& dir, const std::string& prefix)
 {
     std::vector<std::string> result;
@@ -206,9 +232,15 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
         {"115200", B115200}, {"230400", B230400}, {"460800", B460800}, {"921600", B921600},
     };
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
-    if (ports.empty()) {
-        ports = listDevNodes("/dev", "ttyS");
+    std::vector<std::string> ports = commTestPorts(data);
+
+    if (ports.empty() && data.back().find("[SKIP]") == 0) {
+        // HAL-505: no allow-list configured — the SKIP reason is recorded above.
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     if (ports.empty()) {
@@ -304,7 +336,16 @@ TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
     std::vector<std::string> data;
     data.push_back("=== UART Hardware Flow Control (Pi5) ===");
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
+    std::vector<std::string> ports = commTestPorts(data);
+
+    if (ports.empty() && data.back().find("[SKIP]") == 0) {
+        // HAL-505: no allow-list configured — the SKIP reason is recorded above.
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
     if (ports.empty()) {
         data.push_back("[INFO] No ttyAMA devices found; checking CRTSCTS flag definition");
 #ifdef CRTSCTS
@@ -400,7 +441,16 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
         {"Odd parity", PARENB | PARODD},
     };
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
+    std::vector<std::string> ports = commTestPorts(data);
+
+    if (ports.empty() && data.back().find("[SKIP]") == 0) {
+        // HAL-505: no allow-list configured — the SKIP reason is recorded above.
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
     if (ports.empty()) {
         data.push_back("[INFO] No ttyAMA ports; validating termios flag definitions");
         data.push_back("[PASS] PARENB defined");
@@ -471,7 +521,16 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
     std::vector<std::string> data;
     data.push_back("=== UART Stop Bit Configuration (Pi5) ===");
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
+    std::vector<std::string> ports = commTestPorts(data);
+
+    if (ports.empty() && data.back().find("[SKIP]") == 0) {
+        // HAL-505: no allow-list configured — the SKIP reason is recorded above.
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
     if (ports.empty()) {
         data.push_back("[INFO] No ttyAMA ports; CSTOPB flag present in kernel headers");
         data.push_back("[PASS] 1-stop-bit (default) and 2-stop-bit (CSTOPB) supported");
