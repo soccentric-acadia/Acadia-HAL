@@ -122,15 +122,12 @@ TestOutput McuInterfaceTesting::testMcuFirmwareOperation()
 
     if (!mcuPathExists("/dev/ttyAMA0"))
     {
-        data.push_back("[INFO] /dev/ttyAMA0 not available — skipping firmware probe");
-        data.push_back("[INFO] Connect MCU (RP2040/STM32) TX→Pi5 UART0 RX for this test");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        data.push_back("[SKIP] /dev/ttyAMA0 not available — MCU firmware operation cannot be probed (connect MCU TX→Pi5 UART RX)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     // Check UART is not being used by another process
@@ -138,6 +135,12 @@ TestOutput McuInterfaceTesting::testMcuFirmwareOperation()
     if (!uartProc.empty())
     {
         data.push_back("[INFO] /dev/ttyAMA0 in use by PID: " + uartProc + " (likely serial-getty)");
+        data.push_back("[SKIP] UART owned by the console getty — firmware probe must not disturb the console; free the port to run this test");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     // Check serial port settings
@@ -147,9 +150,10 @@ TestOutput McuInterfaceTesting::testMcuFirmwareOperation()
 
     data.push_back("[INFO] MCU firmware test requires MCU running echo firmware");
     data.push_back("[INFO] Expected: send 0xAA 0x55; receive 0x55 0xAA (loopback)");
+    data.push_back("[SKIP] No MCU echo-firmware handshake observable without wired loopback/MCU — firmware operation not verified on this DUT");
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
@@ -341,15 +345,27 @@ TestOutput McuInterfaceTesting::testMcuDmsInterface()
     std::string i2cDms = mcuRunCmd(
         "i2cdetect -y 1 2>/dev/null | grep -oE ' 4[0-9a-f]| 5[0-9a-f]'");
     data.push_back(i2cDms.empty() ? "[INFO] No DMS MCU address range on I2C-1"
-                                  : "[PASS] DMS MCU candidate address: " + i2cDms);
+                                  : "[INFO] DMS MCU candidate address: " + i2cDms);
 
+    // Acceptance criteria (measurable): a DMS co-processor interface must be
+    // enumerable (USB-HID device or an I2C co-processor in the 0x40-0x5F
+    // address range). Neither present -> SKIPPED.
+    if (!hidDevs.empty() || !i2cDms.empty())
     {
+        data.push_back("[PASS] DMS interface path enumerable on this DUT");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No USB-HID device and no I2C co-processor in the DMS address range — DMS interface not present on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -468,13 +484,27 @@ TestOutput McuInterfaceTesting::testMcuSynchronization()
                                   : "[INFO] chrony:\n" + chrony);
 
     data.push_back("[INFO] For μs-level sync: use SPI CS falling edge as start-of-frame timestamp");
+
+    // Acceptance criteria (measurable): a synchronization source must exist —
+    // a PPS device (MCU 1 PPS) or hardware timestamping on the network path.
+    // Neither present -> SKIPPED.
+    if (ppsOk || !hwts.empty())
     {
+        data.push_back("[PASS] MCU clock-synchronization path present (" +
+                       std::string(ppsOk ? "PPS device" : "hardware timestamping") + ")");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No PPS device and no hardware timestamping — MCU synchronization cannot be verified on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
