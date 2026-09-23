@@ -14,7 +14,9 @@
 
 #include <array>
 #include <chrono>
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <sstream>
@@ -49,6 +51,18 @@ static std::string siRunCmd(const std::string& cmd)
     while (!result.empty() && (result.back() == '\n' || result.back() == '\r'))
         result.pop_back();
     return result;
+}
+
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool siParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
 }
 
 static bool siPathExists(const std::string& p)
@@ -110,7 +124,13 @@ TestOutput SystemIntegrationTesting::testConcurrentOperationOfAllSubsystems()
     // Thermal check after load
     std::string temp = siReadFile("/sys/class/thermal/thermal_zone0/temp");
     if (!temp.empty())
-        data.push_back("[INFO] CPU temp: " + std::to_string(std::stoi(temp) / 1000) + " °C under load");
+    {
+        long tempMc = 0;
+        if (siParseLong(temp, tempMc))
+            data.push_back("[INFO] CPU temp: " + std::to_string(tempMc / 1000) + " °C under load");
+        else
+            data.push_back("[INFO] CPU temperature value unparseable: '" + temp + "'");
+    }
 
     {
         TestOutput _out;
@@ -148,15 +168,37 @@ TestOutput SystemIntegrationTesting::testResourceContentionHandling()
 
     // OOM kills
     std::string oom = siRunCmd("dmesg 2>/dev/null | grep -c 'Out of memory'");
-    data.push_back(oom == "0" ? "[PASS] No OOM kills recorded" : "[WARN] OOM events: " + oom);
-
+    long oomN = -1;
+    if (!siParseLong(oom, oomN))
     {
+        data.push_back("[SKIP] Kernel log (dmesg) unreadable — contention proxies (OOM counters, PSI) cannot be measured");
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+    data.push_back(oomN == 0 ? "[PASS] No OOM kills recorded" : "[FAIL] OOM events: " + std::to_string(oomN));
+
+    // Acceptance criteria (measurable proxies): zero OOM kills under the
+    // observed load. PSI evidence is informational.
+    if (oomN > 0)
+    {
+        data.push_back("[FAIL] Out-of-memory kills present — resource contention not handled within memory budget");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] No resource-contention failures (0 OOM kills" +
+                   std::string(vmPressure.empty() ? "" : ", PSI available") + ")");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -195,13 +237,35 @@ TestOutput SystemIntegrationTesting::testSystemBottleneckIdentification()
     std::string diskStat = siRunCmd("iostat -x 1 1 2>/dev/null | grep mmcblk | head -2");
     data.push_back(diskStat.empty() ? "[INFO] iostat not available" : "[INFO] Disk I/O:\n" + diskStat);
 
+    // Acceptance criteria (measurable): the load/utilisation sample must be
+    // valid (readable /proc/loadavg and a non-degenerate CPU utilisation
+    // sample).
+    if (loadavg.empty() || total <= 0)
     {
+        data.push_back("[SKIP] Load/utilisation sample invalid — bottleneck identification cannot be performed");
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+    if (utilPct >= 100)
+    {
+        data.push_back("[FAIL] CPU saturated (100% utilisation at idle sample) — system bottlenecked on CPU");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Bottleneck sample valid (CPU utilisation " + std::to_string(utilPct) +
+                   "%, load " + loadavg + ")");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -313,15 +377,29 @@ TestOutput SystemIntegrationTesting::testMultimodalAiWorkloads()
     // libcamera
     std::string lc = siRunCmd("libcamera-hello --list-cameras 2>/dev/null | head -3");
     data.push_back(lc.empty() ? "[INFO] libcamera not available"
-                              : "[PASS] libcamera output:\n" + lc);
+                              : "[INFO] libcamera output:\n" + lc);
 
+    // Acceptance criteria (measurable): a multimodal AI path requires an
+    // inference runtime (TFLite/Hailo) plus a sensor source (camera stack).
+    // Nothing installed -> SKIP.
+    if ((!tflite.empty() || hailoPresent || !ocv.empty()) && !lc.empty())
     {
+        data.push_back("[PASS] Multimodal AI path verified (inference runtime + camera stack)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] Multimodal AI stack incomplete (inference runtime " +
+                   std::string(tflite.empty() && !hailoPresent ? "absent" : "present") +
+                   ", camera stack " + std::string(lc.empty() ? "absent" : "present") + ") — workload cannot be exercised on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -345,15 +423,36 @@ TestOutput SystemIntegrationTesting::testAutonomousDrivingStack()
 
     // GStreamer (camera pipeline)
     std::string gst = siRunCmd("gst-launch-1.0 --version 2>/dev/null | head -1");
-    data.push_back(gst.empty() ? "[INFO] GStreamer not found" : "[PASS] " + gst);
+    data.push_back(gst.empty() ? "[INFO] GStreamer not found" : "[INFO] " + gst);
 
+    // Acceptance criteria (measurable): an autonomous-stack deployment
+    // requires ROS2 with an active service. Not installed -> SKIP (N/A on
+    // a Pi5 without the stack).
+    if (!ros.empty() && ros2Active == "active")
     {
+        data.push_back("[PASS] Autonomous-stack runtime verified (ROS2 installed and ros2 service active)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+    if (!ros.empty())
+    {
+        data.push_back("[SKIP] ROS2 installed but the ros2 service is not active (" + ros2Active + ")");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[SKIP] Autonomous driving stack not installed on this DUT (no ROS2) — not applicable");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
