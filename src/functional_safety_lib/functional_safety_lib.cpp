@@ -180,13 +180,41 @@ TestOutput FunctionalSafetyTesting::testRedundantPowerSupplies()
                         : "[INFO] Throttle: " + throttle);
 
     data.push_back("[INFO] Redundancy requires UPS HAT (e.g. Pisugar, UPS-HAT) + firmware");
+
+    // Acceptance criteria (measurable): power redundancy is demonstrable only
+    // when a second supply (battery/UPS entry in /sys/class/power_supply) is
+    // present. An under-voltage flag is a FAIL (single-supply stress).
+    // No second supply -> SKIPPED, never an unconditional PASS.
+    bool hasSecondSupply = !psList.empty() &&
+                           (psList.find("BAT") != std::string::npos ||
+                            psList.find("bat") != std::string::npos ||
+                            psList.find("UPS") != std::string::npos ||
+                            psList.find("ups") != std::string::npos);
+    if (!uvOk)
     {
+        data.push_back("[FAIL] Under-voltage/throttle flag set: " + throttle + " — power-supply stress observed");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (hasSecondSupply)
+    {
+        data.push_back("[PASS] Second supply (battery/UPS) present in /sys/class/power_supply — redundant power path available");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No battery/UPS supply present — power redundancy cannot be verified on this single-input DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -285,41 +313,57 @@ TestOutput FunctionalSafetyTesting::testFaultInjectionTesting()
     data.push_back("=== Fault Injection (Pi5 Proxy) ===");
     data.push_back("[INFO] Hardware fault injection requires JTAG; software proxy used");
 
-    // Watchdog boot status (detects prior watchdog-triggered resets)
-    if (fsPathExists("/dev/watchdog0"))
-    {
-        int fd = open("/dev/watchdog0", O_RDWR);
-        if (fd >= 0)
-        {
-#ifdef WDIOC_GETBOOTSTATUS
-            int bootStatus = 0;
-            if (ioctl(fd, WDIOC_GETBOOTSTATUS, &bootStatus) == 0)
-                data.push_back("[INFO] WD boot-status: " + std::to_string(bootStatus) +
-                               (bootStatus != 0 ? " (prior WD reset)" : " (no prior WD reset)"));
-#endif
-            // Safe close
-            ssize_t _w = write(fd, "V", 1); (void)_w;
-            close(fd);
-        }
-    }
+    // Watchdog boot status (detects prior watchdog-triggered resets) —
+    // read-only via sysfs; never open /dev/watchdog0 (a daemon may own the
+    // device and closing it can arm a reboot).
+    std::string wdBoot = fsReadFile("/sys/class/watchdog/watchdog0/bootstatus");
+    if (!wdBoot.empty())
+        data.push_back("[INFO] WD boot-status: " + wdBoot +
+                       (wdBoot != "0" ? " (prior WD reset)" : " (no prior WD reset)"));
+    else
+        data.push_back("[INFO] watchdog0 bootstatus not readable");
 
     // KASAN
     std::string kasan = fsRunCmd("grep -c 'CONFIG_KASAN=y' /boot/config-$(uname -r) 2>/dev/null");
-    data.push_back(kasan == "1" ? "[PASS] KASAN memory error detection enabled"
-                                : "[INFO] KASAN not enabled in kernel");
 
     // UBSAN
     std::string ubsan = fsRunCmd("grep -c 'CONFIG_UBSAN=y' /boot/config-$(uname -r) 2>/dev/null");
-    data.push_back(ubsan == "1" ? "[PASS] UBSAN undefined-behavior detection enabled"
+
+    data.push_back(kasan == "1" ? "[INFO] KASAN memory error detection enabled"
+                                : "[INFO] KASAN not enabled in kernel");
+    data.push_back(ubsan == "1" ? "[INFO] UBSAN undefined-behavior detection enabled"
                                 : "[INFO] UBSAN not enabled");
 
+    // Acceptance criteria (measurable): the kernel must have at least one
+    // runtime fault-detection mechanism enabled (KASAN or UBSAN) for fault
+    // injection to be observable in software. Config unreadable -> SKIPPED;
+    // neither enabled -> FAIL.
+    if (kasan.empty() && ubsan.empty())
     {
+        data.push_back("[SKIP] Kernel config unreadable — fault-detection configuration cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (kasan == "1" || ubsan == "1")
+    {
+        data.push_back("[PASS] Runtime fault-detection enabled (" +
+                       std::string(kasan == "1" ? "KASAN" : "UBSAN") + ") — injected faults are observable");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[FAIL] Neither KASAN nor UBSAN enabled — fault injection produces no observable detection");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -394,9 +438,13 @@ TestOutput FunctionalSafetyTesting::testAsilQsLAndRRailIsolation()
             data.push_back("[INFO] " + rail + ": " + v);
     }
 
+    // Acceptance criteria: ASIL QS-L/QS-R isolation requires ASIL-rated,
+    // isolated supply rails. The Pi5 MXL7704 PMIC has no such rails — the
+    // requirement is hardware not-applicable -> SKIPPED, never a PASS.
+    data.push_back("[SKIP] No ASIL-rated isolated rails on this DUT (MXL7704 PMIC) — ASIL rail isolation is not applicable");
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
