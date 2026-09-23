@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <fstream>
 #include <sstream>
+#include <cstring>
 #include <string>
 #include <sys/stat.h>
 #include <vector>
@@ -311,12 +312,32 @@ TestOutput CameraModule3Testing::testStillCapture()
     }
     data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
 
-    const std::string outPath = "/tmp/cm3_still.jpg";
-    cm3RunCmd("rm -f " + outPath);
-    std::string tool = cm3RunCmd("command -v libcamera-still 2>/dev/null");
-    if (tool.empty()) tool = cm3RunCmd("command -v rpicam-still 2>/dev/null");
+    // HAL-517: unique private output path (mkstemp) instead of the fixed
+    // /tmp/cm3_still.jpg (symlink-race target that was never cleaned up).
+    std::string outPath;
+    {
+        const char* tmpl = "/tmp/cm3_still_XXXXXX";
+        std::vector<char> buf(tmpl, tmpl + std::strlen(tmpl) + 1);
+        int fd = ::mkstemp(buf.data());
+        if (fd >= 0) {
+            ::close(fd); // the capture tool writes the file itself
+            ::unlink(buf.data()); // remove the empty placeholder; tool recreates it
+            outPath = buf.data();
+        } else {
+            data.push_back("[SKIP] mkstemp failed (" + std::string(strerror(errno)) +
+                           ") — cannot create a private capture output path");
+            TestOutput _out;
+            _out.status = hal::Status::SKIPPED;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+    }
+
+    std::string tool = cm3RunCmd("command -v rpicam-still 2>/dev/null");
+    if (tool.empty()) tool = cm3RunCmd("command -v libcamera-still 2>/dev/null");
     if (tool.empty()) {
-        data.push_back("[SKIP] libcamera-still/rpicam-still not installed - cannot execute a still capture");
+        data.push_back("[SKIP] rpicam-still/libcamera-still not installed - cannot execute a still capture");
         TestOutput _out;
         _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
@@ -333,8 +354,11 @@ TestOutput CameraModule3Testing::testStillCapture()
     struct stat st {};
     bool fileOk = (stat(outPath.c_str(), &st) == 0 && st.st_size > 0);
     data.push_back(fileOk
-                       ? "[PASS] " + outPath + " written (" + std::to_string(st.st_size / 1024) + " KB)"
-                       : "[FAIL] " + outPath + " was not written (or is empty) - capture did not succeed");
+                       ? "[PASS] Capture written (" + std::to_string(st.st_size / 1024) + " KB)"
+                       : "[FAIL] Capture output was not written (or is empty) - capture did not succeed");
+
+    // Clean up the private capture file.
+    cm3RunCmd("rm -f " + outPath);
 
     {
         TestOutput _out;
