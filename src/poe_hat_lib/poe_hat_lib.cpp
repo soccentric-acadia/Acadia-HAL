@@ -18,7 +18,9 @@
 #include "../platform_rpi5.h"
 
 #include <array>
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
@@ -51,6 +53,29 @@ static std::string poeRunCmd(const std::string& cmd)
     while (!result.empty() && (result.back() == '\n' || result.back() == '\r'))
         result.pop_back();
     return result;
+}
+
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool poeParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
+}
+
+static bool poeParseDouble(const std::string& s, double& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    double v = strtod(s.c_str(), &end);
+    if (end == s.c_str()) return false;
+    out = v;
+    return true;
 }
 
 static bool poePathExists(const std::string& p)
@@ -180,44 +205,62 @@ TestOutput PoeHatTesting::testPowerMonitoring()
     data.push_back("=== PoE Power Monitoring (INA219/INA226 hwmon) ===");
 
     auto hwmons = poeListHwmon();
-    bool found = false;
     for (const auto& hw : hwmons)
     {
         std::string name = poeReadFile(hw + "/name");
         if (name.find("ina") == std::string::npos) continue;
 
-        data.push_back("[PASS] INA hwmon: " + hw + " (" + name + ")");
+        data.push_back("INA hwmon: " + hw + " (" + name + ")");
         std::string v1 = poeReadFile(hw + "/in1_input");
         std::string c1 = poeReadFile(hw + "/curr1_input");
         std::string p1 = poeReadFile(hw + "/power1_input");
-        if (!v1.empty())
-            data.push_back("[INFO]   Voltage: " + std::to_string(std::stoi(v1)) + " mV");
-        if (!c1.empty())
-            data.push_back("[INFO]   Current: " + std::to_string(std::stoi(c1)) + " mA");
-        if (!p1.empty())
-            data.push_back("[INFO]   Power:   " + std::to_string(std::stoi(p1) / 1000) + " mW");
-        found = true;
-        break;
-    }
+        long vMv = 0, cMa = 0, pUw = 0;
+        bool anyParsed = false;
+        if (poeParseLong(v1, vMv)) { data.push_back("[INFO]   Voltage: " + std::to_string(vMv) + " mV"); anyParsed = true; }
+        if (poeParseLong(c1, cMa)) { data.push_back("[INFO]   Current: " + std::to_string(cMa) + " mA"); anyParsed = true; }
+        if (poeParseLong(p1, pUw)) { data.push_back("[INFO]   Power:   " + std::to_string(pUw / 1000) + " mW"); anyParsed = true; }
 
-    if (!found)
-    {
-        data.push_back("[INFO] No INA219/226 hwmon found");
-        // Fallback: vcgencmd measure_volts
-        std::string vCore = poeRunCmd("vcgencmd measure_volts core 2>/dev/null");
-        std::string v5    = poeRunCmd("vcgencmd measure_volts usb  2>/dev/null");
-        data.push_back("[INFO] vcgencmd core: " + (vCore.empty() ? "N/A" : vCore));
-        data.push_back("[INFO] vcgencmd usb:  " + (v5.empty()    ? "N/A" : v5));
-    }
-
-    data.push_back("[INFO] PoE+ budget: 25.5 W input, ~5V × 5A = 25 W to Pi5 GPIO header");
-    {
+        // Acceptance criteria (measurable): an INA power monitor must be
+        // present with at least one parseable reading in a plausible range
+        // (PoE+ budget 25.5 W).
+        if (!anyParsed)
+        {
+            data.push_back("[FAIL] INA hwmon present but no channel value parseable");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        if (vMv > 0 && (vMv < 3600 || vMv > 60000))
+        {
+            data.push_back("[FAIL] PoE input voltage out of range: " + std::to_string(vMv) + " mV");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        data.push_back("[PASS] Power monitor present with valid readings (PoE+ budget: 25.5 W input)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    // Fallback: vcgencmd measure_volts
+    std::string vCore = poeRunCmd("vcgencmd measure_volts core 2>/dev/null");
+    std::string v5    = poeRunCmd("vcgencmd measure_volts usb  2>/dev/null");
+    data.push_back("[INFO] vcgencmd core: " + (vCore.empty() ? "N/A" : vCore));
+    data.push_back("[INFO] vcgencmd usb:  " + (v5.empty()    ? "N/A" : v5));
+
+    data.push_back("[SKIP] No INA219/226 power monitor present — PoE power monitoring cannot be measured");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -268,13 +311,24 @@ TestOutput PoeHatTesting::testFanControl()
         }
     }
 
+    // Acceptance criteria (measurable): a fan control interface (hwmon PWM
+    // or a thermal cooling device) must exist for the PoE HAT fan path.
+    if (found)
     {
+        data.push_back("[PASS] Fan control interface present");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No PoE HAT fan control found (hwmon/thermal) — ensure dtoverlay=rpi-poe-fan is configured or the HAT is attached");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -286,30 +340,45 @@ TestOutput PoeHatTesting::testFanSpeed()
     data.push_back("=== PoE HAT Fan Speed (tachometer) ===");
 
     auto hwmons = poeListHwmon();
-    bool found = false;
     for (const auto& hw : hwmons)
     {
         std::string fan = poeReadFile(hw + "/fan1_input");
         if (fan.empty()) continue;
         std::string name = poeReadFile(hw + "/name");
-        data.push_back("[PASS] Fan hwmon " + name + " — fan1: " + fan + " RPM");
-        found = true;
-        break;
-    }
-
-    if (!found)
-    {
-        data.push_back("[INFO] fan1_input not found in hwmon (fan not spinning or HAT absent)");
-        data.push_back("[INFO] Official PoE+ HAT fan: 25×25 mm, ~5000 RPM max");
-    }
-
-    {
+        long rpm = 0;
+        if (!poeParseLong(fan, rpm) || rpm < 0 || rpm > 15000)
+        {
+            data.push_back("[FAIL] Fan tachometer reading invalid: '" + fan + "' RPM (" + name + ")");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        data.push_back("Fan hwmon " + name + " — fan1: " + fan + " RPM");
+        if (rpm == 0)
+        {
+            data.push_back("[SKIP] Fan tachometer reads 0 RPM — fan idle or not spinning (HAT present)");
+            TestOutput _out;
+            _out.status = hal::Status::SKIPPED;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        data.push_back("[PASS] Fan spinning at " + std::to_string(rpm) + " RPM");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] fan1_input not found in hwmon — fan not spinning or PoE HAT absent (official PoE+ HAT fan: 25×25 mm, ~5000 RPM max)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -320,11 +389,30 @@ TestOutput PoeHatTesting::testThermalProtection()
     std::vector<std::string> data;
     data.push_back("=== PoE HAT Thermal Protection (Pi5 trip points) ===");
 
-    // Read CPU temp
+    // Read CPU temp (validated parse)
     std::string tempRaw = poeReadFile(
         std::string(RPI5_THERMAL_CPU_ZONE) + "/temp");
-    double tempC = tempRaw.empty() ? 0.0 : std::stod(tempRaw) / 1000.0;
-    data.push_back("[INFO] CPU temperature: " + std::to_string(tempC) + " °C");
+    double tempC = 0.0;
+    bool tempOk = poeParseDouble(tempRaw, tempC);
+    if (tempOk)
+    {
+        tempC /= 1000.0;
+        data.push_back("[INFO] CPU temperature: " + std::to_string(tempC) + " °C");
+        if (tempC > static_cast<double>(RPI5_THERMAL_SHUTDOWN_C))
+        {
+            data.push_back("[FAIL] CPU temperature " + std::to_string(tempC) +
+                           " °C exceeds the shutdown threshold — thermal protection must trip");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+    }
+    else
+    {
+        data.push_back("[INFO] CPU temperature unreadable");
+    }
     data.push_back("[INFO] Pi5 throttle threshold: " + std::to_string(RPI5_THERMAL_THROTTLE_C) + " °C");
     data.push_back("[INFO] Pi5 shutdown threshold: " + std::to_string(RPI5_THERMAL_SHUTDOWN_C) + " °C");
 
@@ -334,19 +422,45 @@ TestOutput PoeHatTesting::testThermalProtection()
     if (!trips.empty())
         data.push_back("[INFO] Trip point temps (m°C): " + trips);
 
-    // Check throttle
+    // Acceptance criteria (measurable): no active throttle flags (thermal
+    // protection effective). Throttle flags set -> FAIL; throttle status
+    // unreadable -> SKIP.
     std::string throttle = poeRunCmd("vcgencmd get_throttled 2>/dev/null");
-    bool ok = !throttle.empty() && throttle == "throttled=0x0";
-    data.push_back(ok ? "[PASS] No throttle (temps within limits)"
-                      : "[INFO] Throttle status: " + throttle);
-
+    bool ok = !throttle.empty() && throttle.find("throttled=0x0") == 0;
+    if (ok)
     {
+        data.push_back("[PASS] No throttle flags (temps within limits)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+    if (throttle.empty() && !tempOk)
+    {
+        data.push_back("[SKIP] Thermal state not observable (vcgencmd absent, thermal zone unreadable)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (!throttle.empty())
+    {
+        data.push_back("[FAIL] Throttle flags set: " + throttle + " — thermal/under-voltage protection engaged");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Temperature within limits (throttle flag unavailable, temperature nominal)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -398,35 +512,60 @@ TestOutput PoeHatTesting::testPowerDelivery()
     // Pre-stress temperature
     std::string tempBefore = poeReadFile(
         std::string(RPI5_THERMAL_CPU_ZONE) + "/temp");
-    data.push_back("[INFO] CPU temp before stress: " +
-                   (tempBefore.empty() ? "N/A" : std::to_string(std::stod(tempBefore) / 1000.0) + " °C"));
+    double tBefore = 0.0;
+    if (poeParseDouble(tempBefore, tBefore))
+        data.push_back("[INFO] CPU temp before stress: " + std::to_string(tBefore / 1000.0) + " °C");
+    else
+        data.push_back("[INFO] CPU temp before stress: N/A");
 
     // 2-second CPU stress
     std::string stressOut = poeRunCmd("stress-ng --cpu 4 --timeout 2s --metrics-brief 2>&1 | tail -3");
     if (stressOut.empty())
         stressOut = poeRunCmd("dd if=/dev/zero of=/dev/null bs=1M count=2048 2>&1 | tail -1");
-    data.push_back("[INFO] Load: " + (stressOut.empty() ? "stress-ng not available" : stressOut));
+    data.push_back("[INFO] Load: " + (stressOut.empty() ? "no load tool available" : stressOut));
 
     // Post-stress throttle check
     std::string throttle = poeRunCmd("vcgencmd get_throttled 2>/dev/null");
-    bool ok = !throttle.empty() && throttle == "throttled=0x0";
-    data.push_back(ok ? "[PASS] No throttle under load — PoE supply sufficient"
-                      : "[WARN] Throttle after load: " + throttle);
+    bool ok = !throttle.empty() && throttle.find("throttled=0x0") == 0;
 
     // Post-stress temperature
     std::string tempAfter = poeReadFile(
         std::string(RPI5_THERMAL_CPU_ZONE) + "/temp");
-    data.push_back("[INFO] CPU temp after stress: " +
-                   (tempAfter.empty() ? "N/A" : std::to_string(std::stod(tempAfter) / 1000.0) + " °C"));
+    double tAfter = 0.0;
+    if (poeParseDouble(tempAfter, tAfter))
+        data.push_back("[INFO] CPU temp after stress: " + std::to_string(tAfter / 1000.0) + " °C");
+    else
+        data.push_back("[INFO] CPU temp after stress: N/A");
 
     data.push_back("[INFO] PoE+ HAT rated for Pi5 maximum load (~8-9 W CPU full load)");
+
+    // Acceptance criteria (measurable): the supply must hold the rail under
+    // load (no throttle flags after a 2 s all-core stress). No load tool and
+    // no throttle telemetry -> SKIP.
+    if (stressOut.empty() && throttle.empty())
     {
+        data.push_back("[SKIP] No load tool and no throttle telemetry — power delivery cannot be exercised");
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+    if (!ok)
+    {
+        data.push_back("[FAIL] Throttle flags after load: " + throttle + " — PoE supply insufficient under load");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] No throttle flags under load — PoE supply held the rail");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
