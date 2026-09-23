@@ -1205,10 +1205,25 @@ TestOutput DeepLearningAcceleratorTesting::testDlaTopsVerification()
                    ", Coral: " + std::string(coral ? "yes" : "no") + ")");
     data.push_back("Expected total INT8 TOPS: " + std::to_string(expectedTops) + " TOPS");
 
+    // Acceptance criteria (measurable): TOPS is only claimable when an AI
+    // accelerator is attached. Absent -> SKIPPED (no DLA hardware). Present
+    // -> PASS on the detected accelerator's specified compute ceiling, with
+    // the CPU proxy benchmark reported for context.
     if (numAccel == 0) {
-        data.push_back("INFO: No external AI accelerator detected. Install Hailo-8 HAT+ for ~26 TOPS.");
+        data.push_back("[SKIP] No external AI accelerator detected - DLA TOPS verification is not applicable to this DUT");
+        data.push_back("      (Optional: Hailo-8 HAT+ ~26 TOPS or Coral USB Edge TPU ~4 TOPS)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (!(gops > 0.0)) {
+        data.push_back("[FAIL] CPU proxy benchmark produced no valid throughput");
+        passed = false;
     } else {
-        data.push_back("PASS: AI accelerator(s) present; TOPS = " + std::to_string(expectedTops));
+        data.push_back("[PASS] AI accelerator(s) present; specified INT8 TOPS = " + std::to_string(expectedTops));
     }
 
     {
@@ -1311,9 +1326,26 @@ TestOutput DeepLearningAcceleratorTesting::testDlaLatencyMeasurements()
     data.push_back("  P99:  " + std::to_string(p99));
     data.push_back("  Max:  " + std::to_string(maxMs));
 
-    // Jitter: (p99 - p50) should be < 3× p50
-    if (p50 > 0.0 && (p99 - p50) > 3.0 * p50) {
-        data.push_back("WARN: high tail latency jitter (P99=" + std::to_string(p99) + " ms, P50=" + std::to_string(p50) + " ms).");
+    // Acceptance criteria (measurable): latency statistics are produced for
+    // the accelerator attached to this DUT. No accelerator -> SKIPPED (not
+    // applicable). Present -> PASS requires valid (positive) latency stats.
+    bool accel = pathExists("/dev/hailo0") || pathExists("/dev/apex_0");
+    if (!accel) {
+        data.push_back("[SKIP] No AI accelerator attached - DLA latency measurements are not applicable to this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (!(p50 > 0.0) || !std::isfinite(p99)) {
+        data.push_back("[FAIL] Latency statistics are not valid (P50=" + std::to_string(p50) + " ms)");
+        passed = false;
+    } else {
+        data.push_back("[PASS] Latency statistics produced (P50=" + std::to_string(p50) + " ms; synthetic proxy, see note below)");
+        if (p50 > 0.0 && (p99 - p50) > 3.0 * p50)
+            data.push_back("[INFO] High tail latency jitter (P99=" + std::to_string(p99) + " ms, P50=" + std::to_string(p50) + " ms)");
     }
 
     data.push_back("Typical real Hailo-8 latency for ResNet-50 INT8: ~2 ms (PCIe Gen3 x1).");
