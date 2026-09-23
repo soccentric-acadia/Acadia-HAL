@@ -1057,17 +1057,14 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
 
     int fd = ::open("/dev/rtc0", O_RDWR | O_CLOEXEC);
     if (fd < 0) {
-        data.push_back("WARN: Cannot open /dev/rtc0 (" + std::string(::strerror(errno)) + ")");
-        // If we can't open the device, skip but do not hard-fail so that the
-        // test suite can run without root on a development host as well.
-        data.push_back("SKIP: RTC alarm test requires read-write access to /dev/rtc0");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            StampDiagnostics(_out, data);
-            return _out;
-        }
+        // HAL-509: an absent/unopenable RTC is SKIPPED, never a PASS.
+        data.push_back("[SKIP] Cannot open /dev/rtc0 (" + std::string(::strerror(errno)) +
+                       ") — RTC alarm functionality cannot be verified (needs read-write access to /dev/rtc0)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     // Read current RTC time
@@ -1136,6 +1133,19 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
             _out.severity = hal::Severity::ERROR;
             StampDiagnostics(_out, data);
             return _out;
+        }
+    }
+
+    // HAL-508: disarm the alarm so no stray wake-up is left armed after the
+    // test (disable alarm interrupts and clear the alarm to epoch-less zero).
+    {
+        ::ioctl(fd, RTC_AIE_OFF, 0);
+        struct rtc_wkalrm off {};
+        off.enabled = 0;
+        if (::ioctl(fd, RTC_WKALM_SET, &off) < 0) {
+            // Fallback for drivers that only implement RTC_ALM_SET: program
+            // the alarm to a disabled state via AIE_OFF alone.
+            data.push_back("[INFO] RTC_WKALM_SET(disabled) unsupported; relied on RTC_AIE_OFF");
         }
     }
 
