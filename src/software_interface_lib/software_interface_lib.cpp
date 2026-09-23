@@ -12,7 +12,9 @@
 #include "../platform_rpi5.h"
 
 #include <array>
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <dirent.h>
 #include <fstream>
@@ -24,6 +26,29 @@
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool swParseDouble(const std::string& s, double& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    double v = strtod(s.c_str(), &end);
+    if (end == s.c_str()) return false;
+    out = v;
+    return true;
+}
+
+static bool swParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
+}
+
 static std::string swReadFile(const std::string& path)
 {
     std::ifstream f(path);
@@ -102,8 +127,11 @@ TestOutput SoftwareInterfaceTesting::testLinuxKernelBoot()
     std::string uptimeStr = swReadFile("/proc/uptime");
     if (!uptimeStr.empty())
     {
-        double uptime = std::stod(uptimeStr);
-        data.push_back("[PASS] Uptime: " + std::to_string(static_cast<int>(uptime)) + "s");
+        double uptime = 0.0;
+        if (swParseDouble(uptimeStr, uptime))
+            data.push_back("[PASS] Uptime: " + std::to_string(static_cast<int>(uptime)) + "s");
+        else
+            data.push_back("[WARN] Uptime value unparseable: '" + uptimeStr + "'");
     }
 
     // Pi5 firmware config
@@ -288,13 +316,40 @@ TestOutput SoftwareInterfaceTesting::testApplicationFramework()
     else
         data.push_back("[INFO] vcgencmd not found (rpi-userland not installed)");
 
+    // Acceptance criteria (measurable): the core scripting runtime (python3)
+    // plus at least one application framework (libcamera/GStreamer) must be
+    // installed. Nothing installed -> SKIP.
+    bool lcOk = !lcVer.empty() && lcVer.find("not found") == std::string::npos;
+    bool gstOk = !gstVer.empty() && gstVer.find("not found") == std::string::npos;
+    bool pyOk = !pyVer.empty() && pyVer.find("Python") != std::string::npos;
+    if (pyOk && (lcOk || gstOk))
     {
+        data.push_back("[PASS] Application framework verified (python3 + " +
+                       std::string(lcOk ? "libcamera" : "GStreamer") + ")");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+    if (!pyOk && !lcOk && !gstOk)
+    {
+        data.push_back("[SKIP] No application frameworks installed on this DUT (no python3, libcamera or GStreamer)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] Application framework incomplete (python3 " + std::string(pyOk ? "present" : "missing") +
+                   ", libcamera " + std::string(lcOk ? "present" : "missing") +
+                   ", GStreamer " + std::string(gstOk ? "present" : "missing") + ")");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -309,6 +364,7 @@ TestOutput SoftwareInterfaceTesting::testMultiuserSupport()
 
     // Count real user accounts (UID >= 1000)
     std::string userCount = swRunCmd("awk -F: '$3>=1000 && $3<65534{c++} END{print c+0}' /etc/passwd 2>/dev/null");
+    bool userCountOk = !userCount.empty();
     data.push_back("[INFO] User accounts (UID >= 1000): " + userCount);
 
     // Check PAM
@@ -327,13 +383,38 @@ TestOutput SoftwareInterfaceTesting::testMultiuserSupport()
     std::string who = swRunCmd("who 2>/dev/null | wc -l");
     data.push_back("[INFO] Currently logged-in sessions: " + who);
 
+    // Acceptance criteria (measurable): the PAM authentication stack must be
+    // installed for multi-user operation to be possible.
+    if (!pamPresent)
     {
+        data.push_back("[FAIL] No PAM authentication configuration — multi-user authentication not available on this DUT");
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    long users = 0;
+    bool userCountParsed = swParseLong(userCount, users);
+    if (!userCount.empty() && !userCountParsed)
+    {
+        data.push_back("[SKIP] /etc/passwd unreadable — multi-user state cannot be measured");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[PASS] Multi-user support verified (PAM present, " +
+                   std::to_string(users) + " user account(s), sshd config " +
+                   std::string(sshdPresent ? "present" : "absent") + ")");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -406,13 +487,26 @@ TestOutput SoftwareInterfaceTesting::testCudnnLibrary()
     if (!ortLib.empty())
         data.push_back("[PASS] libonnxruntime found: " + ortLib);
 
+    // Acceptance criteria (measurable): at least one inference library must
+    // be installed (TFLite or ONNX Runtime). cuDNN itself is NVIDIA-only and
+    // not applicable on Pi5; the equivalent stack is what is measured.
+    if (!tflite.empty() || !ort.empty() || !ortLib.empty())
     {
+        data.push_back("[PASS] Inference library present (" +
+                       std::string(!tflite.empty() ? "TFLite" : "ONNX Runtime") + ")");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No inference library installed (TFLite/ONNX Runtime absent) — neural-network library capability not present on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -441,13 +535,26 @@ TestOutput SoftwareInterfaceTesting::testTensorrtInference()
     data.push_back(neon ? "[PASS] ARM NEON/ASIMD available for XNNPACK acceleration"
                         : "[WARN] NEON/ASIMD not detected in /proc/cpuinfo");
 
+    // Acceptance criteria: TensorRT itself is NVIDIA-only and not applicable
+    // on Pi5; the measurable equivalent is a hardware accelerator (Hailo) or
+    // an optimised software runtime (ONNX providers). Neither -> SKIP.
+    if (hailoPresent || !ortEp.empty())
     {
+        data.push_back("[PASS] Inference runtime verified (" +
+                       std::string(hailoPresent ? "Hailo-8 hardware accelerator" : "ONNX Runtime providers enumerated") + ")");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No TensorRT (N/A on Pi5), no Hailo accelerator and no ONNX runtime — inference runtime not verifiable on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -478,13 +585,25 @@ TestOutput SoftwareInterfaceTesting::testVpi()
     std::string v4l2Count = swRunCmd("ls /dev/video* 2>/dev/null | wc -l");
     data.push_back("[INFO] V4L2 video devices: " + v4l2Count);
 
+    // Acceptance criteria (measurable): the Pi5 vision stack (VPI equivalent)
+    // requires libcamera and/or OpenCV.
+    if (ipaPresent || !cvVer.empty())
     {
+        data.push_back("[PASS] Vision-processing stack present (" +
+                       std::string(ipaPresent ? "libcamera" : "OpenCV") + ")");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No vision stack (libcamera absent, OpenCV not installed) — vision-processing interface not available on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -523,13 +642,24 @@ TestOutput SoftwareInterfaceTesting::testMultimediaApi()
     data.push_back(gstTest == "1" ? "[PASS] GStreamer fakesrc→fakesink pipeline OK"
                                   : "[INFO] GStreamer test skipped (not installed)");
 
+    // Acceptance criteria (measurable): at least one multimedia API surface
+    // must be exercised (V4L2 device, ALSA card, or a GStreamer pipeline).
+    if (!v4l2Out.empty() || !alsaCards.empty() || gstTest == "1")
     {
+        data.push_back("[PASS] Multimedia API verified (V4L2/ALSA/GStreamer surface present)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No multimedia API surface measurable (no V4L2 devices, no ALSA cards, GStreamer absent) on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -550,7 +680,9 @@ TestOutput SoftwareInterfaceTesting::testSensorDriverFramework()
     // hwmon sensors (BCM2712 thermal + MXL7704 PMIC)
     std::string hwmonCount = swRunCmd("ls /sys/class/hwmon/ 2>/dev/null | wc -l");
     data.push_back("[INFO] hwmon devices: " + hwmonCount);
-    if (std::stoi(hwmonCount.empty() ? "0" : hwmonCount) > 0)
+    long hwmonN = 0;
+    swParseLong(hwmonCount, hwmonN);
+    if (hwmonN > 0)
     {
         std::string hwmonNames = swRunCmd(
             "for d in /sys/class/hwmon/hwmon*; do n=$(cat $d/name 2>/dev/null); echo $d: $n; done 2>/dev/null");
@@ -565,8 +697,9 @@ TestOutput SoftwareInterfaceTesting::testSensorDriverFramework()
     std::string inputCount = swRunCmd("ls /sys/class/input/ 2>/dev/null | wc -l");
     data.push_back("[INFO] Input devices: " + inputCount);
 
-    bool hasSensors = (std::stoi(hwmonCount.empty() ? "0" : hwmonCount) > 0) ||
-                      (std::stoi(tzCount.empty() ? "0" : tzCount) > 0);
+    long tzN = 0;
+    swParseLong(tzCount, tzN);
+    bool hasSensors = (hwmonN > 0) || (tzN > 0);
     {
         TestOutput _out;
         _out.status = hasSensors ? hal::Status::PASS : hal::Status::FAIL;
