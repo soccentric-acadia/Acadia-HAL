@@ -14,7 +14,9 @@
 #include "../platform_rpi5.h"
 
 #include <array>
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <sstream>
@@ -48,6 +50,29 @@ static std::string relRunCmd(const std::string& cmd)
     while (!result.empty() && (result.back() == '\n' || result.back() == '\r'))
         result.pop_back();
     return result;
+}
+
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool relParseDouble(const std::string& s, double& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    double v = strtod(s.c_str(), &end);
+    if (end == s.c_str()) return false;
+    out = v;
+    return true;
+}
+
+static bool relParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,11 +112,19 @@ TestOutput ReliabilityTesting::testBurninTesting()
     std::string tempStr = relReadFile("/sys/class/thermal/thermal_zone0/temp");
     if (!tempStr.empty())
     {
-        double tempC = std::stod(tempStr) / 1000.0;
-        data.push_back("[INFO] SoC temp after stress: " + std::to_string(tempC) + " °C");
-        data.push_back(tempC < static_cast<double>(RPI5_THERMAL_THROTTLE_C)
-                           ? "[PASS] Below throttle threshold"
-                           : "[WARN] At/above throttle threshold");
+        double tempMc = 0.0;
+        if (relParseDouble(tempStr, tempMc))
+        {
+            double tempC = tempMc / 1000.0;
+            data.push_back("[INFO] SoC temp after stress: " + std::to_string(tempC) + " °C");
+            data.push_back(tempC < static_cast<double>(RPI5_THERMAL_THROTTLE_C)
+                               ? "[PASS] Below throttle threshold"
+                               : "[WARN] At/above throttle threshold");
+        }
+        else
+        {
+            data.push_back("[WARN] SoC temperature value unparseable: '" + tempStr + "'");
+        }
     }
 
     bool uvDetected = !throttlePost.empty() && throttlePost != "throttled=0x0";
@@ -118,29 +151,54 @@ TestOutput ReliabilityTesting::testPowerCycling()
     std::string uptime = relReadFile("/proc/uptime");
     if (!uptime.empty())
     {
-        double sec = std::stod(uptime);
-        data.push_back("[PASS] Uptime: " + std::to_string(static_cast<int>(sec)) + "s");
+        double sec = 0.0;
+        if (relParseDouble(uptime, sec))
+            data.push_back("[INFO] Uptime: " + std::to_string(static_cast<int>(sec)) + "s");
+        else
+            data.push_back("[WARN] Uptime value unparseable: '" + uptime + "'");
     }
 
     std::string bootCount = relRunCmd("last reboot 2>/dev/null | grep -c '^reboot'");
     data.push_back("[INFO] Boot entries in wtmp: " + bootCount);
 
     std::string panics = relRunCmd("journalctl -k --no-pager 2>/dev/null | grep -c -i 'kernel panic\\|Oops'");
-    data.push_back(panics == "0" ? "[PASS] No kernel panics in journal"
-                                 : "[WARN] Kernel panic count: " + panics);
-
     std::string fsErr = relRunCmd("dmesg 2>/dev/null | grep -c -i 'EXT4-fs error\\|Buffer I/O error'");
-    data.push_back(fsErr == "0" ? "[PASS] No FS errors in dmesg"
-                                : "[WARN] FS error count: " + fsErr);
-
-    data.push_back("[INFO] Physical power-cycle test requires external controller");
+    long panicCount = -1, fsCount = -1;
+    bool logReadable = relParseLong(panics, panicCount) && relParseLong(fsErr, fsCount);
+    if (!logReadable)
     {
+        data.push_back("[SKIP] Kernel log not readable — power-cycle resilience proxies (panic/FS-error counters) cannot be measured");
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+    data.push_back(panicCount == 0 ? "[PASS] No kernel panics in journal"
+                                   : "[FAIL] Kernel panic count: " + std::to_string(panicCount));
+    data.push_back(fsCount == 0 ? "[PASS] No FS errors in dmesg"
+                                : "[FAIL] FS error count: " + std::to_string(fsCount) + " (unclean power events)");
+
+    // Acceptance criteria (measurable proxies): zero kernel panics and zero
+    // filesystem errors indicate the unit has survived its power events
+    // cleanly. Physical power-cycle stress still requires an external
+    // controller (PDU/relay).
+    if (panicCount > 0 || fsCount > 0)
+    {
+        data.push_back("[FAIL] Unclean-shutdown evidence present (panics and/or FS errors) — power-cycle resilience compromised");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] No unclean-shutdown evidence (0 panics, 0 FS errors); note: a physical power-cycle test still requires an external controller");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -159,7 +217,14 @@ TestOutput ReliabilityTesting::testThermalCycling()
         std::string tempStr = relReadFile(base + "/temp");
         std::string type    = relReadFile(base + "/type");
         if (tempStr.empty()) continue;
-        double tempC = std::stod(tempStr) / 1000.0;
+        double tempMc = 0.0;
+        if (!relParseDouble(tempStr, tempMc))
+        {
+            data.push_back("[FAIL] " + type + ": temperature value unparseable: '" + tempStr + "'");
+            allOk = false;
+            continue;
+        }
+        double tempC = tempMc / 1000.0;
         bool ok      = tempC >= 0.0 && tempC < static_cast<double>(RPI5_THERMAL_SHUTDOWN_C);
         data.push_back((ok ? "[PASS] " : "[WARN] ") + type + ": " +
                        std::to_string(tempC) + " °C " + (ok ? "(in spec)" : "(out of spec!)"));
@@ -185,15 +250,26 @@ TestOutput ReliabilityTesting::testMtbf()
     data.push_back("=== MTBF Proxy (Pi5) ===");
 
     std::string uptimeStr = relReadFile("/proc/uptime");
+    double uptimeS = 0.0;
     if (!uptimeStr.empty())
-        data.push_back("[INFO] Uptime: " + std::to_string(static_cast<long>(std::stod(uptimeStr))) + "s");
+    {
+        if (relParseDouble(uptimeStr, uptimeS))
+            data.push_back("[INFO] Uptime: " + std::to_string(static_cast<long>(uptimeS)) + "s");
+        else
+            data.push_back("[WARN] Uptime value unparseable: '" + uptimeStr + "'");
+    }
 
     data.push_back("[INFO] Pi5 has no on-die ECC DRAM; MTBF via hardware fault counters only");
 
     std::string pstoreCount = relRunCmd("ls /sys/fs/pstore/ 2>/dev/null | wc -l");
-    bool pstoreOops = std::stoi(pstoreCount.empty() ? "0" : pstoreCount) > 0;
-    data.push_back(pstoreOops ? "[WARN] pstore crash entries: " + pstoreCount
-                              : "[PASS] pstore empty — no prior crash records");
+    long pstoreN = -1;
+    bool pstoreOk = relParseLong(pstoreCount, pstoreN) && pstoreN >= 0;
+    bool pstoreOops = pstoreOk && pstoreN > 0;
+    if (pstoreOk)
+        data.push_back(pstoreOops ? "[FAIL] pstore crash entries: " + pstoreCount
+                                  : "[PASS] pstore empty — no prior crash records");
+    else
+        data.push_back("[INFO] pstore unavailable — crash records cannot be checked");
 
     std::string aerErr = relRunCmd(
         "grep -r '' /sys/bus/pci/devices/*/aer_stats/ 2>/dev/null | grep -v ':0$' | head -5");
@@ -228,22 +304,73 @@ TestOutput ReliabilityTesting::testComponentAging()
 
     std::string maxF = relReadFile("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq");
     std::string curF = relReadFile("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq");
+    long mf = 0, cf = 0;
+    bool haveHeadroom = relParseLong(maxF, mf) && relParseLong(curF, cf) && mf > 0 && cf > 0;
     if (!maxF.empty() && !curF.empty())
     {
-        long mf  = std::stol(maxF);
-        long cf  = std::stol(curF);
-        double p = 100.0 * cf / mf;
-        data.push_back("[INFO] CPU0 freq: " + std::to_string(cf / 1000) + " / " +
-                       std::to_string(mf / 1000) + " MHz (" + std::to_string(static_cast<int>(p)) + "%)");
+        if (haveHeadroom)
+        {
+            double p = 100.0 * cf / mf;
+            data.push_back("[INFO] CPU0 freq: " + std::to_string(cf / 1000) + " / " +
+                           std::to_string(mf / 1000) + " MHz (" + std::to_string(static_cast<int>(p)) + "%)");
+        }
+        else
+        {
+            data.push_back("[WARN] CPU frequency values unparseable (max='" + maxF + "', cur='" + curF + "')");
+        }
     }
 
+    // Acceptance criteria (measurable): aging evidence is storage endurance
+    // (NVMe percentage_used) or CPU frequency headroom. NVMe wear >= 90% ->
+    // FAIL; nothing measurable -> SKIP.
+    double used_val = -1.0;
+    bool haveWear = false, wearOk = true;
+    if (!nvmeSmart.empty())
     {
+        size_t pos = nvmeSmart.find("percentage_used");
+        if (pos != std::string::npos)
+        {
+            std::string tail = nvmeSmart.substr(pos);
+            size_t dpos = tail.find_first_of("0123456789");
+            if (dpos != std::string::npos)
+            {
+                char* end = nullptr;
+                used_val = strtod(tail.c_str() + dpos, &end);
+                if (end != tail.c_str() + dpos)
+                    haveWear = used_val >= 0.0 && used_val <= 1000.0;
+            }
+            if (haveWear)
+            {
+                data.push_back("[INFO] NVMe wear level used: " + std::to_string(used_val) + "%");
+                wearOk = used_val < 90.0;
+            }
+        }
+    }
+    if (haveWear && !wearOk)
+    {
+        data.push_back("[FAIL] NVMe wear level " + std::to_string(used_val) + "% exceeds the 90% aging threshold");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (haveWear || haveHeadroom)
+    {
+        data.push_back("[PASS] Aging indicators measured (storage wear and/or CPU headroom within limits)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No aging telemetry measurable (no NVMe SMART, no cpufreq sysfs) — component aging cannot be assessed");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -263,20 +390,43 @@ TestOutput ReliabilityTesting::testSolderJointIntegrity()
 
     std::string usbResets = relRunCmd(
         "dmesg 2>/dev/null | grep -c -i 'USB disconnect\\|reset full-speed\\|xhci.*error'");
-    data.push_back(usbResets == "0" ? "[PASS] No USB error events"
-                                    : "[WARN] USB errors: " + usbResets);
-
     std::string mmcErr = relRunCmd("dmesg 2>/dev/null | grep -c -i 'mmc.*error\\|mmcblk.*error'");
-    data.push_back(mmcErr == "0" ? "[PASS] No eMMC/SD errors in dmesg"
-                                 : "[WARN] eMMC/SD errors: " + mmcErr);
-
+    long usbCount = -1, mmcCount = -1;
+    bool logReadable = relParseLong(usbResets, usbCount) && relParseLong(mmcErr, mmcCount);
+    if (!logReadable)
     {
+        data.push_back("[SKIP] Kernel log (dmesg) unreadable — solder-joint proxies (USB/eMMC error counters) cannot be measured");
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back(usbCount == 0 ? "[PASS] No USB error events"
+                                 : "[FAIL] USB error events: " + std::to_string(usbCount));
+    data.push_back(mmcCount == 0 ? "[PASS] No eMMC/SD errors in dmesg"
+                                 : "[FAIL] eMMC/SD errors: " + std::to_string(mmcCount));
+
+    // Acceptance criteria (measurable proxies): zero USB and zero eMMC/SD
+    // error events in the kernel log (intermittent contact faults). Physical
+    // X-ray/thermal-imaging verification remains a lab test.
+    if (usbCount > 0 || mmcCount > 0)
+    {
+        data.push_back("[FAIL] Contact-fault indicators present in kernel log (USB/eMMC errors) — check solder joints and connectors");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] No contact-fault indicators (0 USB errors, 0 eMMC/SD errors; physical X-ray verification still requires lab equipment)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
