@@ -18,11 +18,12 @@
 
 #include <array>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <sstream>
-#include <cstring>
 #include <string>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 // ---------------------------------------------------------------------------
