@@ -14,6 +14,29 @@
 #include <vector>
 #include <cmath>
 
+
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool batParseDouble(const std::string& s, double& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    double v = strtod(s.c_str(), &end);
+    if (end == s.c_str()) return false;
+    out = v;
+    return true;
+}
+
+static bool batParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
+}
 static std::string readSysfs(const std::string& path)
 {
     std::ifstream f(path);
@@ -146,13 +169,31 @@ TestOutput BatteryTesting::testBatteryVoltageCurrent()
         std::string vnow = readSysfs(std::string(RPI5_BATTERY_SUPPLY) + "/" + s + "/voltage_now");
         std::string inow = readSysfs(std::string(RPI5_BATTERY_SUPPLY) + "/" + s + "/current_now");
         if (!vnow.empty()) {
-            double v = std::stod(vnow) / 1e6;
+            double vu = 0.0;
+            if (!batParseDouble(vnow, vu) || vu < 0.0 || vu > 30e6) {
+                data.push_back("[FAIL] " + s + " voltage value unparseable/out of range: '" + vnow + "' uV");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            double v = vu / 1e6;
             data.push_back("[INFO] " + s + " voltage=" + vnow + " uV (" + std::to_string(v) + " V)");
             voltage = v;
             read = true;
         }
         if (!inow.empty()) {
-            double i = std::stod(inow) / 1e6;
+            double iu = 0.0;
+            if (!batParseDouble(inow, iu) || iu < -100e6 || iu > 100e6) {
+                data.push_back("[FAIL] " + s + " current value unparseable/out of range: '" + inow + "' uA");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            double i = iu / 1e6;
             data.push_back("[INFO] " + s + " current=" + inow + " uA (" + std::to_string(i) + " A)");
             current = i;
             read = true;

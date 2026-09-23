@@ -13,6 +13,8 @@
 #include "../platform_rpi5.h"
 
 #include <array>
+#include <cerrno>
+#include <cstdlib>
 #include <cstdio>
 #include <fcntl.h>
 #include <fstream>
@@ -24,7 +26,20 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
-[[maybe_unused]] static std::string fsReadFile(const std::string& path)
+[[maybe_unused]] 
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool fsParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
+}
+
+static std::string fsReadFile(const std::string& path)
 {
     std::ifstream f(path);
     if (!f.is_open()) return "";
@@ -121,9 +136,20 @@ TestOutput FunctionalSafetyTesting::testEccOnMemories()
 
     // pstore as memory-error proxy
     std::string pstoreFiles = fsRunCmd("ls /sys/fs/pstore/ 2>/dev/null | wc -l");
-    bool cleanPstore = (std::stoi(pstoreFiles.empty() ? "0" : pstoreFiles) == 0);
+    long pstoreN = -1;
+    bool pstoreReadable = fsParseLong(pstoreFiles, pstoreN);
+    bool cleanPstore = pstoreReadable && pstoreN == 0;
+    if (!pstoreReadable)
+    {
+        data.push_back("[SKIP] pstore unreadable — memory-fault proxy cannot be measured");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
     data.push_back(cleanPstore ? "[PASS] pstore empty — no recorded memory faults"
-                               : "[WARN] pstore entries: " + pstoreFiles);
+                               : "[FAIL] pstore entries: " + pstoreFiles + " (possible memory fault records)");
 
     // EDAC (Error Detection And Correction) kernel subsystem
     bool edacPresent = fsPathExists("/sys/bus/platform/drivers/edac_mpc85xx") ||

@@ -13,6 +13,8 @@
 #include "../platform_rpi5.h"
 
 #include <array>
+#include <cerrno>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -26,6 +28,19 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
+
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool ecParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
+}
+
 static std::string ecReadFile(const std::string& path)
 {
     std::ifstream f(path);
@@ -737,7 +752,16 @@ TestOutput ExternalConnectorTesting::testAllConnectorPinAssignments()
 
     // Enumerate GPIO lines and compare against expected count (27 user-accessible GPIOs)
     std::string gpioCount = ecRunCmd("gpioinfo 2>/dev/null | grep -c 'line'");
-    int count = gpioCount.empty() ? 0 : std::stoi(gpioCount);
+    long count = 0;
+    if (!ecParseLong(gpioCount, count))
+    {
+        data.push_back("[FAIL] GPIO line count unparseable: '" + gpioCount + "'");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
     bool gpioOk = (count >= 27);
     data.push_back(gpioOk ? "[PASS] GPIO lines: " + std::to_string(count)
                           : "[WARN] GPIO lines: " + std::to_string(count) + " (expected ≥ 27)");

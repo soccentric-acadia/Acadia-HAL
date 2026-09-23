@@ -11,6 +11,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
@@ -45,6 +47,19 @@ static constexpr const char* JTAG_DEV_PATH = "/dev/jtag0";
 // ---------------------------------------------------------------------------
 
 /** Read a single line from a file; returns empty string on failure. */
+
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool dbgParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
+}
+
 static std::string readLine(const std::string& path)
 {
     std::ifstream f(path);
@@ -511,7 +526,16 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
             return _out;
         }
     }
-    int paranoid = std::stoi(paranoidStr);
+    long paranoid = 0;
+    if (!dbgParseLong(paranoidStr, paranoid) || paranoid < 0 || paranoid > 4)
+    {
+        data.push_back("[FAIL] perf_event_paranoid value unparseable: '" + paranoidStr + "'");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
     data.push_back("perf_event_paranoid: " + paranoidStr);
     if (paranoid > 2) {
         data.push_back("  WARN: paranoid=" + paranoidStr + " – unprivileged access to hardware PMU counters is restricted.");

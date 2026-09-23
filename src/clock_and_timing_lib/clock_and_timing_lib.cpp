@@ -12,6 +12,8 @@
 #include <cerrno>
 #include <chrono>
 #include <cmath>
+#include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <dirent.h>
@@ -53,6 +55,19 @@ static bool pathExists(const std::string& p)
 /** Read enable-count for a kernel debug clock entry.
  *  Path pattern: /sys/kernel/debug/clk/<clk_name>/clk_enable_count
  *  Returns -1 if the file does not exist. */
+
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool ctParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
+}
+
 static int readClkEnableCount(const std::string& clkName)
 {
     const std::string path = std::string("/sys/kernel/debug/clk/") + clkName + "/clk_enable_count";
@@ -1199,7 +1214,17 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
 
         readSysFile("/sys/class/rtc/rtc0/since_epoch", ep2);
 
-        long rtcDelta = std::stol(ep2) - std::stol(ep1);
+        long e1 = 0, e2 = 0;
+        if (!ctParseLong(ep1, e1) || !ctParseLong(ep2, e2))
+        {
+            data.push_back("FAIL: RTC since_epoch values unparseable ('" + ep1 + "', '" + ep2 + "')");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        long rtcDelta = e2 - e1;
         long sysDelta = static_cast<long>(sysEnd.tv_sec - sysStart.tv_sec);
         data.push_back("RTC elapsed (since_epoch): " + std::to_string(rtcDelta) + " s");
         data.push_back("System elapsed           : " + std::to_string(sysDelta) + " s");
