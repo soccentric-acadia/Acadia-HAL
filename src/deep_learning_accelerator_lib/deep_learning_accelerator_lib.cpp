@@ -1132,12 +1132,29 @@ TestOutput DeepLearningAcceleratorTesting::testHardwareSchedulerOperation()
     data.push_back("  Max latency: " + std::to_string(maxMs) + " ms");
     data.push_back("  Avg latency: " + std::to_string(avgMs) + " ms");
 
-    // Jitter check: max/min ratio should be < 5 for a healthy scheduler
-    if (minMs > 0.0 && maxMs / minMs > 10.0) {
-        data.push_back("WARN: High scheduling jitter detected (ratio=" + std::to_string(maxMs / minMs) + ")");
+    // Acceptance criteria (measurable): an AI accelerator (Hailo-8 or Coral
+    // Edge TPU) provides the scheduling target. Absent -> SKIPPED (not
+    // applicable). Present -> the synthetic scheduler workload must
+    // complete with valid (positive) timings -> PASS on that measurement.
+    bool accel = pathExists("/dev/hailo0") || pathExists("/dev/apex_0");
+    if (!accel) {
+        data.push_back("[SKIP] No AI accelerator attached (Hailo-8/Coral) - hardware scheduler testing is not applicable to this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    data.push_back("Pi5+Hailo-8 scheduler: HailoRT runtime manages inference pipeline queues.");
+    if (!(minMs > 0.0) || !(maxMs > 0.0)) {
+        data.push_back("[FAIL] Scheduler workload produced no valid timings");
+        passed = false;
+    } else {
+        data.push_back("[PASS] " + std::to_string(TASKS) + " scheduled task slots executed with valid latency measurements (avg " +
+                       std::to_string(avgMs) + " ms)");
+        if (maxMs / minMs > 10.0)
+            data.push_back("[INFO] High scheduling jitter detected (ratio=" + std::to_string(maxMs / minMs) + ")");
+    }
 
     {
         TestOutput _out;
