@@ -204,12 +204,28 @@ TestOutput ExternalConnectorTesting::testAllConnectorPinsContinuity()
     // I2C bus scan as proxy for physical connectivity
     std::string i2cScan = ecRunCmd("i2cdetect -y 1 2>/dev/null | grep -v '^     '");
     data.push_back(i2cScan.empty() ? "[INFO] I2C scan failed (no /dev/i2c-1)"
-                                   : "[PASS] I2C-1 scan:\n" + i2cScan);
+                                   : "I2C-1 scan:\n" + i2cScan);
 
     // GPIO line count
     std::string gpioCount = ecRunCmd("gpioinfo 2>/dev/null | grep -c 'line'");
     data.push_back("[INFO] GPIO lines: " + gpioCount);
 
+    // Acceptance criteria (measurable): at least one bus-visible peripheral
+    // (I2C device detected on /dev/i2c-1) or an enumerable GPIO chip proves
+    // the header connector is powered and addressable. Neither observable
+    // (no i2cdetect, no gpioinfo) -> SKIPPED.
+    if (i2cScan.empty() && gpioCount.empty())
+    {
+        data.push_back("[SKIP] I2C bus and GPIO chips not enumerable — connector pin connectivity cannot be verified (bed-of-nails fixture still required for true continuity)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Connector header addressable: " +
+                   (i2cScan.empty() ? std::string("GPIO chips enumerated") : std::string("I2C devices responded on /dev/i2c-1")));
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
@@ -230,9 +246,13 @@ TestOutput ExternalConnectorTesting::testConnectorRetentionForce()
     data.push_back("[INFO] Pi5 connectors: USB-C (5 V), micro-HDMI x2 (28-AWG rated), CSI-2 FPC, USB-A x2");
     data.push_back("[INFO] 40-pin GPIO header: TE Connectivity 2x20 0.1\" friction-fit");
     data.push_back("[INFO] Test procedure: pull each connector at rated extraction force and verify no movement");
+
+    // Acceptance criteria: retention force is a mechanical (force-gauge)
+    // measurement — no software path can observe it. SKIPPED, never a PASS.
+    data.push_back("[SKIP] Retention force requires a force gauge on the physical connector — mechanical test, not software-verifiable");
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
@@ -284,9 +304,15 @@ TestOutput ExternalConnectorTesting::test12vAsilQsRPower()
     }
 
     data.push_back("[INFO] For 12V ASIL-rated supply use TI TPS65381A / NXP FS84 PMIC");
+
+    // Acceptance criteria: the 12V ASIL QS-R rail is an automotive-specific
+    // rail; the Pi5 carrier has no such rail, so the requirement is hardware
+    // not-applicable -> SKIPPED, never a PASS. Rail voltages above are
+    // informational only.
+    data.push_back("[SKIP] 12V ASIL QS-R rail not present on this DUT (Pi5 is 5V USB-C powered) — automotive rail test is not applicable");
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
@@ -360,9 +386,17 @@ TestOutput ExternalConnectorTesting::testEtcl2j704()
     data.push_back("[INFO] Pi5 has single built-in GbE; J704 maps to USB NIC or PCIe NIC");
 
     std::string eth1 = ecRunCmd("ip link show 2>/dev/null | grep -E 'eth[1-9]|usb[0-9]|enx' | head -3");
-    data.push_back(eth1.empty() ? "[INFO] No secondary NIC (J704 ETCL2 not populated)"
-                                : "[PASS] Secondary NIC: " + eth1);
+    if (eth1.empty())
+    {
+        data.push_back("[SKIP] No secondary NIC present (J704 ETCL2 not populated on this DUT) — connector functionality cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
+    data.push_back("[PASS] Secondary NIC populated and enumerable: " + eth1);
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
@@ -381,16 +415,35 @@ TestOutput ExternalConnectorTesting::testEtc3j705()
     data.push_back("=== J705 (ETC3) Ethernet Connector (Pi5 proxy) ===");
     data.push_back("[INFO] J705 ETC3 = third Ethernet port; Pi5 maps to USB3 NIC");
 
-    std::string ifaces = ecRunCmd("ip link show 2>/dev/null | grep -c '^[0-9]'");
-    data.push_back("[INFO] Total network interfaces: " + ifaces);
+    std::string ethNic = ecRunCmd("ip -o link show 2>/dev/null | grep -E 'eth[0-9]+|usb[0-9]+|enx' | head -4");
+    data.push_back(ethNic.empty() ? "[INFO] No physical NICs enumerable"
+                                  : "Physical NICs:\n" + ethNic);
 
+    // Acceptance criteria (measurable): the ETC3 connector maps to a third
+    // Ethernet port; Pi5 has one built-in port, so a USB3/PCIe NIC must be
+    // present to demonstrate the connector. Absent -> SKIPPED.
+    int nicCount = 0;
     {
+        std::istringstream ss(ethNic);
+        std::string line;
+        while (std::getline(ss, line)) if (!line.empty()) ++nicCount;
+    }
+    if (nicCount >= 3)
+    {
+        data.push_back("[PASS] " + std::to_string(nicCount) + " physical NIC(s) enumerable — ETC3 connector path present");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] Only " + std::to_string(nicCount) + " physical NIC(s) present — ETC3 (third Ethernet) connector not populated on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -434,16 +487,30 @@ TestOutput ExternalConnectorTesting::testCc1j709()
     data.push_back(camDev ? "[PASS] /dev/video0 present (camera connected to CAM1)"
                           : "[INFO] /dev/video0 absent (no camera on CAM1)");
 
-    std::string lcCams = ecRunCmd("libcamera-hello --list-cameras 2>/dev/null | head -3");
-    data.push_back(lcCams.empty() ? "[INFO] No libcamera cameras" : "[INFO] " + lcCams);
+    std::string lcCams = ecRunCmd("rpicam-hello --list-cameras 2>/dev/null | head -3");
+    if (lcCams.empty())
+        lcCams = ecRunCmd("libcamera-hello --list-cameras 2>/dev/null | head -3");
+    data.push_back(lcCams.empty() ? "[INFO] No libcamera cameras" : "libcamera cameras:\n" + lcCams);
 
+    // Acceptance criteria (measurable): a camera must be electrically present
+    // on the CAM1 connector (V4L2 device or libcamera-detected sensor) to
+    // verify the connector. No camera -> SKIPPED.
+    if (camDev || !lcCams.empty())
     {
+        data.push_back("[PASS] Camera enumerable on the J709/CAM1 connector path");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No camera detected on the J709/CAM1 connector — connector functionality cannot be verified without a camera module");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -456,16 +523,27 @@ TestOutput ExternalConnectorTesting::testCc2j710()
     data.push_back("[INFO] J710 CC2 = camera connector 2; Pi5 CAM0 is 15-pin FPC CSI-2");
 
     bool cam1 = ecPathExists("/dev/video1");
-    data.push_back(cam1 ? "[PASS] /dev/video1 present (camera connected to CAM0)"
+    data.push_back(cam1 ? "[INFO] /dev/video1 present (camera connected to CAM0)"
                         : "[INFO] /dev/video1 absent (no camera on CAM0)");
 
+    // Acceptance criteria (measurable): a camera must be present on the CAM0
+    // connector to verify it. Absent -> SKIPPED.
+    if (cam1)
     {
+        data.push_back("[PASS] Camera device enumerable on the J710/CAM0 connector path");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No camera on the J710/CAM0 connector — connector functionality cannot be verified");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -482,15 +560,28 @@ TestOutput ExternalConnectorTesting::testCc3j711()
                                  : "[INFO] HDMI-1: " + hdmi0);
 
     bool dsiOk = !ecRunCmd("ls /sys/bus/platform/devices/*dsi* 2>/dev/null").empty();
-    data.push_back(dsiOk ? "[PASS] DSI platform device present" : "[INFO] DSI not found");
+    data.push_back(dsiOk ? "[INFO] DSI platform device present" : "[INFO] DSI not found");
 
+    // Acceptance criteria (measurable): the display connector path requires
+    // either the HDMI-A-1 DRM connector node or a DSI platform device.
+    // Neither -> SKIPPED.
+    bool hdmiConnector = !ecRunCmd("ls /sys/class/drm/ 2>/dev/null | grep 'HDMI-A-1'").empty();
+    if (hdmiConnector || dsiOk)
     {
+        data.push_back("[PASS] Display connector path present (HDMI connector node and/or DSI device enumerated)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No HDMI connector node and no DSI device — J711 display connector path cannot be verified");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -505,13 +596,35 @@ TestOutput ExternalConnectorTesting::testCc4j712()
     data.push_back(hdmi1.empty() ? "[INFO] HDMI-2 DRM status unavailable"
                                  : "[INFO] HDMI-2: " + hdmi1);
 
+    // Acceptance criteria (measurable): the secondary display connector is
+    // verified when the HDMI-A-2 connector node exists in DRM. Absent -> SKIP.
+    if (!hdmi1.empty())
     {
+        data.push_back("[PASS] HDMI-A-2 connector node present with live status '" + hdmi1 + "'");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    bool hdmiNode = !ecRunCmd("ls /sys/class/drm/ 2>/dev/null | grep 'HDMI-A-2'").empty();
+    if (hdmiNode)
+    {
+        data.push_back("[PASS] HDMI-A-2 connector node present (no sink connected — status unavailable)");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[SKIP] No HDMI-A-2 connector node in DRM — J712 secondary display connector cannot be verified");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -528,15 +641,30 @@ TestOutput ExternalConnectorTesting::testSv()
 
     // USB camera check
     std::string usbCam = ecRunCmd("lsusb 2>/dev/null | grep -i 'camera\\|webcam\\|UVC' | head -3");
-    data.push_back(usbCam.empty() ? "[INFO] No USB UVC camera" : "[PASS] USB camera: " + usbCam);
+    data.push_back(usbCam.empty() ? "[INFO] No USB UVC camera" : "USB camera: " + usbCam);
 
+    // Acceptance criteria (measurable): surround view requires a camera
+    // array — at least two video capture devices. Fewer -> SKIPPED.
+    std::istringstream vss(videoDevs);
+    int camCount = 0;
+    std::string vline;
+    while (std::getline(vss, vline)) if (!vline.empty()) ++camCount;
+    if (camCount >= 2)
     {
+        data.push_back("[PASS] " + std::to_string(camCount) + " video capture devices enumerable — multi-camera (SV) path available");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] Only " + std::to_string(camCount) + " video device(s) present — surround-view camera array not installed on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
