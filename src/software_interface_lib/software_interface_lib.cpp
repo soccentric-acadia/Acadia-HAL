@@ -364,7 +364,6 @@ TestOutput SoftwareInterfaceTesting::testMultiuserSupport()
 
     // Count real user accounts (UID >= 1000)
     std::string userCount = swRunCmd("awk -F: '$3>=1000 && $3<65534{c++} END{print c+0}' /etc/passwd 2>/dev/null");
-    bool userCountOk = !userCount.empty();
     data.push_back("[INFO] User accounts (UID >= 1000): " + userCount);
 
     // Check PAM
