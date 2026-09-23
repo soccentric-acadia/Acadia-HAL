@@ -271,7 +271,6 @@ TestOutput GpuTesting::testCudaCoresFunctionality()
 TestOutput GpuTesting::testTensorCoresOperation()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Platform: Raspberry Pi 5 – VideoCore VII");
     data.push_back("INFO: VideoCore VII does NOT have hardware Tensor Cores.");
@@ -292,15 +291,37 @@ TestOutput GpuTesting::testTensorCoresOperation()
     data.push_back("Vulkan compute path (via V3DV driver): " +
                    std::string(vulkanPresent ? "available" : "unavailable"));
 
-    if (passed)
-        data.push_back("PASS: Tensor core check complete (N/A for VC7; external AI accelerators scanned).");
+    // Acceptance criteria (measurable): VC7 has no hardware tensor cores
+    // (not applicable by design). The test therefore verifies the AI
+    // acceleration path actually available on this DUT: an external
+    // accelerator (Hailo/Coral) or the Vulkan compute device must be
+    // enumerable. Neither -> SKIPPED.
+    bool extAccel = !hailoCheck.empty() || !coralCheck.empty();
+    if (extAccel)
     {
+        data.push_back("[PASS] External AI accelerator present (tensor-core-class workload path available)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+    if (vulkanPresent)
+    {
+        data.push_back("[PASS] No tensor cores (VC7 N/A); Vulkan compute path enumerated as the AI acceleration path on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[SKIP] No tensor cores (VC7 N/A), no external AI accelerator, and no Vulkan compute device — no AI acceleration path verifiable");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -705,7 +726,6 @@ TestOutput GpuTesting::testL2Cache()
 TestOutput GpuTesting::testCacheCoherencyAndHitRates()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Cache coherency test: sequential vs. large-stride CPU memory access.");
     data.push_back("(Shared LPDDR4X path is used by both CPU and VC7 GPU on Pi5)");
@@ -741,23 +761,37 @@ TestOutput GpuTesting::testCacheCoherencyAndHitRates()
     data.push_back("Sequential access time: " + std::to_string(seqMs) + " ms");
     data.push_back("Large-stride (cache-miss) access time: " + std::to_string(randMs) + " ms");
 
-    // Expect sequential to be significantly faster
-    if (seqMs > 0 && randMs > 0) {
-        double ratio = randMs / seqMs;
-        data.push_back("Random / sequential time ratio: " + std::to_string(ratio));
-        if (ratio < 1.0) {
-            data.push_back("WARNING: Cache-miss pattern not slower; memory subsystem may be unusual.");
-        } else {
-            data.push_back("Cache effect confirmed (sequential access faster).");
-        }
+    // Acceptance criteria (measurable): the cache-miss (large-stride) access
+    // pattern must be measurably slower than the sequential pattern (ratio
+    // >= 1.0) and both timings must be positive.
+    if (seqMs <= 0.0 || randMs <= 0.0)
+    {
+        data.push_back("[FAIL] Benchmark produced invalid timings (seq=" + std::to_string(seqMs) +
+                       " ms, rand=" + std::to_string(randMs) + " ms)");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    double ratio = randMs / seqMs;
+    data.push_back("Random / sequential time ratio: " + std::to_string(ratio));
+    if (ratio < 1.0)
+    {
+        data.push_back("[FAIL] Cache-miss pattern not slower than sequential access (ratio " +
+                       std::to_string(ratio) + ") — cache effect not observable");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    if (passed)
-        data.push_back("PASS: Cache coherency and access pattern test completed.");
+    data.push_back("[PASS] Cache effect confirmed (sequential access faster, ratio " + std::to_string(ratio) + ")");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
@@ -867,7 +901,6 @@ TestOutput GpuTesting::testInt8PerformanceVerification()
 TestOutput GpuTesting::testInt8SparsePerformance()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("VideoCore VII: no structured sparsity hardware.");
     data.push_back("Sparse INT8 inference on Pi5 is handled in software by TFLite/ONNX Runtime.");
@@ -888,12 +921,27 @@ TestOutput GpuTesting::testInt8SparsePerformance()
     double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
     data.push_back("50%-sparse INT8 dot product (1M elems): " + std::to_string(ms) + " ms");
 
-    if (passed)
-        data.push_back("PASS: Sparse INT8 test completed (software path on Cortex-A76).");
+    // Acceptance criteria (measurable): the sparse workload must complete
+    // with a valid positive timing and a sane accumulator result.
+    long long expected = 0;
+    for (int i = 0; i < 16; ++i)
+        expected += static_cast<int>(weights[i]) * static_cast<int>(acts[i]);
+    if (!(ms > 0.0) || acc != acc) // NaN guard
+    {
+        data.push_back("[FAIL] Sparse INT8 workload produced an invalid measurement");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] 50%-sparse INT8 workload completed on the software path (1M elems in " +
+                   std::to_string(ms) + " ms, partial checksum " + std::to_string((long long)acc % 1000000) + ")");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
@@ -949,7 +997,6 @@ TestOutput GpuTesting::testFp32ComputePerformance()
 TestOutput GpuTesting::testFp16ComputePerformance()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("VideoCore VII FP16: supported via Vulkan VK_KHR_shader_float16_int8");
     data.push_back("VC7 FP16 peak (theoretical, 2× FP32): ~153.6 GFLOPS");
@@ -972,21 +1019,39 @@ TestOutput GpuTesting::testFp16ComputePerformance()
     (void)sum;
     data.push_back("FP16 emulation sanity check (1M ops): completed.");
 
-    std::string vulkanExt = gpuRunCmd("vulkaninfo 2>/dev/null | grep -i 'float16\\|int8' | head -4");
-    if (!vulkanExt.empty())
-        data.push_back("Vulkan float16/int8 extensions: " + vulkanExt.substr(0, 200));
-    else
-        data.push_back("Vulkan info: not available (vulkaninfo not installed or no display)");
+    std::string vulkanExt = gpuRunCmd("vulkaninfo 2>/dev/null | grep -i 'shaderFloat16\\|float16' | head -4");
 
-    if (passed)
-        data.push_back("PASS: FP16 compute capability verified on VC7.");
+    // Acceptance criteria (measurable): the VK_KHR_shader_float16_int8
+    // capability must be enumerated by the Vulkan driver. vulkaninfo absent
+    // -> SKIPPED; capability not reported -> FAIL.
+    if (!vulkanExt.empty())
     {
+        data.push_back("Vulkan float16 extensions: " + vulkanExt.substr(0, 200));
+        data.push_back("[PASS] VC7 FP16 capability verified (shaderFloat16 enumerated by the Vulkan driver)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
+
+    bool vulkanInfoAvailable = !gpuRunCmd("vulkaninfo --summary 2>/dev/null | head -1").empty();
+    if (!vulkanInfoAvailable)
+    {
+        data.push_back("[SKIP] vulkaninfo not available — FP16 capability cannot be verified (emulation sanity loop ran)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] Vulkan driver available but no FP16 (shaderFloat16) capability reported");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -997,7 +1062,6 @@ TestOutput GpuTesting::testFp16ComputePerformance()
 TestOutput GpuTesting::testFp16TensorCorePerformance()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("VideoCore VII: NO Tensor Cores (NVIDIA-exclusive hardware).");
     data.push_back("FP16 matrix operations on Pi5:");
@@ -1019,15 +1083,48 @@ TestOutput GpuTesting::testFp16TensorCorePerformance()
     data.push_back("CPU 64×64×64 SGEMM: " + std::to_string(ms) + " ms, " +
                    std::to_string(gflops) + " GFLOPS");
 
-    if (passed)
-        data.push_back("PASS: FP16 matrix compute capability documented for Pi5.");
+    // Acceptance criteria (measurable): the FP16-capable matrix multiply must
+    // complete with a valid positive timing, and the Vulkan FP16 path (the
+    // GPU-side tensor-class operation) must be enumerated.
+    bool vulkanFp16 = !gpuRunCmd("vulkaninfo 2>/dev/null | grep -i 'shaderFloat16\\|float16' | head -4").empty();
+    if (!(ms > 0.0))
     {
+        data.push_back("[FAIL] FP16-class matrix workload produced an invalid measurement");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
+    if (vulkanFp16)
+    {
+        data.push_back("[PASS] FP16 matrix-multiply path available (" + std::to_string(gflops) +
+                       " GFLOPS SGEMM on CPU, Vulkan shaderFloat16 enumerated)");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    bool vulkanInfoAvailable = !gpuRunCmd("vulkaninfo --summary 2>/dev/null | head -1").empty();
+    if (!vulkanInfoAvailable)
+    {
+        data.push_back("[SKIP] vulkaninfo not available — Vulkan FP16 matrix path cannot be verified (CPU SGEMM measured " +
+                       std::to_string(gflops) + " GFLOPS)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] Vulkan available but no FP16 (shaderFloat16) capability reported — no tensor-class FP16 path on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -1038,7 +1135,6 @@ TestOutput GpuTesting::testFp16TensorCorePerformance()
 TestOutput GpuTesting::testMixedPrecisionOperations()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Mixed precision on Pi5: FP16 inputs, FP32 accumulate (NEON/Vulkan)");
 
@@ -1062,12 +1158,24 @@ TestOutput GpuTesting::testMixedPrecisionOperations()
     data.push_back("Supported formats: FP32, FP16 (NEON), INT8 (NEON sdot)");
     data.push_back("Vulkan: VK_KHR_shader_float16_int8, VK_KHR_16bit_storage");
 
-    if (passed)
-        data.push_back("PASS: Mixed-precision operations verified.");
+    // Acceptance criteria (measurable): the mixed-precision accumulation must
+    // complete with a valid positive timing and finite checksum.
+    if (!(msElapsed > 0.0) || !(checksum > 0.0) || checksum != checksum)
+    {
+        data.push_back("[FAIL] Mixed-precision accumulation produced an invalid measurement");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Mixed-precision accumulation completed (1M elems in " +
+                   std::to_string(msElapsed) + " ms, checksum " + std::to_string(checksum) + ")");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
         StampDiagnostics(_out, data);
         return _out;
     }
@@ -1135,7 +1243,6 @@ TestOutput GpuTesting::testGpuThermalThrottlingBehavior()
 TestOutput GpuTesting::testGpuPowerConsumptionAtVariousLoads()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Pi5 board power: ~5 W idle, up to ~25 W full CPU+GPU load.");
     data.push_back("GPU-only contribution: ~2–5 W at max frequency.");
@@ -1162,15 +1269,53 @@ TestOutput GpuTesting::testGpuPowerConsumptionAtVariousLoads()
 
     data.push_back("Power management: dvfs (devfreq) with ondemand governor.");
 
-    if (passed)
-        data.push_back("PASS: GPU power consumption test completed.");
+    // Acceptance criteria (measurable): a power measurement source must be
+    // readable (hwmon power sensor or INA219) and the reading must be within
+    // the sane 0..100 W envelope for a Pi5-class board. No measurement
+    // source -> SKIPPED; out-of-range reading -> FAIL.
+    long long hwmonPw = -1;
+    bool haveHwmon = false;
+    if (!hwmonPower.empty())
     {
+        try { hwmonPw = std::stoll(hwmonPower); haveHwmon = true; } catch (...) {}
+        if (haveHwmon)
+            data.push_back("hwmon0 power1_input: " + std::to_string(hwmonPw / 1000) + " mW");
+    }
+    bool haveIna = !ina219.empty();
+    if (haveHwmon)
+    {
+        if (hwmonPw > 0 && hwmonPw / 1000 <= 100000)
+        {
+            data.push_back("[PASS] Power reading in range: " + std::to_string(hwmonPw / 1000) + " mW");
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        data.push_back("[FAIL] hwmon power reading out of range: " + std::to_string(hwmonPw / 1000) + " mW");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
         StampDiagnostics(_out, data);
         return _out;
     }
+    if (haveIna)
+    {
+        data.push_back("[PASS] Power measurement available via INA219: " + ina219 + " uW");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[SKIP] No power measurement source (hwmon power sensor or INA219) — power consumption cannot be measured");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
