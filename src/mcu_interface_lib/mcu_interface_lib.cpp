@@ -414,8 +414,8 @@ TestOutput McuInterfaceTesting::testSecondaryMcuRedundancy()
     data.push_back(spi0 ? "[PASS] Primary MCU: /dev/spidev0.0" : "[INFO] No primary SPI MCU (/dev/spidev0.0)");
     data.push_back(spi1 ? "[PASS] Secondary MCU: /dev/spidev1.0" : "[INFO] No secondary SPI MCU (/dev/spidev1.0)");
 
-    // Check for second UART
-    bool uart1 = mcuPathExists("/dev/ttyAMA1") || mcuPathExists("/dev/ttyAMA10");
+    // Check for second UART (this IS the Pico W link, see platform_rpi5.h)
+    bool uart1 = mcuPathExists("/dev/ttyAMA1") || mcuPathExists(RPI5_PICO_LINK_UART);
     data.push_back(uart1 ? "[PASS] Secondary UART found" : "[INFO] No secondary UART MCU path");
 
     {

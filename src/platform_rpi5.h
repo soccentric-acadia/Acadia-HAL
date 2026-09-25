@@ -106,8 +106,13 @@ inline constexpr const char* RPI5_ALSA_CARDS    = "/proc/asound/cards";
 // Debug / Serial — PL011 UART (AMA0 is the primary debug UART on Pi5)
 // ---------------------------------------------------------------------------
 inline constexpr const char* RPI5_DEBUG_UART    = "/dev/ttyAMA0";
-// Secondary UART (mini-UART is /dev/ttyS0 but PL011 is preferred)
-inline constexpr const char* RPI5_UART1         = "/dev/ttyAMA10";
+// integration-ivv.md VB-7 / HW-004: this UART is the Pico W real-time
+// co-processor link, NOT a general-purpose "second serial port" — it has
+// already been wrongly claimed as the default RS-485/UART test device once
+// (a regression on the first HW-004 fix), which would drive the co-processor
+// link instead. uart_lib/rs485_lib must NOT default to this path; do not
+// rename this back to something generic ("RPI5_UART1") that invites reuse.
+inline constexpr const char* RPI5_PICO_LINK_UART = "/dev/ttyAMA10";
 
 // ---------------------------------------------------------------------------
 // Thermal — BCM2712 thermal zones
