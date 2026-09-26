@@ -1,0 +1,20 @@
+{
+  "mode": "ssh",
+  "host": "",
+  "port": 22,
+  "timeout_s": 180,
+  "jobs": 1,
+  "report_dir": "validate/reports",
+  "long_term": false,
+  "long_term_duration": "10s",
+  "manage_service": false,
+  "bin_dirs": [
+    "/opt/hal/bin",
+    "$HOME/acadia-hal/build/cross/bin",
+    "$HOME/acadia-hal/build/native/bin"
+  ],
+  "bin_dirs_local": [
+    "build/bin"
+  ],
+  "_comment": "Override any of these via CLI flags. bin_dirs are searched in order; first occurrence of a binary name wins. For local x86 self-test use: --mode local (defaults to build/bin)."
+}
