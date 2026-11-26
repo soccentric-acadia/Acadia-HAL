@@ -61,7 +61,6 @@ SecurityFeaturesTesting::~SecurityFeaturesTesting()
 TestOutput SecurityFeaturesTesting::testBootRomExecution()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("BCM2712 Boot ROM execution check");
     data.push_back("Pi5 boot sequence: BootROM (OTP) → EEPROM bootloader → kernel");
@@ -80,15 +79,43 @@ TestOutput SecurityFeaturesTesting::testBootRomExecution()
     std::string dmesgBoot = secRunCmd("dmesg 2>/dev/null | grep -i 'boot\\|secure' | head -5");
     if (!dmesgBoot.empty()) data.push_back("dmesg boot: " + dmesgBoot.substr(0, 400));
 
-    data.push_back("PASS: Boot ROM execution check complete.");
+    // Acceptance criteria (measurable): the EEPROM bootloader must report a
+    // version (proof the BootROM handed off to the EEPROM stage). vcgencmd
+    // absent -> SKIP; bootloader version missing -> FAIL.
+    if (eeVersion.empty() && eeConfig.empty())
     {
+        if (!otpDump.empty())
+        {
+            data.push_back("[PASS] BootROM present (OTP rows readable via firmware; EEPROM version query unsupported on this firmware)");
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        data.push_back("[SKIP] vcgencmd/OTP unavailable — BootROM execution cannot be observed from Linux");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (eeVersion.empty())
+    {
+        data.push_back("[FAIL] Bootloader version query failed — EEPROM bootloader state not confirmable");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] BootROM executed and handed off to EEPROM bootloader (version reported)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,7 +124,6 @@ TestOutput SecurityFeaturesTesting::testBootRomExecution()
 TestOutput SecurityFeaturesTesting::testBootloaderSignatureVerification()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Bootloader signature verification check (Pi5)");
     data.push_back("Pi5 supports optional RSA-2048 signed bootloader via OTP.");
@@ -121,15 +147,35 @@ TestOutput SecurityFeaturesTesting::testBootloaderSignatureVerification()
 
     data.push_back("Default Pi5: secure boot is DISABLED (unsigned bootloader).");
     data.push_back("Enable via: rpi-eeprom-config SIGNED_BOOT=1 and OTP fuse.");
-    data.push_back("PASS: Bootloader signature check complete.");
+
+    // Acceptance criteria (measurable): the OTP signed-boot bit must be
+    // readable and its state reported honestly. otp_dump unavailable ->
+    // SKIP (cannot observe); signed boot disabled -> FAIL only if the
+    // deployment requires it — report measured DISABLED state as FAIL.
+    if (otpSec.empty())
     {
+        data.push_back("[SKIP] OTP row 77 unreadable (vcgencmd otp_dump unavailable) — bootloader signature state cannot be measured");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (otpSec.find("00000000") != std::string::npos)
+    {
+        data.push_back("[FAIL] Signed boot DISABLED (OTP row 77 = 0) — bootloader images are not signature-verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::WARNING;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] Signed boot enabled in OTP (bootloader signature verification active)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -138,7 +184,6 @@ TestOutput SecurityFeaturesTesting::testBootloaderSignatureVerification()
 TestOutput SecurityFeaturesTesting::testKernelSignatureVerification()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Kernel signature verification check (Pi5)");
 
@@ -159,15 +204,36 @@ TestOutput SecurityFeaturesTesting::testKernelSignatureVerification()
     if (!kConf.empty()) data.push_back("Kernel config MODULE_SIG: " + kConf.substr(0, 300));
 
     data.push_back("NOTE: Default Raspberry Pi OS does not enforce signed kernels.");
-    data.push_back("PASS: Kernel signature check complete.");
+
+    // Acceptance criteria (measurable): kernel-module signature enforcement
+    // or IMA must be active. Neither measurable -> SKIP; neither enabled ->
+    // FAIL.
+    if (modSig.empty() && modForce.empty() && !imaPresent)
     {
+        data.push_back("[SKIP] Module-signing state not observable — kernel signature verification cannot be measured");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (modForce.find("1") == 0 || imaPresent)
+    {
+        data.push_back("[PASS] Kernel integrity enforcement active (" +
+                       std::string(imaPresent ? "IMA" : "sig_enforce") + ")");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] No kernel signature enforcement (sig_enforce=0, IMA not enabled) — unsigned kernels/modules accepted");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::WARNING;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -176,7 +242,6 @@ TestOutput SecurityFeaturesTesting::testKernelSignatureVerification()
 TestOutput SecurityFeaturesTesting::testSecureBootChainOfTrust()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Secure boot chain of trust check (Pi5)");
     data.push_back("Pi5 chain: BootROM (immutable) → EEPROM (signed optional) → kernel");
@@ -199,15 +264,39 @@ TestOutput SecurityFeaturesTesting::testSecureBootChainOfTrust()
 
     data.push_back("Pi5 default: no full secure boot chain (bootloader unsigned by default).");
     data.push_back("Full secure boot possible with Pi5 HAT+SPI TPM and signed bootloader.");
-    data.push_back("PASS: Chain of trust check complete.");
+
+    // Acceptance criteria (measurable): a chain of trust requires the OTP
+    // signed-boot bit set AND a measured root (TPM or IMA/trusted keys).
+    // Not configured on this DUT -> SKIPPED.
+    std::string otpSigned = secRunCmd("vcgencmd otp_dump 2>/dev/null | grep '77:'");
+    bool signedBoot = !otpSigned.empty() && otpSigned.find("00000000") == std::string::npos;
+    bool hasRoot = tpmDev || (trustedKeys && !secRunCmd("cat /proc/keys 2>/dev/null | grep -i 'builtin\\|ima' | head -5").empty()) ||
+                   (access("/sys/kernel/security/ima", F_OK) == 0);
+    if (signedBoot && hasRoot)
     {
+        data.push_back("[PASS] Secure-boot chain of trust measured (OTP signed boot + hardware/key root present)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (otpSigned.empty())
+    {
+        data.push_back("[SKIP] OTP state unreadable — chain-of-trust configuration cannot be measured");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[SKIP] Chain of trust not configured on this DUT (signed boot disabled, TPM/key root absent) — enable SIGNED_BOOT + TPM/IMA to establish it");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -216,7 +305,6 @@ TestOutput SecurityFeaturesTesting::testSecureBootChainOfTrust()
 TestOutput SecurityFeaturesTesting::testHardwareRootOfTrust()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Hardware root of trust check (Pi5)");
     data.push_back("Pi5 hardware RoT: BCM2712 OTP + immutable BootROM");
@@ -237,15 +325,26 @@ TestOutput SecurityFeaturesTesting::testHardwareRootOfTrust()
     bool optee = (access("/dev/tee0", F_OK) == 0);
     data.push_back("OP-TEE TrustZone (/dev/tee0): " + std::string(optee ? "present" : "not found (not default on Pi5)"));
 
-    data.push_back("PASS: Hardware RoT check complete.");
+    // Acceptance criteria (measurable): the BCM2712 OTP (immutable, BootROM-
+    // rooted) must be readable; OP-TEE/TPM strengthen it but are optional.
+    if (!otp.empty() || !custKey.empty())
     {
+        data.push_back("[PASS] Hardware root of trust present (OTP/BootROM) — customer key rows " +
+                       std::string(custKey.empty() ? "not yet programmed" : "programmed") +
+                       ", TrustZone/TPM " + std::string(tpmDev || optee ? "present" : "absent"));
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] OTP not readable and no TEE/TPM device — hardware root of trust cannot be observed from Linux");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -254,7 +353,6 @@ TestOutput SecurityFeaturesTesting::testHardwareRootOfTrust()
 TestOutput SecurityFeaturesTesting::testSecureStorage()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Secure storage check (Pi5)");
 
@@ -273,15 +371,25 @@ TestOutput SecurityFeaturesTesting::testSecureStorage()
     // Check if OTP can store keys
     data.push_back("Pi5 OTP rows 17-24: customer RSA-2048 public key storage");
 
-    data.push_back("PASS: Secure storage check complete.");
+    // Acceptance criteria (measurable): at-rest storage encryption must be
+    // available (dm-crypt module loaded or cryptsetup installed).
+    if (!dmCrypt.empty() || cryptsetup)
     {
+        data.push_back("[PASS] Encrypted-storage capability available (" +
+                       std::string(!dmCrypt.empty() ? "dm-crypt loaded" : "cryptsetup installed") + ")");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[FAIL] No storage-encryption capability on this DUT (dm-crypt not loaded, cryptsetup not installed)");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::WARNING;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -290,7 +398,6 @@ TestOutput SecurityFeaturesTesting::testSecureStorage()
 TestOutput SecurityFeaturesTesting::testCryptographicAccelerators()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Cryptographic accelerators check (Pi5 — ARMv8.2-A Cortex-A76)");
 
@@ -317,20 +424,35 @@ TestOutput SecurityFeaturesTesting::testCryptographicAccelerators()
     std::string sslEngines = secRunCmd("openssl engine 2>/dev/null");
     if (!sslEngines.empty()) data.push_back("OpenSSL engines: " + sslEngines.substr(0, 200));
 
-    if (hasAes && hasSha2) {
-        data.push_back("PASS: ARMv8 crypto extensions (AES, SHA-2) confirmed.");
-    } else {
-        data.push_back("INFO: ARM crypto extensions availability limited (check kernel config).");
-    }
+    // Acceptance criteria (measurable): the ARMv8 crypto extensions (AES +
+    // SHA-2) must be present for hardware-accelerated cryptography. cpuinfo
+    // unreadable -> SKIP; extensions missing -> FAIL.
 
+    if (cpuFlags.empty())
     {
+        data.push_back("[SKIP] /proc/cpuinfo features unreadable — crypto accelerators cannot be measured");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (hasAes && hasSha2)
+    {
+        data.push_back("[PASS] ARMv8 crypto extensions (AES, SHA-2) confirmed");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] ARM crypto extensions missing (AES and/or SHA-2 not in CPU features)");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -391,8 +513,7 @@ TestOutput SecurityFeaturesTesting::testHardwareRandomNumberGenerator()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -403,7 +524,6 @@ TestOutput SecurityFeaturesTesting::testHardwareRandomNumberGenerator()
 TestOutput SecurityFeaturesTesting::testMemoryEncryption()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Memory encryption check (Pi5 LPDDR4X)");
     data.push_back("Pi5 BCM2712 + LPDDR4X: NO hardware inline memory encryption.");
@@ -422,15 +542,35 @@ TestOutput SecurityFeaturesTesting::testMemoryEncryption()
     std::string smaps = secRunCmd("cat /proc/1/smaps 2>/dev/null | grep -c 'ss'");
     data.push_back("Software memory protection: dm-crypt/LUKS for at-rest encryption.");
 
-    data.push_back("PASS: Memory encryption check complete (software-only on Pi5).");
+    // Acceptance criteria (measurable): inline memory encryption does not
+    // exist on Pi5 LPDDR4X; the measurable substitute is the ARM memory-
+    // security surface (PAC) — PAC supported = the available protection.
+    // cpuinfo unreadable -> SKIP.
+    if (cpuFlags.empty())
     {
+        data.push_back("[SKIP] CPU features unreadable — memory-encryption/ protection surface cannot be measured");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (hasPAC)
+    {
+        data.push_back("[PASS] Memory-security surface verified (ARM PAC supported; hardware inline memory encryption N/A on LPDDR4X)");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] No memory-security surface (no PAC, no hardware memory encryption on this DUT)");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::WARNING;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -439,7 +579,6 @@ TestOutput SecurityFeaturesTesting::testMemoryEncryption()
 TestOutput SecurityFeaturesTesting::testDebugPortSecurity()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Debug port security check (Pi5)");
 
@@ -464,15 +603,46 @@ TestOutput SecurityFeaturesTesting::testDebugPortSecurity()
     std::string devMem = secRunCmd("cat /proc/sys/kernel/perf_event_paranoid 2>/dev/null");
     data.push_back("perf_event_paranoid: " + (devMem.empty() ? "not set" : devMem));
 
-    data.push_back("PASS: Debug port security check complete.");
+    // Acceptance criteria (measurable): restricted ptrace_scope (>=1) and no
+    // active serial console. Nothing measurable -> SKIP; ptrace_scope 0 with
+    // an active debug console -> FAIL.
+    bool ptraceRestricted = !ptrace.empty() && ptrace[0] >= '1' && ptrace[0] <= '3';
+    bool consoleActive = uartCon.find("active") != std::string::npos &&
+                         uartCon.find("inactive") == std::string::npos;
+    if (ptrace.empty() && lockdown.empty())
     {
+        data.push_back("[SKIP] Debug-port security state not observable (ptrace_scope and lockdown unreadable)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (ptraceRestricted && !consoleActive)
+    {
+        data.push_back("[PASS] Debug ports restricted (ptrace_scope " + ptrace + ", no active serial console)");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (!ptraceRestricted)
+    {
+        data.push_back("[FAIL] ptrace_scope not restricted (value " + (ptrace.empty() ? std::string("unreadable") : ptrace) + ") — debug attach unrestricted");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::WARNING;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] Serial console active while ptrace restricted — debug port exposed on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::WARNING;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -481,7 +651,6 @@ TestOutput SecurityFeaturesTesting::testDebugPortSecurity()
 TestOutput SecurityFeaturesTesting::testJtagSecurity()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("JTAG security check (Pi5)");
     data.push_back("Pi5 BCM2712 exposes JTAG via GPIO header (ARM CoreSight/DAP).");
@@ -498,15 +667,35 @@ TestOutput SecurityFeaturesTesting::testJtagSecurity()
 
     data.push_back("To permanently disable JTAG: set OTP JTAG_DISABLED fuse.");
     data.push_back("Enable JTAG (development): dtoverlay=enable-jtag in config.txt");
-    data.push_back("PASS: JTAG security check complete.");
+
+    // Acceptance criteria (measurable): JTAG must NOT be muxed into the
+    // device tree on a production DUT. dtc unreadable -> SKIP; JTAG visible
+    // -> FAIL; not visible -> PASS.
+    if (dtbJtag.empty() && otpJtag.empty())
     {
+        data.push_back("[SKIP] JTAG state not observable (device tree not decompilable, OTP unreadable)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (!dtbJtag.empty())
+    {
+        data.push_back("[FAIL] JTAG visible in device tree — debug port exposed on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::WARNING;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] JTAG not muxed in the device tree — debug port disabled on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**

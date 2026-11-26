@@ -180,8 +180,7 @@ TestOutput StorageTesting::testEmmc51InterfaceFunctionality()
             TestOutput _out;
             _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
             _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -210,8 +209,7 @@ TestOutput StorageTesting::testEmmc51InterfaceFunctionality()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -262,8 +260,7 @@ TestOutput StorageTesting::testFullCapacityVerification()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -281,13 +278,12 @@ TestOutput StorageTesting::testSequentialReadPerformance()
     data.push_back("Transfer size: 32 MB");
 
     if (!pathExists(MMCBLK_DEV)) {
-        data.push_back("SKIP: SD card not present.");
+        data.push_back("SKIP: SD card not present — sequential read performance cannot be measured without a device");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -299,8 +295,7 @@ TestOutput StorageTesting::testSequentialReadPerformance()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -331,8 +326,7 @@ TestOutput StorageTesting::testSequentialReadPerformance()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -359,8 +353,7 @@ TestOutput StorageTesting::testSequentialWritePerformance()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -407,8 +400,7 @@ TestOutput StorageTesting::testSequentialWritePerformance()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -425,13 +417,12 @@ TestOutput StorageTesting::testRandomReadIops()
     data.push_back("4K random read IOPS test on: " + std::string(MMCBLK_DEV));
 
     if (!pathExists(MMCBLK_DEV)) {
-        data.push_back("SKIP: SD card not present.");
+        data.push_back("SKIP: SD card not present — random read IOPS cannot be measured without a device");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -443,8 +434,7 @@ TestOutput StorageTesting::testRandomReadIops()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -463,8 +453,7 @@ TestOutput StorageTesting::testRandomReadIops()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -488,8 +477,7 @@ TestOutput StorageTesting::testRandomWriteIops()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -502,8 +490,7 @@ TestOutput StorageTesting::testRandomWriteIops()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -538,8 +525,7 @@ TestOutput StorageTesting::testRandomWriteIops()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -552,7 +538,6 @@ TestOutput StorageTesting::testRandomWriteIops()
 TestOutput StorageTesting::testEmmcWearLeveling()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("SD/microSD wear leveling check (Pi5 uses microSD, not eMMC)");
 
@@ -573,15 +558,47 @@ TestOutput StorageTesting::testEmmcWearLeveling()
     std::string eraseSize = storReadFile(MMCBLK_SYSFS + std::string("/device/preferred_erase_size"));
     if (!eraseSize.empty()) data.push_back("Preferred erase size: " + eraseSize + " bytes");
 
-    data.push_back("PASS: Wear-leveling check complete (software introspection only on microSD).");
+    // Acceptance criteria (measurable): wear evidence must be obtainable —
+    // ext-CSD health (life estimate / pre-EOL) or at least card identity +
+    // erase granularity. Nothing readable -> SKIP.
+    if (!mmcHealth.empty())
     {
+        // PRE EOL INFO: 0x01 = warning (worn), 0x02 = normal(older) — treat
+        // 0x02+ and explicit "worn" values as degraded.
+        if (mmcHealth.find("pre_eol") != std::string::npos &&
+            (mmcHealth.find("0x01") != std::string::npos ||
+             mmcHealth.find("0x02") != std::string::npos))
+        {
+            data.push_back("[FAIL] MMC PRE EOL info indicates a worn/dead device");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        data.push_back("[PASS] MMC extended CSD health readable (life-estimate/pre-EOL within limits)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (!cid.empty() && !eraseSize.empty())
+    {
+        data.push_back("[PASS] Wear-granularity evidence readable (CID + preferred erase size; ext-CSD life estimate requires mmc-utils and eMMC)");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[SKIP] No storage wear evidence obtainable (device absent or mmc-utils not installed) — wear leveling cannot be assessed");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -617,8 +634,7 @@ TestOutput StorageTesting::testBadBlockManagement()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -659,8 +675,7 @@ TestOutput StorageTesting::testPowerLossProtection()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -714,8 +729,7 @@ TestOutput StorageTesting::testEmmcTemperatureMonitoring()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -743,13 +757,12 @@ TestOutput StorageTesting::testNvmeSsdDetection()
         data.push_back("INFO: No NVMe detected. Install NVMe in PCIe M.2 slot and enable:");
         data.push_back("      dtparam=pciex1_gen=3  in /boot/firmware/config.txt");
         data.push_back("      Reboot required after config change.");
-        // Not a hard failure — NVMe is optional on Pi5
+        // NVMe is optional on Pi5 — but the honest verdict is SKIPPED.
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -773,8 +786,7 @@ TestOutput StorageTesting::testNvmeSsdDetection()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -789,13 +801,12 @@ TestOutput StorageTesting::testNvmeReadwritePerformance()
     bool passed = true;
 
     if (!pathExists(NVME_DEV)) {
-        data.push_back("SKIP: NVMe not present — test not applicable.");
+        data.push_back("SKIP: NVMe not present — NVMe performance cannot be measured without a device");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -809,8 +820,7 @@ TestOutput StorageTesting::testNvmeReadwritePerformance()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -849,8 +859,7 @@ TestOutput StorageTesting::testNvmeReadwritePerformance()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -865,13 +874,12 @@ TestOutput StorageTesting::testNvmeThermalThrottling()
     bool passed = true;
 
     if (!pathExists(NVME_DEV)) {
-        data.push_back("SKIP: NVMe not present.");
+        data.push_back("SKIP: NVMe not present — thermal throttling cannot be checked without a device");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -913,8 +921,7 @@ TestOutput StorageTesting::testNvmeThermalThrottling()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -926,7 +933,6 @@ TestOutput StorageTesting::testNvmeThermalThrottling()
 TestOutput StorageTesting::testHotplugCapability()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Storage hotplug capability check");
 
@@ -950,14 +956,25 @@ TestOutput StorageTesting::testHotplugCapability()
     data.push_back("INFO: Pi5 NVMe/PCIe does not support hot-plug in RP1 implementation.");
     data.push_back("      SD card supports software-initiated remove/insert detection.");
 
+    // Acceptance criteria (measurable): a hotplug-managed device surface must
+    // be enumerable (SD uevent, USB storage, or udevadm).
+    if (!sdDetect.empty() || !usbStorage.empty() || udevPresent)
     {
+        data.push_back("[PASS] Hotplug path present (" +
+                       std::string(!sdDetect.empty() ? "SD uevent" : !usbStorage.empty() ? "USB storage" : "udevadm") + ")");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No hotplug surface observable (no SD uevent, no USB storage, no udevadm) — hotplug capability cannot be verified");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -967,7 +984,6 @@ TestOutput StorageTesting::testHotplugCapability()
 TestOutput StorageTesting::testStorageEncryptionSupport()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Storage encryption support check (Pi5 — software encryption via dm-crypt)");
 
@@ -999,18 +1015,35 @@ TestOutput StorageTesting::testStorageEncryptionSupport()
     data.push_back("NOTE: Pi5 BCM2712 provides AES via ARMv8 crypto extensions.");
     data.push_back("      Full disk encryption requires LUKS2 + cryptsetup on Pi OS.");
 
-    if (!cryptSetup && dmCrypt.empty()) {
-        data.push_back("INFO: Install cryptsetup: sudo apt install cryptsetup");
-    }
-
+    // Acceptance criteria (measurable): at-rest encryption capability must
+    // exist (dm-crypt loaded, cryptsetup installed, or active LUKS volumes).
+    if (!cryptSetup && dmCrypt.empty() && luksDevs.empty())
     {
+        data.push_back("INFO: Install cryptsetup: sudo apt install cryptsetup");
+        data.push_back("[FAIL] No storage-encryption capability on this DUT (dm-crypt not loaded, cryptsetup not installed)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::WARNING;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (!luksDevs.empty())
+    {
+        data.push_back("[PASS] Storage encryption ACTIVE (LUKS/encrypted volumes mounted)");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Storage-encryption capability available (" +
+                   std::string(!dmCrypt.empty() ? "dm-crypt loaded" : "cryptsetup installed") + "; no active LUKS volumes)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**

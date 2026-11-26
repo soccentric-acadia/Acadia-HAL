@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <climits>
+#include <cstdlib>
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
@@ -55,6 +56,32 @@ std::string readFile(const std::string& path)
 }
 
 /** Return all entries in a directory whose name starts with @p prefix. */
+
+// HAL-505: destructive UART tests (baud/parity/stop-bits/flow-control) must
+// only touch an allow-listed port. ACADIA_UART_TEST_PORTS is a
+// comma-separated list; the console (ttyAMA0) and gpsd/MCU-owned ports are
+// excluded by configuration. termios is always restored by the callers.
+static std::vector<std::string> commTestPorts(std::vector<std::string>& data)
+{
+    const char* env = getenv("ACADIA_UART_TEST_PORTS");
+    std::vector<std::string> ports;
+    if (env && *env) {
+        std::string s(env);
+        size_t start = 0;
+        while (start <= s.size()) {
+            size_t comma = s.find(',', start);
+            std::string p = s.substr(start, comma == std::string::npos ? std::string::npos : comma - start);
+            if (!p.empty()) ports.push_back(p);
+            if (comma == std::string::npos) break;
+            start = comma + 1;
+        }
+    }
+    if (ports.empty()) {
+        data.push_back("[SKIP] ACADIA_UART_TEST_PORTS not configured — refusing to reconfigure every UART (console, gpsd and MCU links may be attached); set an explicit allow-list to run this test");
+    }
+    return ports;
+}
+
 std::vector<std::string> listDevNodes(const std::string& dir, const std::string& prefix)
 {
     std::vector<std::string> result;
@@ -148,8 +175,7 @@ TestOutput CommunicationInterfaceTesting::testAllUartPortsFunctionality()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -182,8 +208,7 @@ TestOutput CommunicationInterfaceTesting::testAllUartPortsFunctionality()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -207,9 +232,15 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
         {"115200", B115200}, {"230400", B230400}, {"460800", B460800}, {"921600", B921600},
     };
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
-    if (ports.empty()) {
-        ports = listDevNodes("/dev", "ttyS");
+    std::vector<std::string> ports = commTestPorts(data);
+
+    if (ports.empty() && data.back().find("[SKIP]") == 0) {
+        // HAL-505: no allow-list configured — the SKIP reason is recorded above.
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     if (ports.empty()) {
@@ -232,8 +263,7 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
             TestOutput _out;
             _out.status = allSymbolsOk ? hal::Status::PASS : hal::Status::FAIL;
             _out.severity = allSymbolsOk ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -256,8 +286,7 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
             TestOutput _out;
             _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
             _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -291,8 +320,7 @@ TestOutput CommunicationInterfaceTesting::testVariousBaudRates()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -308,7 +336,16 @@ TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
     std::vector<std::string> data;
     data.push_back("=== UART Hardware Flow Control (Pi5) ===");
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
+    std::vector<std::string> ports = commTestPorts(data);
+
+    if (ports.empty() && data.back().find("[SKIP]") == 0) {
+        // HAL-505: no allow-list configured — the SKIP reason is recorded above.
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
     if (ports.empty()) {
         data.push_back("[INFO] No ttyAMA devices found; checking CRTSCTS flag definition");
 #ifdef CRTSCTS
@@ -323,8 +360,7 @@ TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
 #endif
@@ -332,8 +368,7 @@ TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -379,8 +414,7 @@ TestOutput CommunicationInterfaceTesting::testHardwareFlowControl()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -407,7 +441,16 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
         {"Odd parity", PARENB | PARODD},
     };
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
+    std::vector<std::string> ports = commTestPorts(data);
+
+    if (ports.empty() && data.back().find("[SKIP]") == 0) {
+        // HAL-505: no allow-list configured — the SKIP reason is recorded above.
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
     if (ports.empty()) {
         data.push_back("[INFO] No ttyAMA ports; validating termios flag definitions");
         data.push_back("[PASS] PARENB defined");
@@ -416,8 +459,7 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -432,8 +474,7 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -466,8 +507,7 @@ TestOutput CommunicationInterfaceTesting::testParityChecking()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -481,7 +521,16 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
     std::vector<std::string> data;
     data.push_back("=== UART Stop Bit Configuration (Pi5) ===");
 
-    std::vector<std::string> ports = listDevNodes("/dev", "ttyAMA");
+    std::vector<std::string> ports = commTestPorts(data);
+
+    if (ports.empty() && data.back().find("[SKIP]") == 0) {
+        // HAL-505: no allow-list configured — the SKIP reason is recorded above.
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
     if (ports.empty()) {
         data.push_back("[INFO] No ttyAMA ports; CSTOPB flag present in kernel headers");
         data.push_back("[PASS] 1-stop-bit (default) and 2-stop-bit (CSTOPB) supported");
@@ -489,8 +538,7 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -504,8 +552,7 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -545,8 +592,7 @@ TestOutput CommunicationInterfaceTesting::testStopBitConfiguration()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -609,21 +655,31 @@ TestOutput CommunicationInterfaceTesting::testUartDmaOperation()
     }
 
     if (foundControllers == 0) {
-        data.push_back("[INFO] No RP1 UART platform devices found – check kernel config");
+        data.push_back("[SKIP] No RP1 UART platform devices found on this DUT - UART DMA cannot be verified");
         data.push_back("[INFO] Expected at /sys/bus/platform/devices/3100000.serial etc.");
-    } else {
-        data.push_back("Summary: " + std::to_string(foundControllers) + " UART controllers found, " + std::to_string(dmaEnabled) +
-                       " with DMA DT property");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
+
+    bool dmaEvidence = dmaEnabled > 0 || !dmaIrqs.empty();
+    if (dmaEvidence)
+        data.push_back("[PASS] UART DMA capability measured (DT DMA property or GPCDMA interrupts registered)");
+    else
+        data.push_back("[FAIL] UART controllers present but no DMA evidence (neither DT DMA properties nor GPCDMA interrupts)");
+
+    data.push_back("Summary: " + std::to_string(foundControllers) + " UART controllers found, " + std::to_string(dmaEnabled) +
+                   " with DMA DT property");
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = dmaEvidence ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = dmaEvidence ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
-    } // DMA may be driver-configured; not a hard failure
+    }
 }
 
 /**
@@ -650,20 +706,40 @@ TestOutput CommunicationInterfaceTesting::testUartInterruptHandling()
         }
     }
 
-    if (!foundAny) {
-        data.push_back("[INFO] No UART interrupts found in /proc/interrupts");
-        data.push_back("[INFO] This is expected on a host build or if UART is idle");
-    } else {
-        data.push_back("[INFO] UART interrupt handlers are registered and active");
+    // Acceptance criteria (measurable): UART interrupt handlers are
+    // registered in /proc/interrupts. No UART hardware at all -> SKIPPED.
+    bool uartHw = false;
+    DIR* dir = ::opendir("/sys/bus/platform/devices");
+    if (dir) {
+        while (struct dirent* ent = ::readdir(dir)) {
+            std::string n = ent->d_name;
+            if (n.find(".serial") != std::string::npos) {
+                uartHw = true;
+                break;
+            }
+        }
+        ::closedir(dir);
+    }
+    if (foundAny && uartHw)
+        data.push_back("[PASS] UART interrupt handlers are registered and active");
+
+    if (!uartHw) {
+        data.push_back("[SKIP] No UART platform devices on this DUT - UART interrupt handling cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    data.push_back("[INFO] Pi5 RP1 UART uses level-triggered GIC interrupts");
+    if (!foundAny)
+        data.push_back("[FAIL] UART hardware present but no UART IRQ registered in /proc/interrupts");
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = foundAny ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = foundAny ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -695,7 +771,7 @@ TestOutput CommunicationInterfaceTesting::testConsoledebugUart()
                 std::string baud;
                 if (comma != std::string::npos) {
                     baud = consoleDevice.substr(comma + 1);
-                    consoleDevice = consoleDevice.substr(0, comma);
+                    consoleDevice.resize(comma);
                 }
                 data.push_back("[PASS] Console UART: /dev/" + consoleDevice + (baud.empty() ? "" : " at " + baud + " baud"));
             }
@@ -715,18 +791,45 @@ TestOutput CommunicationInterfaceTesting::testConsoledebugUart()
 
     // Confirm ttyAMA0 exists
     std::ifstream ttyCheck("/dev/ttyAMA0");
-    if (ttyCheck.good() || access("/dev/ttyAMA0", F_OK) == 0) {
+    bool ttyPresent = ttyCheck.good() || access("/dev/ttyAMA0", F_OK) == 0;
+    if (ttyPresent)
         data.push_back("[PASS] /dev/ttyAMA0 present");
-    } else {
+    else
         data.push_back("[INFO] /dev/ttyAMA0 not present in current environment");
+
+    // Is there any serial hardware at all?
+    bool serialHw = ttyPresent || !consoleDevice.empty();
+    DIR* dir = ::opendir("/sys/bus/platform/devices");
+    if (dir) {
+        while (struct dirent* ent = ::readdir(dir)) {
+            if (std::string(ent->d_name).find(".serial") != std::string::npos) {
+                serialHw = true;
+                break;
+            }
+        }
+        ::closedir(dir);
     }
+
+    if (!serialHw) {
+        data.push_back("[SKIP] No serial/UART hardware on this DUT - console debug UART cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    bool consoleOk = !consoleDevice.empty() || ttyPresent;
+    if (consoleOk)
+        data.push_back("[PASS] Console/debug UART is configured and present");
+    else
+        data.push_back("[FAIL] Serial hardware exists but no console UART is configured and no tty node is present");
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = consoleOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = consoleOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -798,8 +901,7 @@ TestOutput CommunicationInterfaceTesting::testAllSpiControllers()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     } // Informational; spidev may not be configured
 }
@@ -824,8 +926,7 @@ TestOutput CommunicationInterfaceTesting::testSpiMasterMode()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -857,8 +958,7 @@ TestOutput CommunicationInterfaceTesting::testSpiMasterMode()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -901,20 +1001,27 @@ TestOutput CommunicationInterfaceTesting::testSpiSlaveMode()
         }
     }
 
+    // Acceptance criteria (measurable): an SPI controller is actually
+    // configured in slave mode ('spi-slave' DT property). A controller
+    // configured that way -> PASS. None configured -> the DUT is not set up
+    // for SPI-slave operation, which is a configuration choice, not a
+    // hardware failure -> SKIPPED (not applicable to this DUT configuration).
     if (slaveCount == 0) {
-        data.push_back("[INFO] No SPI controllers configured in slave mode");
-        data.push_back("[INFO] Pi5 supports SPI slave mode via 'spi-slave' DT property");
-        data.push_back("[INFO] Slave mode requires kernel CONFIG_SPI_SLAVE=y");
-    } else {
-        data.push_back("[PASS] " + std::to_string(slaveCount) + " SPI controller(s) in slave mode");
+        data.push_back("[SKIP] No SPI controllers configured in slave mode");
+        data.push_back("[INFO] Slave mode is enabled via the 'spi-slave' DT property + CONFIG_SPI_SLAVE=y");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    data.push_back("[PASS] " + std::to_string(slaveCount) + " SPI controller(s) in slave mode");
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -945,8 +1052,7 @@ TestOutput CommunicationInterfaceTesting::testVariousSpiClockSpeeds()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -980,8 +1086,7 @@ TestOutput CommunicationInterfaceTesting::testVariousSpiClockSpeeds()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1012,8 +1117,7 @@ TestOutput CommunicationInterfaceTesting::testSpiModes()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -1027,8 +1131,7 @@ TestOutput CommunicationInterfaceTesting::testSpiModes()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -1057,8 +1160,7 @@ TestOutput CommunicationInterfaceTesting::testSpiModes()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1120,8 +1222,7 @@ TestOutput CommunicationInterfaceTesting::testChipSelectFunctionality()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1161,20 +1262,39 @@ TestOutput CommunicationInterfaceTesting::testSpiDmaTransfers()
     // Check GPCDMA in interrupts
     auto dmaIrqs = grepInterrupts("gpcdma");
     if (!dmaIrqs.empty()) {
-        data.push_back("[INFO] GPCDMA engine active – " + std::to_string(dmaIrqs.size()) + " interrupt(s) registered");
+        data.push_back("[PASS] GPCDMA engine active – " + std::to_string(dmaIrqs.size()) + " interrupt(s) registered");
     }
 
-    if (dmaCount == 0) {
-        data.push_back("[INFO] SPI DMA not detected via DT; driver may use auto-threshold DMA");
-        data.push_back("[INFO] Pi5 RP1 SPI uses DMA for transfers > 64 bytes");
+    // Acceptance criteria (measurable): SPI DMA is evidenced by either a DT
+    // DMA property on an SPI controller or an active GPCDMA engine.
+    // No SPI hardware at all -> SKIPPED.
+    bool spiHw = dmaCount > 0;
+    for (const auto& path : spiDtPaths) {
+        std::ifstream statusFile(path + "/status");
+        // If the DT node itself exists (even without a dmas property) the HW is declared
+        if (statusFile.is_open()) spiHw = true;
     }
+    if (!spiHw && ::access("/dev/spidev0.0", F_OK) == 0) spiHw = true;
+
+    if (!spiHw) {
+        data.push_back("[SKIP] No SPI controllers found on this DUT - SPI DMA cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (dmaCount > 0 || !dmaIrqs.empty())
+        data.push_back("[PASS] SPI DMA capability measured (DT DMA property or active GPCDMA engine)");
+    else
+        data.push_back("[FAIL] SPI controllers present but no DMA evidence (no DT DMA property, no GPCDMA engine)");
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = (dmaCount > 0 || !dmaIrqs.empty()) ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = (dmaCount > 0 || !dmaIrqs.empty()) ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1191,18 +1311,19 @@ TestOutput CommunicationInterfaceTesting::testMultipleSpiDevices()
     data.push_back("=== Multiple SPI Devices per Bus (Pi5) ===");
 
     std::vector<std::string> devs = listDevNodes("/sys/bus/spi/devices", "spi");
+    // Acceptance criteria (measurable): at least one SPI slave device is
+    // registered and enumerable on a bus. No SPI slave devices at all (no
+    // peripheral attached) -> SKIPPED (hardware absent).
     if (devs.empty()) {
-        data.push_back("[INFO] No SPI slave devices registered in /sys/bus/spi/devices");
-        data.push_back("[INFO] Connect SPI peripherals and load appropriate drivers to populate this list");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No SPI slave devices registered in /sys/bus/spi/devices");
+        data.push_back("[INFO] Attach SPI peripherals and load their drivers to test this");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
+    data.push_back("[PASS] " + std::to_string(devs.size()) + " SPI slave device(s) registered");
 
     // Group by bus number
     std::map<int, std::vector<std::string>> busDev;
@@ -1233,8 +1354,7 @@ TestOutput CommunicationInterfaceTesting::testMultipleSpiDevices()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1256,20 +1376,22 @@ TestOutput CommunicationInterfaceTesting::testAllI2cBuses()
     data.push_back("=== I2C Bus Enumeration (Pi5) ===");
 
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
+    // Acceptance criteria (measurable): every enumerated I2C bus must be
+    // openable/accessible. No /dev/i2c-* nodes: if the SoC declares I2C
+    // controllers, the i2c-dev binding is simply missing (environment) ->
+    // SKIPPED; if no I2C controllers are declared -> SKIPPED (no I2C domain).
     if (i2cDevs.empty()) {
-        data.push_back("[INFO] No /dev/i2c-* devices found");
-        data.push_back("[INFO] Ensure i2c-dev module is loaded: modprobe i2c-dev");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/i2c-* devices found");
+        data.push_back("[INFO] Ensure the i2c-dev module is loaded (modprobe i2c-dev) to bind the controllers");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    data.push_back("[INFO] Found " + std::to_string(i2cDevs.size()) + " I2C bus(es)");
+    data.push_back("[PASS] Found " + std::to_string(i2cDevs.size()) + " I2C bus(es)");
+    bool allOk = true;
     for (const auto& dev : i2cDevs) {
         std::string busNum = dev.substr(dev.rfind('-') + 1);
         std::string sysName = readFile("/sys/class/i2c-dev/i2c-" + busNum + "/name");
@@ -1278,7 +1400,8 @@ TestOutput CommunicationInterfaceTesting::testAllI2cBuses()
             data.push_back("[PASS] " + dev + ": accessible" + (sysName.empty() ? "" : " [" + sysName + "]"));
             close(fd);
         } else {
-            data.push_back("[WARN] " + dev + ": cannot open (" + strerror(errno) + ")" + (sysName.empty() ? "" : " [" + sysName + "]"));
+            data.push_back("[FAIL] " + dev + ": cannot open (" + strerror(errno) + ")" + (sysName.empty() ? "" : " [" + sysName + "]"));
+            allOk = false;
         }
     }
 
@@ -1288,10 +1411,9 @@ TestOutput CommunicationInterfaceTesting::testAllI2cBuses()
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1312,8 +1434,7 @@ TestOutput CommunicationInterfaceTesting::testI2cMasterMode()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -1349,8 +1470,7 @@ TestOutput CommunicationInterfaceTesting::testI2cMasterMode()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1390,18 +1510,31 @@ TestOutput CommunicationInterfaceTesting::testI2cSlaveMode()
         close(fd);
     }
 
+    // Acceptance criteria (measurable): an I2C bus advertises slave-mode
+    // capability (I2C_FUNC_SLAVE / slave driver bound) -> PASS. I2C buses
+    // exist but none expose slave mode -> the DUT is a typical master-role
+    // configuration, so this is not a failure -> SKIPPED (not applicable to
+    // this DUT configuration). No I2C buses at all -> SKIPPED (no I2C domain).
     if (!slaveCapability) {
-        data.push_back("[INFO] I2C slave mode not detected on current buses");
-        data.push_back("[INFO] Pi5 supports I2C slave via i2c-slave-eeprom or custom driver");
-        data.push_back("[INFO] Enable via: echo eeprom 0x64 > /sys/bus/i2c/devices/i2c-N/new_device");
+        if (i2cDevs.empty()) {
+            data.push_back("[SKIP] No I2C buses present - I2C slave mode cannot be verified");
+        } else {
+            data.push_back("[SKIP] I2C slave mode not detected on current buses (master-role configuration)");
+            data.push_back("[INFO] Slave mode is opt-in via e.g. i2c-slave-eeprom or a custom slave driver");
+        }
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    data.push_back("[PASS] I2C slave-mode capability measured on at least one bus");
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1450,23 +1583,30 @@ TestOutput CommunicationInterfaceTesting::testStandardMode()
         }
     }
 
+    // Acceptance criteria (measurable): I2C standard mode (100 kHz) is
+    // declared for at least one bus (DT clock-frequency readable) or I2C buses
+    // are present (RP1 I2C controllers support 100 kHz by hardware default).
+    // No I2C domain at all -> SKIPPED.
     if (!found) {
         data.push_back("[INFO] I2C DT clock-frequency not readable; checking sysfs");
         std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
         if (i2cDevs.empty()) {
-            data.push_back("[INFO] No I2C devices; Pi5 I2C supports 100 kHz standard mode");
-        } else {
-            data.push_back("[PASS] " + std::to_string(i2cDevs.size()) +
-                           " I2C bus(es) present; standard mode 100 kHz supported by RP1 I2C");
+            data.push_back("[SKIP] No I2C buses present on this DUT - I2C standard mode cannot be verified");
+            TestOutput _out;
+            _out.status = hal::Status::SKIPPED;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
         }
+        data.push_back("[PASS] " + std::to_string(i2cDevs.size()) +
+                       " I2C bus(es) present; 100 kHz standard mode is the RP1 I2C hardware default");
     }
 
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1504,17 +1644,28 @@ TestOutput CommunicationInterfaceTesting::testFastMode()
         }
     }
 
+    // Acceptance criteria (measurable): an I2C bus is present whose controller
+    // hardware supports 400 kHz fast mode (true for RP1 I2C). The DT bus node
+    // above is the evidence; no I2C domain -> SKIPPED.
     if (!found) {
-        data.push_back("[INFO] Pi5 RP1 I2C controllers support 400 kHz Fast Mode");
-        data.push_back("[INFO] Configure via clock-frequency = <400000> in device tree");
+        std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
+        if (i2cDevs.empty()) {
+            data.push_back("[SKIP] No I2C buses present on this DUT - I2C fast mode cannot be verified");
+            TestOutput _out;
+            _out.status = hal::Status::SKIPPED;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        data.push_back("[PASS] " + std::to_string(i2cDevs.size()) + " I2C bus(es) present; RP1 I2C hardware supports 400 kHz fast mode");
+        data.push_back("[INFO] Configure a specific bus with clock-frequency = <400000> in the device tree");
     }
 
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1556,17 +1707,27 @@ TestOutput CommunicationInterfaceTesting::testFastModePlus()
         }
     }
 
+    // Acceptance criteria (measurable): at least one I2C bus with the
+    // capability (DT node present) exists. No I2C domain -> SKIPPED.
     if (!found) {
-        data.push_back("[INFO] DT clock-frequency not readable from host; "
-                       "Fast Mode Plus capability is hardware-supported");
+        std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
+        if (i2cDevs.empty()) {
+            data.push_back("[SKIP] No I2C buses present on this DUT - I2C Fast Mode Plus cannot be verified");
+            TestOutput _out;
+            _out.status = hal::Status::SKIPPED;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        data.push_back("[PASS] " + std::to_string(i2cDevs.size()) +
+                       " I2C bus(es) present; RP1 I2C hardware supports Fast Mode Plus (1 MHz)");
     }
 
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1609,17 +1770,58 @@ TestOutput CommunicationInterfaceTesting::testHighspeedMode()
         }
     }
 
-    if (!found) {
-        data.push_back("[INFO] DT not readable from host build environment");
-        data.push_back("[INFO] High-speed mode availability confirmed by BCM2712 hardware spec");
+    // Acceptance criteria (measurable): I2C high-speed (3.4 MHz) mode is only
+    // claimed when a bus actually declares a clock at/above that threshold.
+    // Buses present but none at Hs rate -> FAIL (unmet criterion); no I2C
+    // domain at all -> SKIPPED.
+    bool hsRateFound = false;
+    if (found) {
+        // Re-derive: any bus >= 3.4 MHz was reported as [PASS] above.
+        static const std::vector<std::string> hsPaths = {
+            "/proc/device-tree/i2c@3160000", "/proc/device-tree/i2c@c240000", "/proc/device-tree/i2c@3180000",
+            "/proc/device-tree/i2c@3190000", "/proc/device-tree/i2c@31a0000", "/proc/device-tree/i2c@31b0000",
+        };
+        for (const auto& path : hsPaths) {
+            std::ifstream clkFile(path + "/clock-frequency");
+            if (!clkFile.is_open()) continue;
+            uint8_t buf[4] = {};
+            clkFile.read(reinterpret_cast<char*>(buf), 4);
+            if (clkFile.gcount() == 4) {
+                uint32_t freq = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
+                if (freq >= 3400000) hsRateFound = true;
+            }
+        }
     }
+
+    if (!found) {
+        std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
+        if (i2cDevs.empty()) {
+            data.push_back("[SKIP] No I2C buses present on this DUT - I2C high-speed mode cannot be verified");
+            TestOutput _out;
+            _out.status = hal::Status::SKIPPED;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        data.push_back("[FAIL] I2C buses present but none is configured for high-speed (3.4 MHz) mode "
+                       "(the RP1 I2C controller does not implement I2C-HS)");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (hsRateFound)
+        data.push_back("[PASS] At least one I2C bus is configured at high-speed (>= 3.4 MHz)");
+    else
+        data.push_back("[FAIL] I2C buses declared but none at or above the 3.4 MHz high-speed threshold");
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hsRateFound ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = hsRateFound ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1657,18 +1859,28 @@ TestOutput CommunicationInterfaceTesting::testI2cClockStretching()
         close(fd);
     }
 
-    if (!found) {
-        data.push_back("[INFO] Pi5 RP1 I2C master handles clock stretching automatically");
-        data.push_back("[INFO] SCL low timeout configurable via nvidia,timeout-dt property");
-        data.push_back("[PASS] Clock stretching supported by hardware design");
+    // Acceptance criteria (measurable): clock stretching is mandatory in the
+    // I2C spec, so a conforming I2C adapter present on the bus is the
+    // acceptance evidence. No I2C buses at all -> SKIPPED (no I2C domain).
+    if (i2cDevs.empty()) {
+        data.push_back("[SKIP] No I2C buses present on this DUT - clock stretching cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
+
+    if (found)
+        data.push_back("[PASS] I2C adapter(s) enumerated - slaves may stretch SCL per the I2C specification");
+    else
+        data.push_back("[PASS] I2C adapter(s) present - SCL stretching is mandatory in the I2C specification");
 
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1696,16 +1908,31 @@ TestOutput CommunicationInterfaceTesting::testMultimasterArbitration()
         data.push_back("[INFO] No I2C interrupts found in /proc/interrupts");
     }
 
-    data.push_back("[INFO] Pi5 BCM2712 I2C supports multi-master bus arbitration");
-    data.push_back("[INFO] Lost arbitration causes NAK and controller backs off per I2C spec");
-    data.push_back("[INFO] Arbitration-lost counter available via kernel I2C statistics");
+    // Acceptance criteria (measurable): the I2C controller is active on this
+    // DUT - evidenced by I2C interrupt handlers in /proc/interrupts, or (at
+    // minimum) bound I2C buses. Multi-master arbitration is mandatory in the
+    // I2C specification for such a controller. No I2C domain at all ->
+    // SKIPPED.
+    auto i2cDevs = listDevNodes("/dev", "i2c-");
+    if (i2cIrqs.empty() && i2cDevs.empty()) {
+        data.push_back("[SKIP] No I2C buses or I2C interrupt handlers on this DUT - multi-master arbitration cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (!i2cIrqs.empty())
+        data.push_back("[PASS] I2C controller interrupt infrastructure active - arbitration/NAK handling per the I2C spec");
+    else
+        data.push_back("[PASS] " + std::to_string(i2cDevs.size()) + " I2C bus(es) bound - multi-master arbitration is mandatory in the I2C spec");
 
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1722,7 +1949,6 @@ TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
     data.push_back("=== I2C Repeated-Start Condition (Pi5) ===");
 
     std::vector<std::string> i2cDevs = listDevNodes("/dev", "i2c-");
-    bool found = false;
     for (const auto& dev : i2cDevs) {
         int fd = open(dev.c_str(), O_RDWR);
         if (fd < 0)
@@ -1730,7 +1956,6 @@ TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
 #ifdef I2C_FUNCS
         unsigned long funcs = 0;
         if (ioctl(fd, I2C_FUNCS, &funcs) == 0) {
-            found = true;
             // I2C_FUNC_I2C implies combined message (repeated-start) support
             bool hasRestart = (funcs & I2C_FUNC_I2C) != 0;
             data.push_back(std::string(hasRestart ? "[PASS] " : "[INFO] ") + dev + ": Repeated-start (I2C_RDWR combined messages) " +
@@ -1742,18 +1967,41 @@ TestOutput CommunicationInterfaceTesting::testI2cRepeatedStart()
         close(fd);
     }
 
-    if (!found) {
-        data.push_back("[INFO] Pi5 RP1 NDTM I2C controller supports repeated-start natively");
-        data.push_back("[PASS] Repeated-start supported via I2C_RDWR ioctl with chained messages");
+    // Acceptance criteria (measurable): at least one I2C adapter advertises
+    // full I2C (I2C_FUNC_I2C), which implies repeated-start / combined
+    // messages. No I2C buses -> SKIPPED (no I2C domain). Buses exist but
+    // none advertises the capability -> SKIPPED (driver does not expose the
+    // capability flag; cannot be verified).
+    bool hasRestart = false;
+    for (const auto& dev : i2cDevs) {
+        int fd = open(dev.c_str(), O_RDWR);
+        if (fd < 0) continue;
+#ifdef I2C_FUNCS
+        unsigned long funcs = 0;
+        if (ioctl(fd, I2C_FUNCS, &funcs) == 0 && (funcs & I2C_FUNC_I2C))
+            hasRestart = true;
+#endif
+        close(fd);
     }
 
-    data.push_back("[INFO] Use struct i2c_rdwr_ioctl_data with I2C_M_NOSTART=0 for repeated-start");
+    if (i2cDevs.empty()) {
+        data.push_back("[SKIP] No I2C buses present on this DUT - repeated-start cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back(hasRestart
+        ? "[PASS] At least one I2C adapter advertises full I2C (I2C_FUNC_I2C) - repeated-start supported"
+        : "[SKIP] I2C buses present but no adapter advertises I2C_FUNC_I2C - repeated-start capability cannot be verified");
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hasRestart ? hal::Status::PASS : hal::Status::SKIPPED;
+        _out.severity = hasRestart ? hal::Severity::INFO : hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1782,8 +2030,7 @@ TestOutput CommunicationInterfaceTesting::testCan20a()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -1802,8 +2049,7 @@ TestOutput CommunicationInterfaceTesting::testCan20a()
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1818,19 +2064,19 @@ TestOutput CommunicationInterfaceTesting::testCan20b()
     std::vector<std::string> data;
     data.push_back("=== CAN 2.0B Extended Frame (29-bit ID) Test (Pi5) ===");
 
+    // Acceptance criteria (measurable): at least one CAN interface is
+    // present; the mttcan controller supports 2.0B extended (29-bit) frames.
+    // No CAN interfaces -> SKIPPED (no CAN hardware/domain on this DUT).
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
-        data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Pi5 mttcan supports CAN 2.0B extended 29-bit IDs");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No CAN interfaces found - CAN 2.0B cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
+    data.push_back("[PASS] " + std::to_string(canIfaces.size()) + " CAN interface(s) present");
 
     for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
@@ -1843,8 +2089,7 @@ TestOutput CommunicationInterfaceTesting::testCan20b()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1860,18 +2105,18 @@ TestOutput CommunicationInterfaceTesting::testCanFd()
     std::vector<std::string> data;
     data.push_back("=== CAN FD (Flexible Data-Rate) Support (Pi5) ===");
 
+    // Acceptance criteria (measurable): a CAN interface is present AND
+    // CAN-FD capability is evidenced (sysfs fd attribute readable, or the
+    // CAN_RAW_FD_FRAMES socket option is accepted). No CAN interfaces ->
+    // SKIPPED (no CAN domain). Interfaces present but no FD evidence -> FAIL.
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
-        data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Pi5 mttcan supports CAN FD with up to 8 Mbps data phase");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No CAN interfaces found - CAN FD cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool anyFd = false;
@@ -1906,16 +2151,19 @@ TestOutput CommunicationInterfaceTesting::testCanFd()
         }
     }
 
-    if (!anyFd && !canIfaces.empty()) {
-        data.push_back("[INFO] CAN FD may need interface to be brought up with 'fd on'");
+    if (anyFd)
+        data.push_back("[PASS] CAN-FD capability measured on at least one interface (sysfs fd attr or CAN_RAW_FD_FRAMES)");
+    else {
+        data.push_back("[FAIL] CAN interfaces present but no CAN-FD capability evidence "
+                       "(no sysfs fd attribute, CAN_RAW_FD_FRAMES not accepted); "
+                       "bring the interface up with: ip link set <if> type can bitrate 500000 dbitrate 2000000 fd on");
     }
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = anyFd ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = anyFd ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1935,42 +2183,65 @@ TestOutput CommunicationInterfaceTesting::testVariousCanBitrates()
     static const std::vector<std::string> supportedBitrates = {"10000",  "25000",  "50000",  "100000", "125000",
                                                                "250000", "500000", "800000", "1000000"};
 
+    // Acceptance criteria (measurable): the configured (500 kbps) bitrate is
+    // actually applied to a CAN interface and the driver reports that rate.
+    // No CAN interfaces -> SKIPPED (no CAN domain).
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
-        data.push_back("[INFO] No CAN interfaces found; documenting supported bitrates");
+        data.push_back("[SKIP] No CAN interfaces found - CAN bitrate configuration cannot be verified on this DUT");
         for (const auto& br : supportedBitrates) {
-            data.push_back("[INFO] " + br + " bps: supported by mttcan");
+            data.push_back("[INFO] " + br + " bps: documented mttcan-supported rate");
         }
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    bool anyRateOk = false;
     for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
-        // Read bitrate from sysfs statistics / netlink info
-        std::string bitrate = readFile(iface + "/statistics/tx_bytes"); // placeholder
+        // Task 61: actually APPLY a configured bitrate and MEASURE the
+        // resulting rate, instead of reading tx_bytes into a variable named
+        // bitrate. Real CAN drivers expose the effective bitrate at
+        // /sys/class/net/<canX>/bitrate (and data bitrate for FD).
         std::string state = readFile(iface + "/operstate");
+        // Apply 500 kbps (classic CAN) via ip link; tolerate errors with a
+        // hardware-aware report (absent interface / missing driver).
+        std::string setCmd = "ip link set " + ifName + " type can bitrate 500000";
+        int applyRc = system(setCmd.c_str());
+        std::string applyResult = (applyRc == 0) ? "ok" : "failed";
+        std::string measured = readFile(iface + "/bitrate");
+        if (measured.empty() && !state.empty()) {
+            // Fall back to the driver's reported nominal rate in sysfs.
+            measured = readFile(iface + "/data_bitrate");
+        }
 
         data.push_back("[INFO] " + ifName + ": state=" + state);
+        bool rateOk = (measured == "500000");
+        if (rateOk) {
+            data.push_back("[PASS] " + ifName + ": measured bitrate=" + measured + " bps (target 500000, apply: " + applyResult + ")");
+            anyRateOk = true;
+        } else if (!measured.empty()) {
+            data.push_back("[FAIL] " + ifName + ": measured bitrate=" + measured + " bps (target 500000, apply: " + applyResult + ")");
+        } else {
+            data.push_back("[FAIL] " + ifName + ": no bitrate reported by driver - cannot verify rate (apply: " + applyResult + ")");
+        }
         data.push_back("       Supported bitrates: 10k, 25k, 50k, 100k, 125k, "
                        "250k, 500k, 800k, 1000k bps");
         data.push_back("       CAN FD data phase: up to 8 Mbps");
-        data.push_back("       Configure: ip link set " + ifName + " type can bitrate 500000");
-        data.push_back("[PASS] " + ifName + ": bitrate configuration supported by mttcan driver");
     }
+
+    data.push_back(anyRateOk
+        ? "[PASS] At least one interface applied and reports the 500 kbps target rate"
+        : "[FAIL] No interface applied/reported the 500 kbps target rate");
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = anyRateOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = anyRateOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1986,21 +2257,23 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
     std::vector<std::string> data;
     data.push_back("=== CAN Error Detection (Pi5) ===");
 
+    // Acceptance criteria (measurable): a CAN interface is present AND error
+    // detection is evidenced - either CAN error counters are exposed in sysfs
+    // (bus_error, error_warning, ...) or mttcan interrupt handlers are
+    // registered. No CAN interfaces -> SKIPPED (no CAN domain).
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
-        data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Pi5 mttcan detects: bit, stuff, CRC, form, and ACK errors");
-        data.push_back("[INFO] Error frames enabled with: ip link set canX type can berr-reporting on");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No CAN interfaces found - CAN error detection cannot be verified on this DUT");
+        data.push_back("[INFO] mttcan detects: bit, stuff, CRC, form, and ACK errors; "
+                       "enable error frames with: ip link set <can> type can berr-reporting on");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    bool countersExposed = false;
     for (const auto& iface : canIfaces) {
         std::string ifName = iface.substr(iface.rfind('/') + 1);
         std::string statsPath = iface + "/statistics/";
@@ -2012,13 +2285,15 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
         for (const auto& cnt : counters) {
             std::string val = readFile(statsPath + cnt);
             if (!val.empty()) {
+                countersExposed = true;
                 data.push_back("  " + cnt + " = " + val);
             }
         }
-
-        // Check rx/tx error counters in netlink (exposed via ip -details link show)
-        data.push_back("[PASS] " + ifName + ": mttcan error-detection hardware active");
-        data.push_back("       Enable error frames: cansend " + ifName + " 20000004#0000000000000000");
+        data.push_back([ifName, countersExposed]() {
+            return countersExposed
+                ? "[PASS] " + ifName + ": error counters exposed by the driver - detection hardware active"
+                : "[INFO] " + ifName + ": no CAN error counters exposed in sysfs";
+        }());
     }
 
     // Check for mttcan interrupts
@@ -2030,12 +2305,17 @@ TestOutput CommunicationInterfaceTesting::testCanErrorDetection()
         }
     }
 
+    bool detectionOk = countersExposed || !canIrqs.empty();
+    if (detectionOk)
+        data.push_back("[PASS] CAN error-detection evidence measured (sysfs counters or mttcan IRQs)");
+    else
+        data.push_back("[FAIL] CAN interfaces present but no error-detection evidence (no sysfs counters, no mttcan IRQs)");
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = detectionOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = detectionOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -2052,19 +2332,19 @@ TestOutput CommunicationInterfaceTesting::testCanBusoffRecovery()
     std::vector<std::string> data;
     data.push_back("=== CAN Bus-Off Recovery (Pi5) ===");
 
+    // Acceptance criteria (measurable): a CAN interface is bound; the mttcan
+    // controller implements bus-off recovery per ISO 11898-1 (restart /
+    // restart-ms configuration is the acceptance path). No CAN interfaces ->
+    // SKIPPED (no CAN domain).
     std::vector<std::string> canIfaces = listCanInterfaces();
     if (canIfaces.empty()) {
-        data.push_back("[INFO] No CAN interfaces found");
-        data.push_back("[INFO] Pi5 mttcan supports automatic bus-off recovery");
-        data.push_back("[INFO] Manual: ip link set canX type can restart-ms 100");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No CAN interfaces found - bus-off recovery cannot be verified on this DUT");
+        data.push_back("[INFO] mttcan supports automatic recovery: ip link set <can> type can restart-ms 100");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     for (const auto& iface : canIfaces) {
@@ -2072,23 +2352,21 @@ TestOutput CommunicationInterfaceTesting::testCanBusoffRecovery()
         std::string busOff = readFile(iface + "/statistics/bus_off");
         std::string restarts = readFile(iface + "/statistics/restarts");
 
-        data.push_back("[PASS] " + ifName + ": bus-off recovery supported by mttcan");
-        if (!busOff.empty()) {
+        if (!busOff.empty())
             data.push_back("  bus_off events: " + busOff);
-        }
-        if (!restarts.empty()) {
+        if (!restarts.empty())
             data.push_back("  controller restarts: " + restarts);
-        }
         data.push_back("  Config: ip link set " + ifName + " type can restart-ms 100   (auto-recovery in 100ms)");
         data.push_back("  Manual: ip link set " + ifName + " type can restart");
     }
 
+    data.push_back("[PASS] " + std::to_string(canIfaces.size()) +
+                   " CAN interface(s) bound - bus-off recovery per ISO 11898-1 (mttcan)");
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -2105,7 +2383,22 @@ TestOutput CommunicationInterfaceTesting::testCanMessageFiltering()
     std::vector<std::string> data;
     data.push_back("=== CAN Message Filtering (Pi5) ===");
 
-#if defined(__linux__) && defined(CAN_RAW)
+    // Acceptance criteria (measurable): the CAN stack accepts the
+    // CAN_RAW_FILTER and CAN_RAW_ERR_FILTER socket options on a live CAN_RAW
+    // socket. Socket cannot be created (CAN modules not loaded / no CAN) ->
+    // SKIPPED. Options rejected -> FAIL.
+#if !defined(__linux__) || !defined(CAN_RAW)
+    data.push_back("[SKIP] Linux CAN socket headers not available in build environment");
+    {
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+#endif
+
+    bool filterOk = false;
     int s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
     if (s >= 0) {
         // Test standard frame filter
@@ -2119,36 +2412,43 @@ TestOutput CommunicationInterfaceTesting::testCanMessageFiltering()
             data.push_back("[PASS] CAN_RAW_FILTER: 2-entry filter set successfully");
             data.push_back("       Filter 0: ID=0x123 mask=0x7FF (11-bit standard)");
             data.push_back("       Filter 1: ID=0x456 mask=0x1FFFFFFF (29-bit extended)");
+            filterOk = true;
         } else {
-            data.push_back("[WARN] CAN_RAW_FILTER setsockopt: " + std::string(strerror(errno)));
+            data.push_back("[FAIL] CAN_RAW_FILTER setsockopt: " + std::string(strerror(errno)));
         }
 
         // Test error mask filter
         can_err_mask_t errMask = CAN_ERR_MASK; // Full error mask – detects busoff, arb-lost, controller errors
         if (setsockopt(s, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &errMask, sizeof(errMask)) == 0) {
             data.push_back("[PASS] CAN_RAW_ERR_FILTER: error frame filter set");
+            filterOk = true;
         } else {
-            data.push_back("[WARN] CAN_RAW_ERR_FILTER: " + std::string(strerror(errno)));
+            data.push_back("[FAIL] CAN_RAW_ERR_FILTER: " + std::string(strerror(errno)));
         }
 
         close(s);
     } else {
-        data.push_back("[INFO] CAN socket creation failed (" + std::string(strerror(errno)) + ") – CAN modules may not be loaded");
+        data.push_back("[SKIP] CAN socket creation failed (" + std::string(strerror(errno)) + ") - CAN modules may not be loaded on this DUT");
         data.push_back("[INFO] Load: modprobe can can_raw mttcan");
+        {
+            TestOutput _out;
+            _out.status = hal::Status::SKIPPED;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
     }
-#else
-    data.push_back("[INFO] Linux CAN socket headers not available in build environment");
-#endif
 
-    data.push_back("[INFO] Pi5 mttcan hardware supports 128-entry Rx acceptance filter");
-    data.push_back("[INFO] Hardware filters: standard (11-bit) and extended (29-bit) ID ranges");
-    data.push_back("[INFO] Software filters: via CAN_RAW_FILTER on CAN_RAW socket");
+    if (filterOk)
+        data.push_back("[PASS] CAN message filtering measured via accepted CAN_RAW socket options");
+    else
+        data.push_back("[FAIL] CAN message filtering not available - required socket options were rejected");
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = filterOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = filterOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

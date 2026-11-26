@@ -4,3 +4,5 @@ target_include_directories(test_system_memory PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_system_memory COMMAND test_system_memory)
 set_tests_properties(test_system_memory PROPERTIES TIMEOUT 300)
 install(TARGETS test_system_memory RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_system_memory PROPERTIES LABELS "host")

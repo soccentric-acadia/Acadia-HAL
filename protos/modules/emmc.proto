@@ -17,15 +17,7 @@ message Config {
 
 // Result for the emmc module.
 message Result {
-  hal.common.TestStatus   status     = 1;
-  string                  message    = 2;
-  repeated TestDetail     details    = 3;
-}
-
-message TestDetail {
-  string name    = 1;
-  bool   passed  = 2;
-  string message = 3;
-  double value   = 4;
-  string unit    = 5;
+  reserved 1, 2, 3;
+  reserved "status", "message", "details";
+  repeated hal.common.TestResult results = 4;
 }

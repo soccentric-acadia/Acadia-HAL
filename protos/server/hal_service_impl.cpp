@@ -1,5 +1,9 @@
 #include "server/hal_service_impl.h"
 
+#include <atomic>
+#include <chrono>
+#include <sstream>
+
 namespace hal {
 namespace server {
 
@@ -63,7 +67,10 @@ grpc::Status HalServiceImpl::StartLongTerm(
     grpc::ServerWriter<hal::common::ResultEnvelope>*  writer) {
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
-    return h->StartLongTerm(ctx, req->module_config(), req->common(), writer);
+    // Task 60: each background start gets a unique session id so concurrent
+    // same-module runs are independently controllable.
+    return h->StartLongTerm(ctx, req->module_config(), req->common(),
+                            NewSessionId(), writer);
 }
 
 grpc::Status HalServiceImpl::StartMonitoring(
@@ -73,7 +80,7 @@ grpc::Status HalServiceImpl::StartMonitoring(
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
     return h->StartMonitoring(ctx, req->module_config(), req->common(),
-                              req->monitoring(), writer);
+                              req->monitoring(), NewSessionId(), writer);
 }
 
 grpc::Status HalServiceImpl::StartEventBased(
@@ -83,7 +90,7 @@ grpc::Status HalServiceImpl::StartEventBased(
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
     return h->StartEventBased(ctx, req->module_config(), req->common(),
-                              req->condition(), writer);
+                              req->condition(), NewSessionId(), writer);
 }
 
 grpc::Status HalServiceImpl::Stop(grpc::ServerContext*    /*ctx*/,
@@ -92,7 +99,7 @@ grpc::Status HalServiceImpl::Stop(grpc::ServerContext*    /*ctx*/,
     if (req->module_id().empty()) {
         for (const auto& info : registry_->ListAll()) {
             auto* h = registry_->Find(info.id());
-            if (h) h->Stop();
+            if (h) h->Stop(req->session_id());
         }
         resp->set_accepted(true);
         resp->set_message("All modules stopped");
@@ -100,7 +107,7 @@ grpc::Status HalServiceImpl::Stop(grpc::ServerContext*    /*ctx*/,
     }
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
-    h->Stop();
+    h->Stop(req->session_id());
     resp->set_accepted(true);
     resp->set_message("Stopped " + req->module_id());
     return grpc::Status::OK;
@@ -112,7 +119,7 @@ grpc::Status HalServiceImpl::Pause(grpc::ServerContext*     /*ctx*/,
     if (req->module_id().empty()) {
         for (const auto& info : registry_->ListAll()) {
             auto* h = registry_->Find(info.id());
-            if (h) h->Pause();
+            if (h) h->Pause(req->session_id());
         }
         resp->set_accepted(true);
         resp->set_message("All modules paused");
@@ -120,7 +127,7 @@ grpc::Status HalServiceImpl::Pause(grpc::ServerContext*     /*ctx*/,
     }
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
-    h->Pause();
+    h->Pause(req->session_id());
     resp->set_accepted(true);
     resp->set_message("Paused " + req->module_id());
     return grpc::Status::OK;
@@ -132,7 +139,7 @@ grpc::Status HalServiceImpl::Resume(grpc::ServerContext*      /*ctx*/,
     if (req->module_id().empty()) {
         for (const auto& info : registry_->ListAll()) {
             auto* h = registry_->Find(info.id());
-            if (h) h->Resume();
+            if (h) h->Resume(req->session_id());
         }
         resp->set_accepted(true);
         resp->set_message("All modules resumed");
@@ -140,7 +147,7 @@ grpc::Status HalServiceImpl::Resume(grpc::ServerContext*      /*ctx*/,
     }
     IModuleHandler* h = nullptr;
     if (auto s = Resolve(req->module_id(), &h); !s.ok()) return s;
-    h->Resume();
+    h->Resume(req->session_id());
     resp->set_accepted(true);
     resp->set_message("Resumed " + req->module_id());
     return grpc::Status::OK;
@@ -152,6 +159,19 @@ grpc::Status HalServiceImpl::ListModules(grpc::ServerContext*           /*ctx*/,
     for (const auto& info : registry_->ListAll())
         *resp->add_modules() = info;
     return grpc::Status::OK;
+}
+
+// ============================================================
+// Session id generation (task 60)
+// ============================================================
+std::string HalServiceImpl::NewSessionId() {
+    static std::atomic<uint64_t> counter{0};
+    std::ostringstream os;
+    os << "sess-" << std::chrono::duration_cast<std::chrono::microseconds>(
+                           std::chrono::steady_clock::now().time_since_epoch())
+                           .count()
+       << "-" << counter.fetch_add(1);
+    return os.str();
 }
 
 } // namespace server

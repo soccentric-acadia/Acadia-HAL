@@ -12,6 +12,8 @@
 #include <cerrno>
 #include <chrono>
 #include <cmath>
+#include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <dirent.h>
@@ -53,6 +55,19 @@ static bool pathExists(const std::string& p)
 /** Read enable-count for a kernel debug clock entry.
  *  Path pattern: /sys/kernel/debug/clk/<clk_name>/clk_enable_count
  *  Returns -1 if the file does not exist. */
+
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool ctParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
+}
+
 static int readClkEnableCount(const std::string& clkName)
 {
     const std::string path = std::string("/sys/kernel/debug/clk/") + clkName + "/clk_enable_count";
@@ -150,8 +165,7 @@ TestOutput ClockAndTimingTesting::testSystemClockAccuracy()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -206,8 +220,7 @@ TestOutput ClockAndTimingTesting::testSystemClockAccuracy()
         TestOutput _out;
         _out.status = driftOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = driftOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -220,7 +233,7 @@ TestOutput ClockAndTimingTesting::testSystemClockAccuracy()
  *
  * Strategy (Raspberry Pi 5):
  *  1. Look for the PCIe reference clock in /sys/kernel/debug/clk/.
- *     Known clock names on Orin: "pcie_ref", "pcie_ref_clk", "pcie0_ref".
+ *     Candidate clock names (platform-specific; Jetson BSP names kept as probe strings).
  *  2. Verify the clock is enabled (enable-count > 0).
  *  3. Verify the rate is in [99 MHz, 101 MHz].
  *  4. As a fallback verify at least one PCIe device appears on the bus
@@ -230,7 +243,7 @@ TestOutput ClockAndTimingTesting::testPcieReferenceClock()
 {
     std::vector<std::string> data;
 
-    // Candidate clock names used by different Orin kernel versions
+    // Candidate clock names used by different kernel BSPs (Jetson-origin probe strings)
     const std::vector<std::string> candidates = {"pcie_ref", "pcie_ref_clk", "pcie0_ref", "pciex1_ref", "pciex4_ref"};
 
     bool foundClk = false;
@@ -256,8 +269,7 @@ TestOutput ClockAndTimingTesting::testPcieReferenceClock()
                 TestOutput _out;
                 _out.status = hal::Status::FAIL;
                 _out.severity = hal::Severity::ERROR;
-                for (size_t _i = 0; _i < data.size(); ++_i)
-                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                StampDiagnostics(_out, data);
                 return _out;
             }
         }
@@ -276,8 +288,7 @@ TestOutput ClockAndTimingTesting::testPcieReferenceClock()
                 TestOutput _out;
                 _out.status = hal::Status::FAIL;
                 _out.severity = hal::Severity::ERROR;
-                for (size_t _i = 0; _i < data.size(); ++_i)
-                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                StampDiagnostics(_out, data);
                 return _out;
             }
         }
@@ -295,8 +306,7 @@ TestOutput ClockAndTimingTesting::testPcieReferenceClock()
                 TestOutput _out;
                 _out.status = hal::Status::FAIL;
                 _out.severity = hal::Severity::ERROR;
-                for (size_t _i = 0; _i < data.size(); ++_i)
-                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                StampDiagnostics(_out, data);
                 return _out;
             }
         }
@@ -306,8 +316,7 @@ TestOutput ClockAndTimingTesting::testPcieReferenceClock()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -327,7 +336,7 @@ TestOutput ClockAndTimingTesting::testUsbReferenceClock()
 {
     std::vector<std::string> data;
 
-    // Candidate clock names on Orin (vary by BSP version)
+    // Candidate clock names (vary by BSP version; Jetson-origin names probed defensively)
     const std::vector<std::string> candidates = {"xusb_core_clk", "xusb_ss_clk", "xusb_fs_clk",
                                                  "usb2_trk_clk",  "usb_ref",     "xusb_falcon_clk"};
 
@@ -377,8 +386,7 @@ TestOutput ClockAndTimingTesting::testUsbReferenceClock()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -387,8 +395,7 @@ TestOutput ClockAndTimingTesting::testUsbReferenceClock()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -433,8 +440,7 @@ TestOutput ClockAndTimingTesting::testEthernetReferenceClock()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -470,8 +476,7 @@ TestOutput ClockAndTimingTesting::testEthernetReferenceClock()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -491,6 +496,12 @@ TestOutput ClockAndTimingTesting::testCameraClockOutput()
     std::vector<std::string> data;
     bool passed = true;
 
+    // Acceptance criteria (measurable): camera clock output is verifiable on
+    // a DUT that has a CSI camera domain. Evidence: a camera-domain debugfs
+    // clock with a non-zero rate, or an active camera pipeline
+    // (/dev/video0). No camera clock and no camera hardware -> SKIPPED;
+    // camera hardware present but no clock/pipeline evidence -> FAIL.
+
     // 1. Debug clock entries for CSI / VI
     const std::vector<std::string> clkCandidates = {
         "csi_clk",        "unicam_clk", "unicam_tsc_clk", "extperiph1_clk", "extperiph2_clk", "extperiph3_clk",
@@ -502,35 +513,62 @@ TestOutput ClockAndTimingTesting::testCameraClockOutput()
         if (rateHz == 0)
             continue;
         anyClk = true;
-        data.push_back("Camera clock '" + name + "': " + std::to_string(rateHz / 1'000'000UL) + " MHz");
+        data.push_back("[PASS] Camera clock '" + name + "': " + std::to_string(rateHz / 1'000'000UL) + " MHz");
     }
     if (!anyClk)
-        data.push_back("INFO: Camera debugfs clocks not accessible (may require root)");
+        data.push_back("[INFO] Camera debugfs clocks not accessible (may require root) or not running");
 
     // 2. V4L2 / media devices
     const std::vector<std::string> devicePaths = {"/dev/video0", "/dev/media0", "/sys/bus/platform/devices/13e00000.host1x",
                                                   "/sys/class/video4linux"};
 
     bool anyDevice = false;
+    bool activePipeline = false;
     for (const auto& p : devicePaths) {
         if (pathExists(p)) {
-            data.push_back("Camera/media device found: " + p);
+            data.push_back("[PASS] Camera/media device found: " + p);
             anyDevice = true;
+            if (p.find("video0") != std::string::npos) activePipeline = true;
+        }
+    }
+    // Unicam platform device (CSI-2 controller) also implies the domain.
+    if (!activePipeline) {
+        DIR* dir = ::opendir("/sys/bus/platform/devices");
+        if (dir) {
+            while (struct dirent* ent = ::readdir(dir)) {
+                std::string n = ent->d_name;
+                if (n.find("unicam") != std::string::npos || n.find("1f001100") != std::string::npos) {
+                    activePipeline = true;
+                    data.push_back("[PASS] Unicam CSI-2 controller platform device: " + n);
+                    break;
+                }
+            }
+            ::closedir(dir);
         }
     }
 
-    if (!anyClk && !anyDevice) {
-        data.push_back("WARN: No camera clock or device evidence; "
-                       "camera may not be connected");
-        // Treat as pass — the hardware interface exists on the SoC regardless
+    if (!anyClk && !anyDevice && !activePipeline) {
+        data.push_back("[SKIP] No camera clock or device evidence - camera hardware is not present on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
+    if (anyClk)
+        data.push_back("[PASS] At least one camera-domain clock is running");
+    else if (activePipeline)
+        data.push_back("[PASS] Active camera pipeline implies the camera clocks are running");
+    else
+        data.push_back("[FAIL] Camera hardware exists but no running camera clock or active pipeline is observable");
+
+    passed = anyClk || activePipeline;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -584,16 +622,29 @@ TestOutput ClockAndTimingTesting::testAudioClock()
         }
     }
 
-    if (!anyClk && !anyAudio)
-        data.push_back("WARN: No audio clock or device evidence found");
+    // Acceptance criteria (measurable): an audio clock domain is present on
+    // the DUT. Evidence: an audio-domain clock running in debugfs, an ALSA
+    // PCM device, or the APE/ALSA sound platform. No audio hardware at all ->
+    // SKIPPED (the DUT simply has no audio domain to verify).
+    if (!anyClk && !anyAudio) {
+        data.push_back("[SKIP] No audio clock or device evidence found - no audio domain on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
-    // Pass as long as no hard error — audio peripherals may not be populated
+    if (anyClk)
+        data.push_back("[PASS] At least one audio-domain clock is running");
+    if (anyAudio)
+        data.push_back("[PASS] Audio peripheral (ALSA PCM / platform device) is present");
+
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -670,8 +721,7 @@ TestOutput ClockAndTimingTesting::testPllLockStatus()
         TestOutput _out;
         _out.status = allRequiredOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allRequiredOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -684,7 +734,7 @@ TestOutput ClockAndTimingTesting::testPllLockStatus()
  *  - Standard deviation (jitter)
  *  - Min / max interval
  *
- * Pass criterion: jitter (1-sigma) < 10 µs for CLOCK_MONOTONIC on Orin,
+ * Pass criterion: jitter (1-sigma) < 10 µs for CLOCK_MONOTONIC on BCM2712 (Pi5),
  * which is very conservative given the Arm architecture timer resolution.
  */
 TestOutput ClockAndTimingTesting::testClockJitterMeasurements()
@@ -758,8 +808,7 @@ TestOutput ClockAndTimingTesting::testClockJitterMeasurements()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -797,8 +846,7 @@ TestOutput ClockAndTimingTesting::testRtcAccuracy()
                 TestOutput _out;
                 _out.status = hal::Status::FAIL;
                 _out.severity = hal::Severity::ERROR;
-                for (size_t _i = 0; _i < data.size(); ++_i)
-                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                StampDiagnostics(_out, data);
                 return _out;
             }
         }
@@ -807,8 +855,7 @@ TestOutput ClockAndTimingTesting::testRtcAccuracy()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -823,8 +870,7 @@ TestOutput ClockAndTimingTesting::testRtcAccuracy()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -860,8 +906,7 @@ TestOutput ClockAndTimingTesting::testRtcAccuracy()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -870,8 +915,7 @@ TestOutput ClockAndTimingTesting::testRtcAccuracy()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -906,8 +950,7 @@ TestOutput ClockAndTimingTesting::testRtcBatteryBackup()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -931,8 +974,7 @@ TestOutput ClockAndTimingTesting::testRtcBatteryBackup()
             TestOutput _out;
             _out.status = hal::Status::PASS;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         } // device exists, treat as pass
     }
@@ -953,8 +995,7 @@ TestOutput ClockAndTimingTesting::testRtcBatteryBackup()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -988,8 +1029,7 @@ TestOutput ClockAndTimingTesting::testRtcBatteryBackup()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -999,8 +1039,7 @@ TestOutput ClockAndTimingTesting::testRtcBatteryBackup()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1018,18 +1057,14 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
 
     int fd = ::open("/dev/rtc0", O_RDWR | O_CLOEXEC);
     if (fd < 0) {
-        data.push_back("WARN: Cannot open /dev/rtc0 (" + std::string(::strerror(errno)) + ")");
-        // If we can't open the device, skip but do not hard-fail so that the
-        // test suite can run without root on a development host as well.
-        data.push_back("SKIP: RTC alarm test requires read-write access to /dev/rtc0");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        // HAL-509: an absent/unopenable RTC is SKIPPED, never a PASS.
+        data.push_back("[SKIP] Cannot open /dev/rtc0 (" + std::string(::strerror(errno)) +
+                       ") — RTC alarm functionality cannot be verified (needs read-write access to /dev/rtc0)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     // Read current RTC time
@@ -1043,8 +1078,7 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -1081,8 +1115,7 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -1098,9 +1131,21 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
+        }
+    }
+
+    // HAL-508: disarm the alarm so no stray wake-up is left armed after the
+    // test (disable alarm interrupts and clear the alarm to epoch-less zero).
+    {
+        ::ioctl(fd, RTC_AIE_OFF, 0);
+        struct rtc_wkalrm off {};
+        off.enabled = 0;
+        if (::ioctl(fd, RTC_WKALM_SET, &off) < 0) {
+            // Fallback for drivers that only implement RTC_ALM_SET: program
+            // the alarm to a disabled state via AIE_OFF alone.
+            data.push_back("[INFO] RTC_WKALM_SET(disabled) unsupported; relied on RTC_AIE_OFF");
         }
     }
 
@@ -1122,8 +1167,7 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -1133,8 +1177,7 @@ TestOutput ClockAndTimingTesting::testRtcAlarmFunctionality()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1164,8 +1207,7 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
                 TestOutput _out;
                 _out.status = hal::Status::FAIL;
                 _out.severity = hal::Severity::ERROR;
-                for (size_t _i = 0; _i < data.size(); ++_i)
-                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
+                StampDiagnostics(_out, data);
                 return _out;
             }
         }
@@ -1182,7 +1224,17 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
 
         readSysFile("/sys/class/rtc/rtc0/since_epoch", ep2);
 
-        long rtcDelta = std::stol(ep2) - std::stol(ep1);
+        long e1 = 0, e2 = 0;
+        if (!ctParseLong(ep1, e1) || !ctParseLong(ep2, e2))
+        {
+            data.push_back("FAIL: RTC since_epoch values unparseable ('" + ep1 + "', '" + ep2 + "')");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        long rtcDelta = e2 - e1;
         long sysDelta = static_cast<long>(sysEnd.tv_sec - sysStart.tv_sec);
         data.push_back("RTC elapsed (since_epoch): " + std::to_string(rtcDelta) + " s");
         data.push_back("System elapsed           : " + std::to_string(sysDelta) + " s");
@@ -1194,8 +1246,7 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
             TestOutput _out;
             _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
             _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -1211,8 +1262,7 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -1236,8 +1286,7 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -1276,8 +1325,7 @@ TestOutput ClockAndTimingTesting::testRtcTimePersistence()
         TestOutput _out;
         _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

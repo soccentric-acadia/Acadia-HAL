@@ -1,0 +1,4 @@
+# Baseline for scripts/verdict-integrity-gate.sh (X-002).
+# Count of test functions with no measurable FAIL/ERROR/SKIP path.
+# Reduce via the per-test HAL-101…/HAL-401… items; the gate fails if this count grows.
+106

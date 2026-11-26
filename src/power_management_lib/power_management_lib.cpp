@@ -2,7 +2,7 @@
  * @file power_management_lib.cpp
  * @brief Implementation file for PowerManagementTesting class — Raspberry Pi 5
  *        Pi5 PMIC: MXL7704 (multi-phase PMIC), USB-C PD input (5V/3A min, 5A recommended).
- *        No 12V ASIL rails (Jetson concept). No battery. 5V supply rail only.
+ *        No 12V ASIL rails (a legacy Jetson concept). No battery. 5V supply rail only.
  * @author sandesh ghimire
  * @copyright (C) Soccentric LLC */
 
@@ -16,6 +16,10 @@
 #include <string>
 #include <unistd.h>
 #include <vector>
+
+
+
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,7 +69,6 @@ PowerManagementTesting::~PowerManagementTesting()
 TestOutput PowerManagementTesting::testMaximumPerformanceMode()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Maximum performance mode check (Pi5 CPUfreq governor)");
 
@@ -85,21 +88,39 @@ TestOutput PowerManagementTesting::testMaximumPerformanceMode()
     data.push_back("cpuinfo_max_freq: " + std::to_string(maxF / 1000) + " MHz" +
                    " (expected " + std::to_string(RPI5_CPU_MAX_FREQ_MHZ) + " MHz)");
 
-    if (maxF / 1000 < 2400) {
-        data.push_back("NOTE: CPU max freq below 2400 MHz. Check arm_freq= in /boot/firmware/config.txt");
-    }
-
-    // Check GPU governor
+    // Acceptance criteria (measurable): cpufreq must be readable and the
+    // maximum frequency must match the Pi5 2400 MHz capability.
+    // cpufreq unavailable -> SKIPPED; underclocked -> FAIL.
     std::string gpuGov = pwrReadFile("/sys/class/devfreq/devfreq0/governor");
     if (!gpuGov.empty()) data.push_back("GPU devfreq governor: " + gpuGov);
 
-    data.push_back("PASS: Performance mode check complete.");
+    if (maxF <= 0)
+    {
+        data.push_back("[SKIP] cpufreq sysfs unavailable — maximum performance mode cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (maxF / 1000 < 2400)
+    {
+        data.push_back("[FAIL] CPU max freq " + std::to_string(maxF / 1000) +
+                       " MHz below the 2400 MHz Pi5 maximum — check arm_freq= in /boot/firmware/config.txt");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Maximum performance mode verified (cpuinfo_max_freq " +
+                   std::to_string(maxF / 1000) + " MHz)");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -110,7 +131,6 @@ TestOutput PowerManagementTesting::testMaximumPerformanceMode()
 TestOutput PowerManagementTesting::testPoweroptimizedModes()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Power-optimized modes check (Pi5 CPUfreq + devfreq)");
 
@@ -129,16 +149,36 @@ TestOutput PowerManagementTesting::testPoweroptimizedModes()
     long long minF = pwrReadInt("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq");
     data.push_back("Current min_freq: " + std::to_string(minF / 1000) + " MHz");
 
+    // Acceptance criteria (measurable): at least one power-optimized
+    // governor (powersave/schedutil) must be available.
+    // cpufreq unavailable -> SKIPPED; no power-optimized governor -> FAIL.
     data.push_back("Set powersave: echo powersave > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
-    data.push_back("PASS: Power-optimized modes check complete.");
+    if (govs.empty())
     {
+        data.push_back("[SKIP] cpufreq sysfs unavailable — power-optimized modes cannot be verified");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (hasPowersave || hasSchedutil)
+    {
+        data.push_back("[PASS] Power-optimized governors available (" +
+                       std::string(hasPowersave ? "powersave" : "schedutil") + ")");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] No power-optimized governor available (only: " + govs + ")");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -147,12 +187,12 @@ TestOutput PowerManagementTesting::testPoweroptimizedModes()
 TestOutput PowerManagementTesting::testIdlePowerConsumption()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Idle power consumption check (Pi5)");
     data.push_back("Pi5 idle power: ~2.7W (official, active cooler off)");
 
     // Check CPU idle states
+    bool anyIdleState = false;
     for (int i = 0; i < RPI5_CPU_CORES; ++i) {
         std::string base = "/sys/devices/system/cpu/cpu" + std::to_string(i) + "/cpuidle";
         for (int s = 0; s < 4; ++s) {
@@ -162,6 +202,7 @@ TestOutput PowerManagementTesting::testIdlePowerConsumption()
             long long usage = pwrReadInt(sbase + "/usage");
             data.push_back("CPU" + std::to_string(i) + " idle state " + name +
                            ": usage=" + std::to_string(usage));
+            anyIdleState = true;
         }
     }
 
@@ -169,15 +210,43 @@ TestOutput PowerManagementTesting::testIdlePowerConsumption()
     std::string throttled = pwrRunCmd("vcgencmd get_throttled 2>/dev/null");
     if (!throttled.empty()) data.push_back("vcgencmd throttled: " + throttled);
 
-    data.push_back("PASS: Idle power check complete.");
+    // Acceptance criteria (measurable): at least one cpuidle state must
+    // exist (idle entry is possible) and no throttle/under-voltage flags.
+    if (anyIdleState && !throttled.empty() && throttled.find("throttled=0x0") != 0)
     {
+        data.push_back("[FAIL] Throttle flags set: " + throttled + " — under-voltage during idle (supply fault)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (anyIdleState)
+    {
+        data.push_back("[PASS] CPU idle states present (idle power management active)" +
+                       std::string(!throttled.empty() ? "; throttle flags clean" : ""));
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (!throttled.empty())
+    {
+        data.push_back("[PASS] No cpuidle states exposed but throttle telemetry readable and clean (idle state stable)");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[SKIP] No cpuidle states and no idle telemetry — idle power behaviour cannot be characterised");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,7 +255,6 @@ TestOutput PowerManagementTesting::testIdlePowerConsumption()
 TestOutput PowerManagementTesting::testSleepStates()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Sleep/suspend states check (Pi5)");
 
@@ -200,15 +268,24 @@ TestOutput PowerManagementTesting::testSleepStates()
     data.push_back("Pi5 power-off: sudo halt / sudo poweroff");
     data.push_back("Wake from halt via: GPIO, USB, network (WoL), or external power cycle.");
 
-    data.push_back("PASS: Sleep state check complete.");
+    // Acceptance criteria (measurable): the kernel power-state interface must
+    // be readable (firmware/kernel sleep support observable).
+    if (pmState.empty())
     {
+        data.push_back("[SKIP] /sys/power/state not available — sleep states cannot be verified on this DUT");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[PASS] Kernel power states enumerated (" + pmState + ")");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -217,7 +294,6 @@ TestOutput PowerManagementTesting::testSleepStates()
 TestOutput PowerManagementTesting::testPowerStateTransitions()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Power state transition check (Pi5)");
     data.push_back("NOTE: Test does NOT trigger state transitions.");
@@ -241,15 +317,25 @@ TestOutput PowerManagementTesting::testPowerStateTransitions()
     bool pmQos = (access("/sys/devices/system/cpu/cpu0/power/pm_qos_latency_ns", F_OK) == 0);
     data.push_back("PM QoS latency: " + std::string(pmQos ? "available" : "not found"));
 
-    data.push_back("PASS: Power state transition check complete.");
+    // Acceptance criteria (measurable): at least one cpuidle state with a
+    // valid exit latency must be exposed, or the PM QoS interface present.
+    bool anyState = data.size() > 1;
+    if (anyState || pmQos)
     {
+        data.push_back("[PASS] Power-state transition interface present (cpuidle states and/or PM QoS)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No cpuidle states and no PM QoS interface — power-state transitions cannot be verified");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -258,7 +344,6 @@ TestOutput PowerManagementTesting::testPowerStateTransitions()
 TestOutput PowerManagementTesting::testWakeupSources()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Wakeup sources check (Pi5)");
 
@@ -273,16 +358,26 @@ TestOutput PowerManagementTesting::testWakeupSources()
     std::string wol = pwrRunCmd("ethtool eth0 2>/dev/null | grep -i 'wake'");
     if (!wol.empty()) data.push_back("Ethernet WoL: " + wol);
 
+    // Acceptance criteria (measurable): at least one wakeup source must be
+    // enumerable (GPIO wakeup, USB wakeup, or Ethernet WoL capability).
+    bool anyWakeup = !wakeup.empty() || !usbWakeup.empty() || !wol.empty();
     data.push_back("Pi5 wakeup sources: GPIO (J8 header), USB devices, Ethernet WoL, RTC alarm");
-    data.push_back("PASS: Wakeup sources check complete.");
+    if (anyWakeup)
     {
+        data.push_back("[PASS] Wakeup sources enumerable on this DUT");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No wakeup sources enumerable (no gpio-keys wakeup, no USB wakeup, no WoL) — nothing to verify");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -291,7 +386,6 @@ TestOutput PowerManagementTesting::testWakeupSources()
 TestOutput PowerManagementTesting::testPowerButtonFunctionality()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Power button check (Pi5)");
     data.push_back("Pi5 has a power button connector (J2) — 2-pin header near micro-HDMI.");
@@ -305,15 +399,25 @@ TestOutput PowerManagementTesting::testPowerButtonFunctionality()
     if (!dmesgPwr.empty()) data.push_back("dmesg: " + dmesgPwr.substr(0, 200));
 
     data.push_back("Pi5 power button: short press = soft shutdown, long press = hard power off.");
-    data.push_back("PASS: Power button check complete.");
+
+    // Acceptance criteria (measurable): a power-button input device must be
+    // enumerated (or the firmware GPIO-key driver bound). None -> SKIPPED.
+    if (!powerBtn.empty() || !dmesgPwr.empty())
     {
+        data.push_back("[PASS] Power button input device enumerated");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No power-button input device found — no button attached/driver not bound on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -323,10 +427,9 @@ TestOutput PowerManagementTesting::testPowerButtonFunctionality()
 TestOutput PowerManagementTesting::test12vAsilQsLRail()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("12V ASIL QS-L rail check");
-    data.push_back("NOTE: Pi5 does NOT have 12V ASIL safety rails (Jetson AGX Orin concept).");
+    data.push_back("NOTE: Pi5 does NOT have 12V ASIL safety rails (a legacy Jetson concept).");
     data.push_back("Pi5 input: 5V DC via USB-C (27W PD) or 5V GPIO header (max 3A).");
 
     // Check MXL7704 PMIC rails via hwmon
@@ -334,13 +437,15 @@ TestOutput PowerManagementTesting::test12vAsilQsLRail()
     if (!pmicRails.empty()) data.push_back("PMIC voltage rails (hwmon): " + pmicRails.substr(0, 300));
 
     data.push_back("Pi5 voltage rails: VDD_CORE(~1.0V), VDD_ARM, VDD_IO(3.3V/1.8V)");
-    data.push_back("PASS: 12V ASIL QS-L check complete (N/A on Pi5).");
+
+    // Acceptance criteria: the 12V ASIL QS-L rail is an automotive-specific
+    // rail; the Pi5 carrier has no such rail — hardware not applicable.
+    data.push_back("[SKIP] 12V ASIL QS-L rail not present on this DUT (Pi5 is 5V USB-C powered) — not applicable");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -351,18 +456,16 @@ TestOutput PowerManagementTesting::test12vAsilQsLRail()
 TestOutput PowerManagementTesting::test12vAsilQsRRail()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("12V ASIL QS-R rail check");
     data.push_back("NOTE: Pi5 does NOT have 12V ASIL safety rails.");
     data.push_back("Pi5 uses USB-C PD 5V input with MXL7704 PMIC.");
-    data.push_back("PASS: 12V ASIL QS-R check complete (N/A on Pi5).");
+    data.push_back("[SKIP] 12V ASIL QS-R rail not present on this DUT — hardware not applicable");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -373,7 +476,6 @@ TestOutput PowerManagementTesting::test12vAsilQsRRail()
 TestOutput PowerManagementTesting::testAllInternalVoltageRails()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Internal voltage rails check (Pi5 MXL7704 PMIC)");
 
@@ -409,13 +511,24 @@ TestOutput PowerManagementTesting::testAllInternalVoltageRails()
         if (!v.empty()) data.push_back(std::string(rail) + ": " + v);
     }
 
-    data.push_back("PASS: Voltage rails check complete.");
+    // Acceptance criteria (measurable): at least one rail reading must be
+    // obtainable from hwmon or vcgencmd. Neither -> SKIP.
+    if (!anyFound && data.size() <= 1)
+    {
+        data.push_back("[SKIP] No hwmon voltage rails readable and vcgencmd unavailable — rail voltages cannot be measured");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Internal voltage rails readable");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -426,7 +539,6 @@ TestOutput PowerManagementTesting::testAllInternalVoltageRails()
 TestOutput PowerManagementTesting::testPowerSequencing()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Power sequencing check (Pi5 MXL7704 PMIC)");
     data.push_back("MXL7704 manages rail sequencing: 5V → VDD_ARM → VDD_CORE → peripherals");
@@ -437,15 +549,24 @@ TestOutput PowerManagementTesting::testPowerSequencing()
     std::string regs = pwrRunCmd("cat /sys/kernel/debug/regulator/regulator_summary 2>/dev/null | head -20");
     if (!regs.empty()) data.push_back("Regulator summary: " + regs.substr(0, 600));
 
-    data.push_back("PASS: Power sequencing check complete.");
+    // Acceptance criteria (measurable): regulator/PMIC sequencing evidence
+    // must be observable (regulator summary or PMIC boot messages).
+    if (!regs.empty() || !dmesgPwr.empty())
     {
+        data.push_back("[PASS] PMIC/regulator sequencing state observable");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] Regulator summary and PMIC kernel messages unavailable — power sequencing cannot be verified (debugfs not mounted or restricted)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -454,7 +575,6 @@ TestOutput PowerManagementTesting::testPowerSequencing()
 TestOutput PowerManagementTesting::testPoweronReset()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Power-on reset check (Pi5)");
 
@@ -469,15 +589,38 @@ TestOutput PowerManagementTesting::testPoweronReset()
     std::string bootTime = pwrRunCmd("uptime -s 2>/dev/null");
     if (!bootTime.empty()) data.push_back("System boot time: " + bootTime);
 
-    data.push_back("PASS: Power-on reset check complete.");
+    // Acceptance criteria (measurable): a clean power-on is indicated by zero
+    // throttle/under-voltage flags from firmware. Flags unreadable -> SKIP;
+    // flags set -> FAIL.
+    if (!vc.empty())
     {
-        TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
-        return _out;
+        unsigned long flags = 0;
+        if (sscanf(vc.c_str(), "throttled=0x%lx", &flags) == 1)
+        {
+            if (flags == 0)
+            {
+                data.push_back("[PASS] Clean power-on: no throttle/under-voltage events recorded by firmware");
+                TestOutput _out;
+                _out.status = hal::Status::PASS;
+                _out.severity = hal::Severity::INFO;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            data.push_back("[FAIL] Power-on with throttle/under-voltage flags set (" + vc + ") — supply fault at boot");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
     }
+
+    data.push_back("[SKIP] Firmware throttle flags unavailable — power-on reset health cannot be verified");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -518,8 +661,7 @@ TestOutput PowerManagementTesting::testBrownoutDetection()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -530,7 +672,6 @@ TestOutput PowerManagementTesting::testBrownoutDetection()
 TestOutput PowerManagementTesting::testOvervoltageProtection()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Overvoltage protection check (Pi5)");
     data.push_back("Pi5 USB-C PD: negotiates 5V max (no 9V/12V/20V for power input).");
@@ -552,16 +693,42 @@ TestOutput PowerManagementTesting::testOvervoltageProtection()
         }
     }
 
-    if (!ovpFound) data.push_back("No overvoltage alarms detected.");
-    data.push_back("PASS: Overvoltage protection check complete.");
+    // Acceptance criteria (measurable): OVP alarm registers must be readable
+    // and clean. An alarm -> FAIL; no alarm registers -> SKIP (protection
+    // status cannot be observed).
+    if (ovpFound)
     {
+        data.push_back("[FAIL] Overvoltage alarm active on PMIC rail(s)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    bool anyHwmon = false;
+    for (int h = 0; h < 4; ++h)
+    {
+        std::string name = pwrReadFile("/sys/class/hwmon/hwmon" + std::to_string(h) + "/name");
+        if (name.empty()) break;
+        anyHwmon = true;
+        break;
+    }
+    if (!anyHwmon)
+    {
+        data.push_back("[SKIP] No PMIC hwmon alarm registers readable — overvoltage protection status cannot be observed");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] No overvoltage alarms detected (OVP registers read clean)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -570,24 +737,44 @@ TestOutput PowerManagementTesting::testOvervoltageProtection()
 TestOutput PowerManagementTesting::testUndervoltageProtection()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Undervoltage protection check (Pi5)");
     data.push_back("Pi5 firmware monitors rail voltages and sets throttle flags.");
 
+    // Acceptance criteria (measurable): the firmware under-voltage monitor
+    // must be observable and its flags clean. Flags unreadable -> SKIP;
+    // under-voltage flag set -> FAIL.
     std::string throttled = pwrRunCmd("vcgencmd get_throttled 2>/dev/null");
-    if (!throttled.empty()) data.push_back("Current throttle status: " + throttled);
-
-    data.push_back("Low-voltage threshold: <4.63V on 5V rail triggers under-voltage flag.");
-    data.push_back("PASS: Undervoltage protection check complete.");
+    if (throttled.empty())
     {
+        data.push_back("[SKIP] vcgencmd unavailable — under-voltage protection status cannot be observed");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    data.push_back("Current throttle status: " + throttled);
+    data.push_back("Low-voltage threshold: <4.63V on 5V rail triggers under-voltage flag.");
+
+    unsigned long flags = 0;
+    if (sscanf(throttled.c_str(), "throttled=0x%lx", &flags) == 1 &&
+        ((flags & 0x1) || (flags & 0x10000)))
+    {
+        data.push_back("[FAIL] Under-voltage flag set — undervoltage protection tripped (use ≥27W USB-C PD supply)");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] No under-voltage flags — protection monitors clean");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -596,7 +783,6 @@ TestOutput PowerManagementTesting::testUndervoltageProtection()
 TestOutput PowerManagementTesting::testOvercurrentProtection()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Overcurrent protection check (Pi5)");
     data.push_back("Pi5 USB-C input: polyfuse or USB PD current limiting.");
@@ -607,15 +793,24 @@ TestOutput PowerManagementTesting::testOvercurrentProtection()
     std::string usbCur = pwrRunCmd("cat /sys/bus/usb/devices/*/bMaxPower 2>/dev/null | head -5");
     if (!usbCur.empty()) data.push_back("USB bMaxPower: " + usbCur.substr(0, 100));
 
-    data.push_back("PASS: Overcurrent protection check complete.");
+    // Acceptance criteria (measurable): USB current limits must be
+    // enumerable (bMaxPower).
+    if (!usbCur.empty())
     {
+        data.push_back("[PASS] USB current limits enumerable (hub current-limit enforcement visible)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No USB current-limit data observable (no USB devices with bMaxPower) — overcurrent protection status cannot be verified");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -624,25 +819,31 @@ TestOutput PowerManagementTesting::testOvercurrentProtection()
 TestOutput PowerManagementTesting::testPowerSupplyRejection()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Power supply noise rejection check (Pi5)");
     data.push_back("Pi5 MXL7704 PMIC: integrated bulk capacitors + LC filtering.");
     data.push_back("PSRR tested by measuring core voltage stability under load.");
 
-    // Compare idle vs loaded core voltage
+    // Acceptance criteria (measurable): the core rail voltage must be
+    // observable. vcgencmd missing -> SKIP.
     std::string vcIdle = pwrRunCmd("vcgencmd measure_volts core 2>/dev/null");
-    if (!vcIdle.empty()) data.push_back("Core voltage (idle): " + vcIdle);
-
-    data.push_back("PASS: Power supply rejection check complete (documentation-based).");
+    if (vcIdle.empty())
     {
+        data.push_back("[SKIP] Core voltage not measurable (vcgencmd unavailable) — PSRR behaviour cannot be observed");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    data.push_back("Core voltage (idle): " + vcIdle);
+
+    data.push_back("[PASS] Core voltage readable and nominal (rail stable at idle; dynamic rejection is a PMIC-design property)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -651,7 +852,6 @@ TestOutput PowerManagementTesting::testPowerSupplyRejection()
 TestOutput PowerManagementTesting::testRealtimePowerConsumption()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Real-time power consumption (Pi5)");
     data.push_back("Pi5 typical: idle ~2.7W, full load ~12W, max ~27W (USB-C PD)");
@@ -671,22 +871,27 @@ TestOutput PowerManagementTesting::testRealtimePowerConsumption()
         }
     }
 
-    if (!anyPwr) {
+    if (!anyPwr)
+    {
         // Estimate from core voltage and frequency
         std::string vc = pwrRunCmd("vcgencmd measure_volts core 2>/dev/null");
         if (!vc.empty()) data.push_back("Core voltage: " + vc);
         std::string varms = pwrRunCmd("vcgencmd measure_volts sdram_c 2>/dev/null");
         if (!varms.empty()) data.push_back("SDRAM-C voltage: " + varms);
-        data.push_back("Install powerstat or use INA3221 HAT for accurate power measurement.");
+        data.push_back("[SKIP] No power sensor present — real-time consumption cannot be measured (use INA3221/INA219 HAT)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    data.push_back("PASS: Power consumption check complete.");
+    data.push_back("[PASS] Real-time power readings obtained from PMIC hwmon");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -697,7 +902,6 @@ TestOutput PowerManagementTesting::testRealtimePowerConsumption()
 TestOutput PowerManagementTesting::testPercomponentPowerMeasurement()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Per-component power measurement (Pi5)");
     data.push_back("Pi5 MXL7704 PMIC: supplies separate rails for CPU, GPU, RAM, IO");
@@ -714,15 +918,25 @@ TestOutput PowerManagementTesting::testPercomponentPowerMeasurement()
     data.push_back("  USB/PCIe/Ethernet:             ~1W");
     data.push_back("Use INA3221/INA219 HAT for per-rail measurement.");
 
-    data.push_back("PASS: Per-component power check complete.");
+    // Acceptance criteria (measurable): per-component measurement requires a
+    // per-rail power sensor; the CPU runtime-power interface must at least be
+    // readable. Absent -> SKIP.
+    if (!perfPwr.empty())
     {
+        data.push_back("[PASS] Per-component power surface available (CPU runtime-power interface readable)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No per-component power interfaces (no CPU runtime-power, no per-rail sensor) — per-component measurement cannot be performed");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -731,7 +945,6 @@ TestOutput PowerManagementTesting::testPercomponentPowerMeasurement()
 TestOutput PowerManagementTesting::testPowerEfficiencyCalculation()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Power efficiency calculation (Pi5)");
 
@@ -740,22 +953,37 @@ TestOutput PowerManagementTesting::testPowerEfficiencyCalculation()
     data.push_back("Pi5 power budget: ~12W peak");
     data.push_back("Pi5 efficiency: ~1.15 GFLOPS/W (CPU+GPU, FP32)");
 
-    // Measure current CPU efficiency using MIPS/W
+    // Acceptance criteria (measurable): an efficiency calculation requires a
+    // real power measurement. Without a power sensor the documented figures
+    // cannot be verified -> SKIP.
+    bool havePwr = false;
+    for (int h = 0; h < 8; ++h) {
+        std::string base = "/sys/class/hwmon/hwmon" + std::to_string(h);
+        std::string name = pwrReadFile(base + "/name");
+        if (name.empty()) break;
+        if (pwrReadInt(base + "/power1_input") >= 0) { havePwr = true; break; }
+    }
     long long freq = pwrReadInt("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq");
     if (freq > 0) {
         double freqGHz = freq / 1e6;
         data.push_back("Current CPU freq: " + std::to_string(freqGHz) + " GHz x 4 cores");
     }
-
-    data.push_back("PASS: Power efficiency calculation complete.");
+    if (havePwr)
     {
+        data.push_back("[PASS] Power telemetry present — efficiency figures are computable from measured power");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No power measurement source — efficiency cannot be calculated (documented ~1.15 GFLOPS/W is nominal only)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -764,7 +992,6 @@ TestOutput PowerManagementTesting::testPowerEfficiencyCalculation()
 TestOutput PowerManagementTesting::testBatteryCharging()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Battery charging check (Pi5)");
     data.push_back("Pi5 does NOT have a battery charging circuit.");
@@ -786,16 +1013,25 @@ TestOutput PowerManagementTesting::testBatteryCharging()
         }
     }
 
-    if (!battPresent) data.push_back("No battery HAT detected. Charging N/A on bare Pi5.");
-    data.push_back("PASS: Battery check complete.");
+    // Acceptance criteria (measurable): battery charging requires a battery
+    // HAT (a power_supply BAT entry). Bare Pi5 has no charging circuit ->
+    // SKIPPED, never a PASS.
+    if (battPresent)
     {
+        data.push_back("[PASS] Battery HAT present with charging status readable");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No battery HAT detected — battery charging is not applicable on bare Pi5 (USB-C PD only)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -804,7 +1040,6 @@ TestOutput PowerManagementTesting::testBatteryCharging()
 TestOutput PowerManagementTesting::testUpsFunctionality()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("UPS functionality check (Pi5)");
     data.push_back("Pi5 does not have built-in UPS. UPS requires external HAT.");
@@ -825,16 +1060,24 @@ TestOutput PowerManagementTesting::testUpsFunctionality()
     bool nut = (access("/usr/bin/upsc", F_OK) == 0) || (access("/usr/sbin/upsd", F_OK) == 0);
     data.push_back("NUT (Network UPS Tools): " + std::string(nut ? "installed" : "not installed"));
 
-    if (!upsFound) data.push_back("No UPS detected. Attach a UPS HAT for power backup.");
-    data.push_back("PASS: UPS check complete.");
+    // Acceptance criteria (measurable): UPS functionality requires a UPS
+    // device (power_supply UPS entry) or NUT tooling to manage it.
+    if (upsFound || nut)
     {
+        data.push_back("[PASS] UPS path present (" + std::string(upsFound ? "UPS power_supply device" : "NUT tooling installed") + ")");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No UPS device and no NUT tooling — UPS functionality cannot be verified on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**

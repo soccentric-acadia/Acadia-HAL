@@ -4,3 +4,5 @@ target_include_directories(test_video_encode_decode PRIVATE ${CMAKE_SOURCE_DIR}/
 add_test(NAME test_video_encode_decode COMMAND test_video_encode_decode)
 set_tests_properties(test_video_encode_decode PROPERTIES TIMEOUT 300)
 install(TARGETS test_video_encode_decode RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_video_encode_decode PROPERTIES LABELS "target-required")

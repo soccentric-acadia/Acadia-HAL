@@ -1,31 +1,32 @@
 /**
  * @file spi_lib.h
- * @brief SpiTesting — tests the spi peripheral.
- * @details Linux interface: spidev (/dev/spidev*, SPI_IOC_MESSAGE)
- * @note HARDWARE-UNVERIFIED — all test implementations require on-target
- *       execution against real hardware.
- */
-#pragma once
+ * @brief Header for SpiTesting class (Raspberry Pi 5 SPI bus testing)
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+#ifndef SPITESTING_H
+#define SPITESTING_H
 #include "lib_base.h"
-#include <string>
-#include <vector>
 
-class SpiTesting : public TestBase {
-public:
+/**
+ * @class SpiTesting
+ * @brief Tests the Raspberry Pi 5 SPI controllers via /dev/spidev* and sysfs.
+ */
+class SpiTesting : public TestBase
+{
+  public:
     SpiTesting();
-    ~SpiTesting() override;
+    ~SpiTesting();
 
-    // ── TestBase interface ──────────────────────────────────────────────
+    TestOutput testSpiControllerPresent();
+    TestOutput testSpiDeviceEnumeration();
+    TestOutput testSpiInterfaceAccess();
+    TestOutput testSpiSpeedConfiguration();
+
     std::vector<std::string> getAvailableTests() override;
-    std::vector<TestResult>  runAllTests()       override;
-    TestResult               runSingleTest(const std::string& testName) override;
+    TestResult runSingleTest(const std::string& testName) override;
 
-    // ── Module-specific tests ───────────────────────────────────────────
-    TestOutput testPresence(); // HARDWARE-UNVERIFIED
-    TestOutput testMode(); // HARDWARE-UNVERIFIED
-    TestOutput testMaxSpeed(); // HARDWARE-UNVERIFIED
-    TestOutput testLoopbackTx(); // HARDWARE-UNVERIFIED
-
-protected:
-    std::string device_path_; // resolved device path (may be empty if not found)
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
+
+#endif // SPITESTING_H

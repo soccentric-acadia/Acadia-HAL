@@ -131,8 +131,7 @@ TestOutput ThermalManagementTesting::testSocJunctionTemperature()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -155,8 +154,7 @@ TestOutput ThermalManagementTesting::testSocJunctionTemperature()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -190,8 +188,7 @@ TestOutput ThermalManagementTesting::testGpuTemperature()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -235,8 +232,7 @@ TestOutput ThermalManagementTesting::testCpuTemperature()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -270,8 +266,7 @@ TestOutput ThermalManagementTesting::testMemoryTemperature()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -323,8 +318,7 @@ TestOutput ThermalManagementTesting::testBoardAmbientTemperature()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -346,8 +340,7 @@ TestOutput ThermalManagementTesting::testAllThermalZones()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -365,8 +358,7 @@ TestOutput ThermalManagementTesting::testAllThermalZones()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -416,8 +408,7 @@ TestOutput ThermalManagementTesting::testThermalThrottlingThresholds()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -463,8 +454,7 @@ TestOutput ThermalManagementTesting::testThermalShutdownTemperature()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -508,8 +498,7 @@ TestOutput ThermalManagementTesting::testCoolingSolutionEffectiveness()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -520,7 +509,6 @@ TestOutput ThermalManagementTesting::testCoolingSolutionEffectiveness()
 TestOutput ThermalManagementTesting::testTemperatureDistributionAcrossDie()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Temperature distribution across BCM2712 die");
     data.push_back("Pi5 has 2 thermal sensors: cpu-thermal (zone0) and rp1-thermal (zone1).");
@@ -529,23 +517,39 @@ TestOutput ThermalManagementTesting::testTemperatureDistributionAcrossDie()
     for (const auto& z : zones)
         data.push_back("  " + z.first + ": " + std::to_string(z.second) + " °C");
 
-    if (zones.size() >= 2) {
-        double delta = std::abs(zones[0].second - zones[1].second);
-        data.push_back("Inter-zone delta: " + std::to_string(delta) + " °C");
-        if (delta > 30.0) {
-            data.push_back("NOTE: Large temperature differential between zones.");
-        }
-    }
-
-    data.push_back("PASS: Die temperature distribution check complete.");
+    // Acceptance criteria (measurable): both BCM2712 thermal zones must be
+    // readable so the inter-zone delta is measurable. Fewer zones -> SKIP;
+    // an implausible delta (>30 °C at idle) -> FAIL.
+    if (zones.size() < 2)
     {
+        data.push_back("[SKIP] Only " + std::to_string(zones.size()) +
+                       " thermal zone(s) readable — die temperature distribution requires both cpu-thermal and rp1-thermal zones");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    double delta = std::abs(zones[0].second - zones[1].second);
+    data.push_back("Inter-zone delta: " + std::to_string(delta) + " °C");
+    if (delta > 30.0)
+    {
+        data.push_back("[FAIL] Inter-zone temperature differential " + std::to_string(delta) +
+                       " °C exceeds 30 °C — cooling fault or sensor failure");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Die temperature distribution consistent (delta " + std::to_string(delta) + " °C)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -602,8 +606,7 @@ TestOutput ThermalManagementTesting::testSustainedThermalPerformance()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -656,8 +659,7 @@ TestOutput ThermalManagementTesting::testThermalRecoveryTime()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -669,7 +671,6 @@ TestOutput ThermalManagementTesting::testThermalRecoveryTime()
 TestOutput ThermalManagementTesting::testFanControl()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Pi5 Active Cooler fan control (RP1 PWM fan connector)");
 
@@ -709,21 +710,24 @@ TestOutput ThermalManagementTesting::testFanControl()
         fanFound = true;
     }
 
-    if (!fanFound) {
+    if (!fanFound)
+    {
         data.push_back("INFO: Pi5 Active Cooler not detected or no fan connected.");
         data.push_back("      Pi5 fanless operation is normal with passive heatsink.");
-    } else {
-        data.push_back("PASS: Fan control interface detected.");
-    }
-
-    {
+        data.push_back("[SKIP] No fan control interface present — fan control not verifiable on this DUT (passive cooling)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[PASS] Fan control interface detected (cooling device/PWM/hwmon RPM)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 std::vector<TestResult> ThermalManagementTesting::runAllTests()
 {

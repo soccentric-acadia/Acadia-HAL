@@ -1,31 +1,31 @@
 /**
  * @file mipi_csi_lib.h
- * @brief MipiCsiTesting — tests the mipi_csi peripheral.
- * @details Linux interface: V4L2 (/dev/video*, VIDIOC_QUERYCAP)
- * @note HARDWARE-UNVERIFIED — all test implementations require on-target
- *       execution against real hardware.
- */
-#pragma once
+ * @brief Header for MipiCsiTesting class (Raspberry Pi 5 MIPI CSI camera testing)
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+#ifndef MIPICSITESTING_H
+#define MIPICSITESTING_H
 #include "lib_base.h"
-#include <string>
-#include <vector>
 
-class MipiCsiTesting : public TestBase {
-public:
+/**
+ * @class MipiCsiTesting
+ * @brief Tests MIPI CSI-2 camera interface (RP1 Unicam) presence and V4L2 nodes.
+ */
+class MipiCsiTesting : public TestBase
+{
+  public:
     MipiCsiTesting();
-    ~MipiCsiTesting() override;
+    ~MipiCsiTesting();
 
-    // ── TestBase interface ──────────────────────────────────────────────
+    TestOutput testMipiCsiPresent();
+    TestOutput testMipiCsiDeviceEnumeration();
+    TestOutput testMipiCsiFormatNegotiation();
+
     std::vector<std::string> getAvailableTests() override;
-    std::vector<TestResult>  runAllTests()       override;
-    TestResult               runSingleTest(const std::string& testName) override;
+    TestResult runSingleTest(const std::string& testName) override;
 
-    // ── Module-specific tests ───────────────────────────────────────────
-    TestOutput testPresence(); // HARDWARE-UNVERIFIED
-    TestOutput testCapabilities(); // HARDWARE-UNVERIFIED
-    TestOutput testFormat(); // HARDWARE-UNVERIFIED
-    TestOutput testStreamOn(); // HARDWARE-UNVERIFIED
-
-protected:
-    std::string device_path_; // resolved device path (may be empty if not found)
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
+
+#endif // MIPICSITESTING_H

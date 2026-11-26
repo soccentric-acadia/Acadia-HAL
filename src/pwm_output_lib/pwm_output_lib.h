@@ -1,31 +1,31 @@
 /**
  * @file pwm_output_lib.h
- * @brief PwmOutputTesting — tests the pwm_output peripheral.
- * @details Linux interface: PWM sysfs (/sys/class/pwm/pwmchip0/)
- * @note HARDWARE-UNVERIFIED — all test implementations require on-target
- *       execution against real hardware.
- */
-#pragma once
+ * @brief Header for PwmOutputTesting class (Raspberry Pi 5 PWM output testing)
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+#ifndef PWMOUTPUTTESTING_H
+#define PWMOUTPUTTESTING_H
 #include "lib_base.h"
-#include <string>
-#include <vector>
 
-class PwmOutputTesting : public TestBase {
-public:
+/**
+ * @class PwmOutputTesting
+ * @brief Tests PWM output channels via the Linux PWM sysfs interface.
+ */
+class PwmOutputTesting : public TestBase
+{
+  public:
     PwmOutputTesting();
-    ~PwmOutputTesting() override;
+    ~PwmOutputTesting();
 
-    // ── TestBase interface ──────────────────────────────────────────────
+    TestOutput testPwmChipPresent();
+    TestOutput testPwmExportChannel();
+    TestOutput testPwmDutyCycle();
+
     std::vector<std::string> getAvailableTests() override;
-    std::vector<TestResult>  runAllTests()       override;
-    TestResult               runSingleTest(const std::string& testName) override;
+    TestResult runSingleTest(const std::string& testName) override;
 
-    // ── Module-specific tests ───────────────────────────────────────────
-    TestOutput testPresence(); // HARDWARE-UNVERIFIED
-    TestOutput testExport(); // HARDWARE-UNVERIFIED
-    TestOutput testPeriod(); // HARDWARE-UNVERIFIED
-    TestOutput testDutyCycle(); // HARDWARE-UNVERIFIED
-
-protected:
-    std::string device_path_; // resolved device path (may be empty if not found)
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
+
+#endif // PWMOUTPUTTESTING_H

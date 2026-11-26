@@ -10,3 +10,5 @@ target_include_directories(test_typed_module_handler
 add_test(NAME test_typed_module_handler COMMAND test_typed_module_handler)
 set_tests_properties(test_typed_module_handler PROPERTIES TIMEOUT 300)
 install(TARGETS test_typed_module_handler RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_typed_module_handler PROPERTIES LABELS "host")

@@ -4,3 +4,5 @@ target_include_directories(test_camera_module3 PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_camera_module3 COMMAND test_camera_module3)
 set_tests_properties(test_camera_module3 PROPERTIES TIMEOUT 300)
 install(TARGETS test_camera_module3 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_camera_module3 PROPERTIES LABELS "optional-hardware")

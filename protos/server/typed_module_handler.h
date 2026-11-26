@@ -21,6 +21,7 @@
 #include "server/hal_service_impl.h"
 #include "common.pb.h"
 #include "lib_base.h"
+#include "test_runner.h"
 
 #include <google/protobuf/duration.pb.h>
 #include <google/protobuf/timestamp.pb.h>
@@ -29,6 +30,7 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 #include <string>
 #include <thread>
 #include <vector>
@@ -234,6 +236,7 @@ class TypedModuleHandler : public IModuleHandler {
         grpc::ServerContext*                              ctx,
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
+        const std::string&                               session_id,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
         const auto up = TryUnpack(module_config, cfg);
@@ -248,13 +251,15 @@ class TypedModuleHandler : public IModuleHandler {
         int64_t  dur_ms      = common.run_forever() ? 0LL : common.duration_ms();
 
         auto hal_module = std::make_shared<HalClass>();
-        StoreActive(hal_module);
+        StoreActive(session_id, hal_module);
 
         std::mutex write_mu;
         uint64_t   seq = 0;
+        std::atomic<bool> stream_ok{true};  // Task 59: track broken/cancelled stream
         hal_module->runLongTerm(
             interval_ms, dur_ms,
             [&](const std::vector<::TestResult>& raw_results, int /*cycle*/) {
+                if (!stream_ok.load()) return;  // stop producing after a failed write
                 auto results = raw_results;
                 StampResults(results, module_id_, seq++, config_unset);
                 hal::common::ResultEnvelope env;
@@ -265,11 +270,15 @@ class TypedModuleHandler : public IModuleHandler {
                              ComputeStatus(results));
                 env.mutable_payload()->PackFrom(rp);
                 std::lock_guard<std::mutex> wlk(write_mu);
-                writer->Write(env);
+                if (!writer->Write(env)) {
+                    // Broken/cancelled stream: stop promptly, preserve state.
+                    stream_ok.store(false);
+                    hal_module->stop();
+                }
             });
 
         WaitOrCancel(ctx, *hal_module);
-        ClearActive();
+        ClearActive(session_id);
         return grpc::Status::OK;
     }
 
@@ -281,6 +290,7 @@ class TypedModuleHandler : public IModuleHandler {
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
         const hal::common::MonitoringParams&             monitoring,
+        const std::string&                               session_id,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
         const auto up = TryUnpack(module_config, cfg);
@@ -295,21 +305,37 @@ class TypedModuleHandler : public IModuleHandler {
         int64_t dur_ms      = common.run_forever() ? 0LL : common.duration_ms();
 
         std::vector<::MonitorItem> monitor_items;
+        // Task 57: resolve requested monitor names against the REAL module
+        // readers (the RPi5 monitor item set) instead of fabricating "name:0".
+        // Unknown/unsupported names get an explicit "unsupported" reader so a
+        // consumer sees a distinct status, never a fabricated value.
+        auto real_readers = ::trPi5MonitorItems();
         for (const auto& name : monitoring.monitor_item_names()) {
             ::MonitorItem item;
-            item.name   = name;
-            item.reader = [name]() -> std::string { return name + ":0"; };
+            item.name = name;
+            const auto it =
+                std::find_if(real_readers.begin(), real_readers.end(),
+                             [&](const ::MonitorItem& r) { return r.name == name; });
+            if (it != real_readers.end()) {
+                item.reader = it->reader;  // real sysfs-backed reader
+            } else {
+                item.reader = [name]() -> std::string {
+                    return name + ":unsupported";
+                };
+            }
             monitor_items.push_back(std::move(item));
         }
 
         auto hal_module = std::make_shared<HalClass>();
-        StoreActive(hal_module);
+        StoreActive(session_id, hal_module);
 
         std::mutex write_mu;
         uint64_t   seq = 0;
+        std::atomic<bool> stream_ok{true};  // Task 59
         hal_module->runMonitoringTest(
             interval_ms, dur_ms, monitor_items,
             [&](const ::MonitoringSnapshot& snap) {
+                if (!stream_ok.load()) return;
                 auto results = snap.testResults;
                 // Stamp monitoring data into each result's monitoring map.
                 for (auto& r : results) {
@@ -336,11 +362,14 @@ class TypedModuleHandler : public IModuleHandler {
                              ComputeStatus(results));
                 env.mutable_payload()->PackFrom(proto_snap);
                 std::lock_guard<std::mutex> wlk(write_mu);
-                writer->Write(env);
+                if (!writer->Write(env)) {
+                    stream_ok.store(false);
+                    hal_module->stop();
+                }
             });
 
         WaitOrCancel(ctx, *hal_module);
-        ClearActive();
+        ClearActive(session_id);
         return grpc::Status::OK;
     }
 
@@ -352,6 +381,7 @@ class TypedModuleHandler : public IModuleHandler {
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
         const hal::common::EventCondition&               condition,
+        const std::string&                               session_id,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) override {
         ConfigProto cfg;
         const auto up = TryUnpack(module_config, cfg);
@@ -373,7 +403,25 @@ class TypedModuleHandler : public IModuleHandler {
 
         std::string tname    = condition.test_name();
         bool        exp_pass = condition.expected_pass();
-        criteria.predicate   = [tname, exp_pass](const std::vector<::TestResult>& res) {
+        std::string expr     = condition.expression();
+        criteria.predicate   = [tname, exp_pass, expr](const std::vector<::TestResult>& res) {
+            // Task 58: freeform expression form ("cpu_temp_c > 80"). Resolve the
+            // metric to a real monitor reader's current value; reject invalid
+            // expressions by never firing.
+            if (!expr.empty()) {
+                return ::trEvaluateEventExpression(
+                    expr,
+                    [](const std::string& metric) -> double {
+                        for (const auto& mi : ::trPi5MonitorItems()) {
+                            if (mi.name == metric) {
+                                std::string v = mi.reader();
+                                try { return std::stod(v); }
+                                catch (...) { return -1.0; }
+                            }
+                        }
+                        return -1.0;  // unknown metric -> no value
+                    });
+            }
             if (tname.empty()) return false;
             for (const auto& r : res)
                 if (r.name == tname)
@@ -382,13 +430,15 @@ class TypedModuleHandler : public IModuleHandler {
         };
 
         auto hal_module = std::make_shared<HalClass>();
-        StoreActive(hal_module);
+        StoreActive(session_id, hal_module);
 
         std::mutex write_mu;
         uint64_t   seq = 0;
+        std::atomic<bool> stream_ok{true};  // Task 59
         hal_module->runEventTest(
             poll_ms, criteria,
             [&](const std::vector<::TestResult>& raw_results) {
+                if (!stream_ok.load()) return;
                 auto results = raw_results;
                 // Populate event map with trigger info.
                 for (auto& r : results) {
@@ -406,37 +456,54 @@ class TypedModuleHandler : public IModuleHandler {
                              ComputeStatus(results));
                 env.mutable_payload()->PackFrom(rp);
                 std::lock_guard<std::mutex> wlk(write_mu);
-                writer->Write(env);
+                if (!writer->Write(env)) {
+                    stream_ok.store(false);
+                    hal_module->stop();
+                }
             },
             max_ms);
 
         WaitOrCancel(ctx, *hal_module);
-        ClearActive();
+        ClearActive(session_id);
         return grpc::Status::OK;
     }
 
     // ----------------------------------------------------------------
     // Stop
     // ----------------------------------------------------------------
-    void Stop() override {
+    // Task 60: session-scoped. Empty session_id stops all sessions for this
+    // module; a specific id stops only that session.
+    void Stop(const std::string& session_id) override {
         std::lock_guard<std::mutex> lk(active_mu_);
-        if (active_module_) active_module_->stop();
+        if (session_id.empty()) {
+            for (auto& kv : active_sessions_) kv.second->stop();
+        } else if (auto it = active_sessions_.find(session_id); it != active_sessions_.end()) {
+            it->second->stop();
+        }
     }
 
     // ----------------------------------------------------------------
     // Pause
     // ----------------------------------------------------------------
-    void Pause() override {
+    void Pause(const std::string& session_id) override {
         std::lock_guard<std::mutex> lk(active_mu_);
-        if (active_module_) active_module_->pause();
+        if (session_id.empty()) {
+            for (auto& kv : active_sessions_) kv.second->pause();
+        } else if (auto it = active_sessions_.find(session_id); it != active_sessions_.end()) {
+            it->second->pause();
+        }
     }
 
     // ----------------------------------------------------------------
     // Resume
     // ----------------------------------------------------------------
-    void Resume() override {
+    void Resume(const std::string& session_id) override {
         std::lock_guard<std::mutex> lk(active_mu_);
-        if (active_module_) active_module_->resume();
+        if (session_id.empty()) {
+            for (auto& kv : active_sessions_) kv.second->resume();
+        } else if (auto it = active_sessions_.find(session_id); it != active_sessions_.end()) {
+            it->second->resume();
+        }
     }
 
     // ----------------------------------------------------------------
@@ -492,14 +559,14 @@ class TypedModuleHandler : public IModuleHandler {
         }
     }
 
-    void StoreActive(std::shared_ptr<::TestBase> module) {
+    void StoreActive(const std::string& session_id, std::shared_ptr<::TestBase> module) {
         std::lock_guard<std::mutex> lk(active_mu_);
-        active_module_ = std::move(module);
+        active_sessions_[session_id] = std::move(module);
     }
 
-    void ClearActive() {
+    void ClearActive(const std::string& session_id) {
         std::lock_guard<std::mutex> lk(active_mu_);
-        active_module_.reset();
+        active_sessions_.erase(session_id);
     }
 
     std::string              module_id_;
@@ -507,7 +574,9 @@ class TypedModuleHandler : public IModuleHandler {
     std::string              source_path_;
 
     std::mutex               active_mu_;
-    std::shared_ptr<::TestBase> active_module_; // non-null while a background test is running
+    // Task 60: one active background module per session so concurrent runs of
+    // the same module are independently controllable.
+    std::unordered_map<std::string, std::shared_ptr<::TestBase>> active_sessions_;
 };
 
 } // namespace server

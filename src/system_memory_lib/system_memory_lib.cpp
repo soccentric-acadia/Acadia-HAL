@@ -151,8 +151,7 @@ TestOutput SystemMemoryTesting::testAll64gbMemoryAccessibility()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -165,7 +164,6 @@ TestOutput SystemMemoryTesting::testAll64gbMemoryAccessibility()
 TestOutput SystemMemoryTesting::testMemoryBankTesting()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("LPDDR4X bank structure: single 64-bit channel (Pi5)");
 
@@ -187,15 +185,24 @@ TestOutput SystemMemoryTesting::testMemoryBankTesting()
     std::string numaNode = memReadFile("/sys/devices/system/node/node0/meminfo");
     if (!numaNode.empty()) data.push_back("NUMA node0 present (UMA system)");
 
-    data.push_back("PASS: Memory bank topology verified.");
+    // Acceptance criteria (measurable): RAM bank topology must be enumerable
+    // via /proc/iomem (System RAM regions) or the NUMA meminfo node.
+    if (!iomem.is_open() && numaNode.empty())
     {
+        data.push_back("[SKIP] /proc/iomem and NUMA topology unreadable — memory bank topology cannot be verified");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[PASS] Memory bank topology verified (single 64-bit LPDDR4X channel, UMA; RAM regions enumerated)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -205,7 +212,6 @@ TestOutput SystemMemoryTesting::testMemoryBankTesting()
 TestOutput SystemMemoryTesting::test256bitMemoryInterface()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Memory bus width: " + std::to_string(MEM_BUS) + "-bit (LPDDR4X-4267)");
     data.push_back("NOTE: Pi5 uses a 64-bit bus. 256-bit interfaces are found on server/HPC platforms.");
@@ -213,15 +219,15 @@ TestOutput SystemMemoryTesting::test256bitMemoryInterface()
     data.push_back("Theoretical bandwidth: " + std::to_string(MEM_BW) + " GB/s");
     data.push_back("Bus width calculation: 64-bit × 4267 MT/s × 2 (DDR) / 8 = ~17 GB/s");
 
-    data.push_back("PASS: 64-bit LPDDR4X memory interface confirmed for Pi5.");
-    {
-        TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
-        return _out;
-    }
+    // Acceptance criteria: a 256-bit interface is a server/HPC concept; the
+    // Pi5 exposes a 64-bit LPDDR4X bus — the 256-bit requirement is hardware
+    // not-applicable on this DUT (bandwidth is measured in testMemoryBandwidth).
+    data.push_back("[SKIP] 256-bit memory interface not applicable to this DUT (Pi5 exposes a 64-bit LPDDR4X bus; measured bandwidth is covered by testMemoryBandwidth)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -231,7 +237,6 @@ TestOutput SystemMemoryTesting::test256bitMemoryInterface()
 TestOutput SystemMemoryTesting::testMemoryClockFrequency()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Pi5 LPDDR4X-4267 memory speed: 4267 MT/s");
     data.push_back("Effective clock: 2133 MHz (DDR — dual data rate)");
@@ -256,15 +261,26 @@ TestOutput SystemMemoryTesting::testMemoryClockFrequency()
 
     // BCM2712 memory controller speed is fixed at boot from firmware
     data.push_back("Memory controller: BCM2712 (fixed at LPDDR4X-4267 by firmware)");
-    data.push_back("PASS: LPDDR4X clock frequency confirmed at spec: 4267 MT/s.");
+
+    // Acceptance criteria (measurable): there is no runtime-readable LPDDR4X
+    // clock on BCM2712; the observable evidence is a boot-time firmware/board
+    // identity (device-tree memory node or model string).
+    if (!vcArm.empty() || cpuinfo.is_open())
     {
+        data.push_back("[PASS] Memory clock at firmware-configured spec (4267 MT/s / 2133 MHz DDR; not runtime-adjustable on BCM2712)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] Memory-clock evidence unreadable (no device-tree memory node, no /proc/cpuinfo) — clock frequency cannot be verified");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -297,8 +313,7 @@ TestOutput SystemMemoryTesting::testMemoryBandwidth()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -342,8 +357,7 @@ TestOutput SystemMemoryTesting::testMemoryLatencyMeasurements()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -355,7 +369,6 @@ TestOutput SystemMemoryTesting::testMemoryLatencyMeasurements()
 TestOutput SystemMemoryTesting::testMemoryErrorCorrection()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Memory error correction status for Pi5");
     data.push_back("Pi5 LPDDR4X-4267: NO hardware ECC support.");
@@ -378,16 +391,43 @@ TestOutput SystemMemoryTesting::testMemoryErrorCorrection()
     }
 
     data.push_back("NOTE: For ECC memory, use server-grade ARM platforms (e.g., ThunderX2, Altra).");
-    data.push_back("PASS: ECC check complete (non-ECC LPDDR4X confirmed).");
 
+    // Acceptance criteria (measurable): ECC state must be observable — EDAC
+    // inactive confirms the documented non-ECC LPDDR4X; any recorded ECC
+    // error is a FAIL.
+    if (!edac.empty() || edacInfo.is_open())
     {
+        if (edacInfo.is_open())
+        {
+            std::string cnt;
+            std::getline(edacInfo, cnt);
+            long n = -1;
+            sscanf(cnt.c_str(), "%ld", &n);
+            if (n > 0)
+            {
+                data.push_back("[FAIL] EDAC uncorrectable error count " + std::to_string(n) + " — memory errors observed");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            data.push_back("EDAC uncorrectable errors: " + cnt);
+        }
+        data.push_back("[PASS] ECC state verified (no uncorrectable memory errors recorded)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[PASS] Non-ECC LPDDR4X confirmed (EDAC inactive as expected on BCM2712; no ECC error counters)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -428,8 +468,7 @@ TestOutput SystemMemoryTesting::testMemoryThermalBehavior()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -476,8 +515,7 @@ TestOutput SystemMemoryTesting::testSequentialReadwritePerformance()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -508,8 +546,7 @@ TestOutput SystemMemoryTesting::testRandomReadwritePerformance()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -555,8 +592,7 @@ TestOutput SystemMemoryTesting::testMemoryAllocationdeallocation()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -609,8 +645,7 @@ TestOutput SystemMemoryTesting::testMemoryFragmentationHandling()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -657,8 +692,7 @@ TestOutput SystemMemoryTesting::testOutofmemoryConditions()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -716,8 +750,7 @@ TestOutput SystemMemoryTesting::testMemoryLeaksDetection()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -729,7 +762,6 @@ TestOutput SystemMemoryTesting::testMemoryLeaksDetection()
 TestOutput SystemMemoryTesting::testDmaTofromMemory()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("DMA subsystem check (Pi5 BCM2712 DMA controller)");
 
@@ -757,18 +789,20 @@ TestOutput SystemMemoryTesting::testDmaTofromMemory()
 
     if (!dmaPresent && !dmaengine) {
         data.push_back("INFO: DMA channels may be power-gated; test via actual device I/O.");
-    } else {
-        data.push_back("PASS: DMA subsystem detected.");
-    }
-
-    {
+        data.push_back("[SKIP] No DMA channels, driver or sysfs visible — DMA engine not enumerable on this DUT");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[PASS] DMA subsystem detected (" + std::string(dmaPresent ? "channels/driver bound" : "dmaengine sysfs") + ")");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -816,8 +850,7 @@ TestOutput SystemMemoryTesting::testConcurrentMemoryAccessPatterns()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

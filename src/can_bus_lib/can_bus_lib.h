@@ -1,31 +1,32 @@
 /**
  * @file can_bus_lib.h
- * @brief CanBusTesting — tests the can_bus peripheral.
- * @details Linux interface: SocketCAN (socket(AF_CAN, SOCK_RAW, CAN_RAW))
- * @note HARDWARE-UNVERIFIED — all test implementations require on-target
- *       execution against real hardware.
- */
-#pragma once
+ * @brief Header for CanBusTesting class (Raspberry Pi 5 CAN bus testing)
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+#ifndef CANBUSTESTING_H
+#define CANBUSTESTING_H
 #include "lib_base.h"
-#include <string>
-#include <vector>
 
-class CanBusTesting : public TestBase {
-public:
+/**
+ * @class CanBusTesting
+ * @brief Tests CAN bus interface presence, link state, and transmission.
+ *        (Pi5 has no native CAN; an SPI MCP2515 HAT exposes can0.)
+ */
+class CanBusTesting : public TestBase
+{
+  public:
     CanBusTesting();
-    ~CanBusTesting() override;
+    ~CanBusTesting();
 
-    // ── TestBase interface ──────────────────────────────────────────────
+    TestOutput testCanControllerPresent();
+    TestOutput testCanInterfaceState();
+    TestOutput testCanLinkActive();
+
     std::vector<std::string> getAvailableTests() override;
-    std::vector<TestResult>  runAllTests()       override;
-    TestResult               runSingleTest(const std::string& testName) override;
+    TestResult runSingleTest(const std::string& testName) override;
 
-    // ── Module-specific tests ───────────────────────────────────────────
-    TestOutput testPresence(); // HARDWARE-UNVERIFIED
-    TestOutput testState(); // HARDWARE-UNVERIFIED
-    TestOutput testBitrate(); // HARDWARE-UNVERIFIED
-    TestOutput testLoopbackTx(); // HARDWARE-UNVERIFIED
-
-protected:
-    std::string device_path_; // resolved device path (may be empty if not found)
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
+
+#endif // CANBUSTESTING_H

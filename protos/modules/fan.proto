@@ -1,0 +1,23 @@
+// fan.proto — PWM cooling fan testing
+//
+// Field-numbering rules: numbers start at 1, never renumber.
+
+syntax = "proto3";
+
+package hal.modules.fan;
+
+import "common.proto";
+
+// Config for the fan module.
+// Leave test_names empty to run all available tests.
+message Config {
+  hal.common.CommonConfig common     = 1;
+  repeated string         test_names = 2;
+}
+
+// Result for the fan module.
+message Result {
+  reserved 1, 2, 3;
+  reserved "status", "message", "details";
+  repeated hal.common.TestResult results = 4;
+}

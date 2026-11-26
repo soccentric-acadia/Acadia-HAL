@@ -4,3 +4,5 @@ target_include_directories(test_pcie PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_pcie COMMAND test_pcie)
 set_tests_properties(test_pcie PROPERTIES TIMEOUT 300)
 install(TARGETS test_pcie RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_pcie PROPERTIES LABELS "target-required")

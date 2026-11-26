@@ -4,7 +4,7 @@
  *        Pi5 can communicate with an external MCU (RP2040, STM32, etc.) via
  *        SPI (/dev/spidev0.0), UART (/dev/ttyAMA0), or I2C (/dev/i2c-1).
  *        Tests labelled "testMcuToOrinDataTransfer" and "testMcuDmsInterface"
- *        reference Jetson AGX Orin; they are mapped to Pi5 equivalents.
+ *        reference the legacy Jetson AGX platform; they are mapped to Pi5 equivalents.
  * @author sandesh ghimire
  * @copyright (C) Lucid Motors
  */
@@ -107,8 +107,7 @@ TestOutput McuInterfaceTesting::testMcuCommunicationInterface()
         TestOutput _out;
         _out.status = anyOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = anyOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -123,16 +122,12 @@ TestOutput McuInterfaceTesting::testMcuFirmwareOperation()
 
     if (!mcuPathExists("/dev/ttyAMA0"))
     {
-        data.push_back("[INFO] /dev/ttyAMA0 not available — skipping firmware probe");
-        data.push_back("[INFO] Connect MCU (RP2040/STM32) TX→Pi5 UART0 RX for this test");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] /dev/ttyAMA0 not available — MCU firmware operation cannot be probed (connect MCU TX→Pi5 UART RX)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     // Check UART is not being used by another process
@@ -140,6 +135,12 @@ TestOutput McuInterfaceTesting::testMcuFirmwareOperation()
     if (!uartProc.empty())
     {
         data.push_back("[INFO] /dev/ttyAMA0 in use by PID: " + uartProc + " (likely serial-getty)");
+        data.push_back("[SKIP] UART owned by the console getty — firmware probe must not disturb the console; free the port to run this test");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     // Check serial port settings
@@ -149,12 +150,12 @@ TestOutput McuInterfaceTesting::testMcuFirmwareOperation()
 
     data.push_back("[INFO] MCU firmware test requires MCU running echo firmware");
     data.push_back("[INFO] Expected: send 0xAA 0x55; receive 0x55 0xAA (loopback)");
+    data.push_back("[SKIP] No MCU echo-firmware handshake observable without wired loopback/MCU — firmware operation not verified on this DUT");
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -185,8 +186,7 @@ TestOutput McuInterfaceTesting::testMcuWatchdog()
         TestOutput _out;
         _out.status = wdPresent ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = wdPresent ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -218,8 +218,7 @@ TestOutput McuInterfaceTesting::testMcuGpioInterface()
         TestOutput _out;
         _out.status = gpioChipOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = gpioChipOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -239,8 +238,7 @@ TestOutput McuInterfaceTesting::testMcuSpiInterface()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -253,8 +251,7 @@ TestOutput McuInterfaceTesting::testMcuSpiInterface()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -281,8 +278,7 @@ TestOutput McuInterfaceTesting::testMcuSpiInterface()
         TestOutput _out;
         _out.status = ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -302,8 +298,7 @@ TestOutput McuInterfaceTesting::testMcuUartInterface()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -325,8 +320,7 @@ TestOutput McuInterfaceTesting::testMcuUartInterface()
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -351,16 +345,27 @@ TestOutput McuInterfaceTesting::testMcuDmsInterface()
     std::string i2cDms = mcuRunCmd(
         "i2cdetect -y 1 2>/dev/null | grep -oE ' 4[0-9a-f]| 5[0-9a-f]'");
     data.push_back(i2cDms.empty() ? "[INFO] No DMS MCU address range on I2C-1"
-                                  : "[PASS] DMS MCU candidate address: " + i2cDms);
+                                  : "[INFO] DMS MCU candidate address: " + i2cDms);
 
+    // Acceptance criteria (measurable): a DMS co-processor interface must be
+    // enumerable (USB-HID device or an I2C co-processor in the 0x40-0x5F
+    // address range). Neither present -> SKIPPED.
+    if (!hidDevs.empty() || !i2cDms.empty())
     {
+        data.push_back("[PASS] DMS interface path enumerable on this DUT");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No USB-HID device and no I2C co-processor in the DMS address range — DMS interface not present on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -394,8 +399,7 @@ TestOutput McuInterfaceTesting::testMcuToOrinDataTransfer()
         TestOutput _out;
         _out.status = (spiOk || uartOk) ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = (spiOk || uartOk) ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -415,15 +419,16 @@ TestOutput McuInterfaceTesting::testSecondaryMcuRedundancy()
     data.push_back(spi1 ? "[PASS] Secondary MCU: /dev/spidev1.0" : "[INFO] No secondary SPI MCU (/dev/spidev1.0)");
 
     // Check for second UART
-    bool uart1 = mcuPathExists("/dev/ttyAMA1") || mcuPathExists("/dev/ttyAMA10");
+    // T-P15: the Pico co-processor link is RP1 UART2 (GPIO0/1, uart2
+    // overlay) = /dev/ttyAMA2; ttyAMA10 is the reserved debug-header console.
+    bool uart1 = mcuPathExists("/dev/ttyAMA1") || mcuPathExists("/dev/ttyAMA2");
     data.push_back(uart1 ? "[PASS] Secondary UART found" : "[INFO] No secondary UART MCU path");
 
     {
         TestOutput _out;
         _out.status = spi0 ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = spi0 ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -452,8 +457,7 @@ TestOutput McuInterfaceTesting::testMcuFailoverMechanism()
         TestOutput _out;
         _out.status = (spi0 || spi1) ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = (spi0 || spi1) ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -482,14 +486,27 @@ TestOutput McuInterfaceTesting::testMcuSynchronization()
                                   : "[INFO] chrony:\n" + chrony);
 
     data.push_back("[INFO] For μs-level sync: use SPI CS falling edge as start-of-frame timestamp");
+
+    // Acceptance criteria (measurable): a synchronization source must exist —
+    // a PPS device (MCU 1 PPS) or hardware timestamping on the network path.
+    // Neither present -> SKIPPED.
+    if (ppsOk || !hwts.empty())
     {
+        data.push_back("[PASS] MCU clock-synchronization path present (" +
+                       std::string(ppsOk ? "PPS device" : "hardware timestamping") + ")");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No PPS device and no hardware timestamping — MCU synchronization cannot be verified on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**

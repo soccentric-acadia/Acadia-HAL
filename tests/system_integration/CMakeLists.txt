@@ -4,3 +4,5 @@ target_include_directories(test_system_integration PRIVATE ${CMAKE_SOURCE_DIR}/s
 add_test(NAME test_system_integration COMMAND test_system_integration)
 set_tests_properties(test_system_integration PROPERTIES TIMEOUT 300)
 install(TARGETS test_system_integration RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_system_integration PROPERTIES LABELS "target-required")

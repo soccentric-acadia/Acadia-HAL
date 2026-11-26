@@ -19,7 +19,9 @@
 #include "../platform_rpi5.h"
 
 #include <array>
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
@@ -28,6 +30,18 @@
 #include <vector>
 
 // ---------------------------------------------------------------------------
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool shParseDouble(const std::string& s, double& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    double v = strtod(s.c_str(), &end);
+    if (end == s.c_str()) return false;
+    out = v;
+    return true;
+}
+
 static std::string shReadFile(const std::string& path)
 {
     std::ifstream f(path);
@@ -133,8 +147,7 @@ TestOutput SenseHatTesting::testSenseHatDetection()
         TestOutput _out;
         _out.status = (anyFound || senseFb) ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = (anyFound || senseFb) ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -180,8 +193,7 @@ TestOutput SenseHatTesting::testLedMatrix()
         TestOutput _out;
         _out.status = fb1 ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = fb1 ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -206,12 +218,34 @@ TestOutput SenseHatTesting::testTemperatureSensor()
         std::string offs  = shReadFile(dev + "/in_temp_offset");
         if (!raw.empty())
         {
-            double r = std::stod(raw);
-            double s = scale.empty() ? 1.0 : std::stod(scale);
-            double o = offs.empty()  ? 0.0 : std::stod(offs);
+            double r = 0.0, s = 1.0, o = 0.0;
+            if (!shParseDouble(raw, r) ||
+                (!scale.empty() && !shParseDouble(scale, s)) ||
+                (!offs.empty() && !shParseDouble(offs, o)))
+            {
+                data.push_back("[FAIL] HTS221 temperature channel unparseable (raw='" + raw + "', scale='" + scale + "')");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
             double t = (r + o) * s;
+            if (t < -40.0 || t > 125.0)
+            {
+                data.push_back("[FAIL] HTS221 temperature out of sensor range: " + std::to_string(t) + " °C");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
             data.push_back("[PASS] HTS221 temperature: " + std::to_string(t) + " °C");
-            found = true;
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
         }
         data.push_back("[INFO] IIO device: " + dev);
         break;
@@ -222,19 +256,20 @@ TestOutput SenseHatTesting::testTemperatureSensor()
         // Fallback: check if I2C device is visible
         std::string det = shRunCmd("i2cdetect -y 1 2>/dev/null | grep -o '5c'");
         if (!det.empty())
-            data.push_back("[INFO] HTS221 @ 0x5C visible on I2C-1 but IIO driver not bound");
+            data.push_back("[SKIP] HTS221 @ 0x5C visible on I2C-1 but the IIO driver is not bound — temperature cannot be read");
         else
-            data.push_back("[INFO] HTS221 not found (Sense HAT not attached or driver not loaded)");
+            data.push_back("[SKIP] No HTS221 found (Sense HAT not attached or driver not loaded) — temperature sensor not present on this DUT");
+    }
+    else
+    {
+        data.push_back("[SKIP] HTS221 found but its IIO temperature channel is not readable");
     }
 
-    {
-        TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
-        return _out;
-    }
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -246,7 +281,6 @@ TestOutput SenseHatTesting::testHumiditySensor()
     data.push_back("=== Sense HAT Humidity (HTS221 / IIO) ===");
 
     auto devs = shListIioDevices();
-    bool found = false;
     for (const auto& dev : devs)
     {
         std::string name = shReadFile(dev + "/name");
@@ -256,25 +290,42 @@ TestOutput SenseHatTesting::testHumiditySensor()
         std::string scale = shReadFile(dev + "/in_humidityrelative_scale");
         if (!raw.empty())
         {
-            double r = std::stod(raw);
-            double s = scale.empty() ? 1.0 : std::stod(scale);
-            data.push_back("[PASS] HTS221 humidity: " + std::to_string(r * s) + " %RH");
-            found = true;
+            double r = 0.0, s = 1.0;
+            if (!shParseDouble(raw, r) || (!scale.empty() && !shParseDouble(scale, s)))
+            {
+                data.push_back("[FAIL] HTS221 humidity channel unparseable (raw='" + raw + "', scale='" + scale + "')");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            double rh = r * s;
+            if (rh < 0.0 || rh > 100.0)
+            {
+                data.push_back("[FAIL] HTS221 humidity out of physical range: " + std::to_string(rh) + " %RH");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            data.push_back("[PASS] HTS221 humidity: " + std::to_string(rh) + " %RH");
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
         }
         break;
     }
 
-    if (!found)
-        data.push_back("[INFO] HTS221 humidity IIO channel not available");
-
-    {
-        TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
-        return _out;
-    }
+    data.push_back("[SKIP] HTS221 humidity IIO channel not available (Sense HAT not attached or driver not bound)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -297,9 +348,28 @@ TestOutput SenseHatTesting::testPressureSensor()
         std::string scale = shReadFile(dev + "/in_pressure_scale");
         if (!raw.empty())
         {
-            double r = std::stod(raw);
-            double s = scale.empty() ? 1.0 : std::stod(scale);
-            data.push_back("[PASS] LPS25H pressure: " + std::to_string(r * s) + " kPa");
+            double r = 0.0, s = 1.0;
+            if (!shParseDouble(raw, r) || (!scale.empty() && !shParseDouble(scale, s)))
+            {
+                data.push_back("[FAIL] LPS25H pressure channel unparseable (raw='" + raw + "', scale='" + scale + "')");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            double kpa = r * s;
+            // Sane range: 30–110 kPa (sea level ~101.3 kPa; altitude affects it)
+            if (kpa < 30.0 || kpa > 110.0)
+            {
+                data.push_back("[FAIL] LPS25H pressure out of physical range: " + std::to_string(kpa) + " kPa");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            data.push_back("[PASS] LPS25H pressure: " + std::to_string(kpa) + " kPa");
             found = true;
         }
 
@@ -309,24 +379,32 @@ TestOutput SenseHatTesting::testPressureSensor()
         std::string tOff   = shReadFile(dev + "/in_temp_offset");
         if (!tRaw.empty())
         {
-            double t = (std::stod(tRaw) + (tOff.empty() ? 0.0 : std::stod(tOff))) *
-                       (tScale.empty() ? 1.0 : std::stod(tScale));
-            data.push_back("[INFO] LPS25H die temperature: " + std::to_string(t) + " °C");
+            double tr = 0.0, ts = 1.0, to = 0.0;
+            if (shParseDouble(tRaw, tr) &&
+                (tScale.empty() || shParseDouble(tScale, ts)) &&
+                (tOff.empty() || shParseDouble(tOff, to)))
+                data.push_back("[INFO] LPS25H die temperature: " + std::to_string((tr + to) * ts) + " °C");
+            else
+                data.push_back("[INFO] LPS25H die temperature channel unparseable");
         }
         break;
     }
 
-    if (!found)
-        data.push_back("[INFO] LPS25H not found (Sense HAT not attached or driver not loaded)");
-
+    if (found)
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] LPS25H not found (Sense HAT not attached or driver not loaded) — pressure sensor not present on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -392,14 +470,25 @@ TestOutput SenseHatTesting::testImuSensors()
     if (!magnOk)  data.push_back("[INFO] LSM9DS1 magnetometer IIO channel not found");
     data.push_back("[INFO] Load driver: sudo modprobe lsm9ds1 (or add to /etc/modules)");
 
+    // Acceptance criteria (measurable): at least the accelerometer and
+    // gyroscope channels must be readable for the IMU to be verified.
+    if (accelOk && gyroOk)
     {
+        data.push_back("[PASS] Sense HAT IMU verified (accel + gyro readings valid" +
+                       std::string(magnOk ? ", magnetometer present" : ", magnetometer absent") + ")");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] LSM9DS1 accel/gyro channels not available — Sense HAT IMU not present or driver not bound on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -421,7 +510,7 @@ TestOutput SenseHatTesting::testJoystick()
     }
 
     bool found = !inputs.empty();
-    data.push_back(found ? "[PASS] Sense HAT joystick device found:\n" + inputs
+    data.push_back(found ? "[INFO] Sense HAT joystick device found:\n" + inputs
                          : "[INFO] Sense HAT joystick not found in /sys/class/input");
 
     // Check for js0/js1
@@ -429,14 +518,25 @@ TestOutput SenseHatTesting::testJoystick()
     data.push_back(js0 ? "[INFO] /dev/input/js0 present" : "[INFO] /dev/input/js0 absent");
 
     data.push_back("[INFO] Joystick uses keys: UP/DOWN/LEFT/RIGHT/ENTER");
+
+    // Acceptance criteria (measurable): the joystick evdev device must be
+    // enumerated. Absent -> SKIP (HAT not attached or driver not loaded).
+    if (found || js0)
     {
+        data.push_back("[PASS] Sense HAT joystick enumerable on this DUT");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No Sense HAT joystick input device — HAT not attached or driver not loaded");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -486,8 +586,7 @@ TestOutput SenseHatTesting::testI2cBusIntegrity()
         TestOutput _out;
         _out.status = i2c1 ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = i2c1 ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

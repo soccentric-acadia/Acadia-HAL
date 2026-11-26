@@ -33,6 +33,22 @@ massif.out.*
 # Cppcheck reports
 cppcheck_results.xml
 
+# Generated proto/gRPC code (HAL owns the .proto sources; never commit bindings)
+*.pb.cc
+*.pb.h
+*.grpc.pb.cc
+*.grpc.pb.h
+proto_gen/
+generated/
+
 build_*/
 build_*/**/*
 build
+# .claude validation lib must stay tracked despite the generic lib/ rule
+!.claude/lib/
+!.claude/lib/*
+
+# Per-task working artifacts.
+Plan.md
+Task.md
+_CPack_Packages/

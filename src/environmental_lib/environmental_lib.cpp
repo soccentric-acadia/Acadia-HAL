@@ -13,7 +13,9 @@
 #include "../platform_rpi5.h"
 
 #include <array>
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -52,6 +54,31 @@ static bool envPathExists(const std::string& p)
     struct stat st {};
     return stat(p.c_str(), &st) == 0;
 }
+
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool envParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    while (*end == ' ' || *end == '\n' || *end == '\r' || *end == '\t') ++end;
+    if (*end != '\0') return false;
+    out = v;
+    return true;
+}
+
+static bool envParseDouble(const std::string& s, double& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    double v = strtod(s.c_str(), &end);
+    if (end == s.c_str()) return false;
+    out = v;
+    return true;
+}
 // ---------------------------------------------------------------------------
 
 /**
@@ -81,13 +108,23 @@ TestOutput EnvironmentalTesting::testTemperatureRange()
     data.push_back("[INFO] Rated: 0–85 °C junction, nominal operating: 0–80 °C");
 
     bool allOk = true;
+    int zonesRead = 0;
     for (int z = 0; z <= 1; z++)
     {
         std::string base    = "/sys/class/thermal/thermal_zone" + std::to_string(z);
         std::string tempStr = envReadFile(base + "/temp");
         std::string type    = envReadFile(base + "/type");
         if (tempStr.empty()) continue;
-        double tempC = std::stod(tempStr) / 1000.0;
+        ++zonesRead;
+        long milliC = 0;
+        if (!envParseLong(tempStr, milliC))
+        {
+            data.push_back("[FAIL] " + (type.empty() ? "zone" + std::to_string(z) : type) +
+                           ": temperature value unparseable: '" + tempStr + "'");
+            allOk = false;
+            continue;
+        }
+        double tempC = static_cast<double>(milliC) / 1000.0;
         bool ok      = tempC >= 0.0 && tempC < static_cast<double>(RPI5_THERMAL_THROTTLE_C);
         data.push_back((ok ? "[PASS] " : "[WARN] ") + (type.empty() ? "zone" + std::to_string(z) : type) +
                        ": " + std::to_string(tempC) + " °C (" + (ok ? "nominal" : "at throttle limit!") + ")");
@@ -98,12 +135,21 @@ TestOutput EnvironmentalTesting::testTemperatureRange()
     if (!vcTemp.empty())
         data.push_back("[INFO] vcgencmd: " + vcTemp);
 
+    if (zonesRead == 0)
+    {
+        data.push_back("[SKIP] No thermal zones readable — operating temperature cannot be measured");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
     {
         TestOutput _out;
         _out.status = allOk ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = allOk ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -122,14 +168,26 @@ TestOutput EnvironmentalTesting::testHumidityResistance()
     data.push_back("[INFO] IEC 60068-2-78: 40 °C / 93% RH — requires humidity chamber");
     data.push_back("[INFO] Pi5 has no on-board humidity sensor; checking electrical proxies");
 
-    // Under-voltage flag (condensation → leakage → UV)
+    // Acceptance criteria (measurable): no under-voltage/throttle flags (the
+    // electrical fingerprint moisture-induced leakage leaves behind) and, when
+    // an IIO humidity sensor is fitted, a reading below the 80% RH watch
+    // threshold. With no proxy observable at all -> SKIPPED.
     std::string throttle = envRunCmd("vcgencmd get_throttled 2>/dev/null");
-    if (!throttle.empty())
+    bool haveThrottle = throttle.find("throttled=") != std::string::npos;
+    if (haveThrottle)
     {
-        bool uvBit = throttle.find("throttled=0x") != std::string::npos &&
-                     throttle != "throttled=0x0";
-        data.push_back(uvBit ? "[WARN] Under-voltage/throttle flag: " + throttle
-                             : "[PASS] No under-voltage flags: " + throttle);
+        bool uvFlag = throttle.find("throttled=0x0") != 0; // anything other than 0x0
+        if (uvFlag)
+        {
+            data.push_back("[FAIL] Under-voltage/throttle flag set: " + throttle +
+                           " — electrical evidence of leakage/condensation or supply stress");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        data.push_back("[PASS] No under-voltage flags: " + throttle);
     }
 
     // Check for IIO humidity devices (optional HAT sensors)
@@ -138,15 +196,52 @@ TestOutput EnvironmentalTesting::testHumidityResistance()
         "n=$(cat $d/name 2>/dev/null); "
         "[ -f $d/in_humidityrelative_input ] && echo \"$n: $(cat $d/in_humidityrelative_input 2>/dev/null)%\"; "
         "done 2>/dev/null");
-    data.push_back(iioHumidity.empty() ? "[INFO] No IIO humidity sensor found (no HAT)"
-                                       : "[PASS] Humidity sensor: " + iioHumidity);
+    bool haveRh = false;
+    if (!iioHumidity.empty())
+    {
+        size_t colon = iioHumidity.rfind(": ");
+        std::string val = (colon != std::string::npos) ? iioHumidity.substr(colon + 2) : iioHumidity;
+        double rh = 0.0;
+        if (envParseDouble(val, rh) && rh >= 0.0 && rh <= 100.0)
+        {
+            haveRh = true;
+            if (rh >= 80.0)
+            {
+                data.push_back("[FAIL] Humidity sensor reading " + std::to_string(rh) +
+                               "% RH — above the 80% condensation-watch threshold");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+            data.push_back("[PASS] Humidity sensor: " + iioHumidity + " (below the 80% RH threshold)");
+        }
+        else
+        {
+            data.push_back("[INFO] Humidity sensor value not parseable: " + iioHumidity);
+        }
+    }
+    else
+    {
+        data.push_back("[INFO] No IIO humidity sensor found (no HAT)");
+    }
+
+    if (!haveThrottle && !haveRh)
+    {
+        data.push_back("[SKIP] No electrical humidity proxies observable (vcgencmd unavailable, no IIO humidity sensor) — physical IEC 60068-2-78 test requires a humidity chamber");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -163,28 +258,54 @@ TestOutput EnvironmentalTesting::testVibrationResistance()
     data.push_back("=== Vibration Resistance Proxy (Pi5) ===");
     data.push_back("[INFO] IEC 60068-2-6 testing requires vibration table");
 
+    // Acceptance criteria (measurable proxies): the kernel log must show zero
+    // storage I/O errors and zero USB disconnect events (both are evidence of
+    // intermittent connector contact under vibration), and any PCIe devices
+    // present must expose readable link state. Log unreadable -> SKIPPED.
     // PCIe link stability
     std::string pcieSpeed = envRunCmd(
         "cat /sys/bus/pci/devices/*/current_link_speed 2>/dev/null | head -5");
     data.push_back(pcieSpeed.empty() ? "[INFO] No PCIe devices to check"
-                                     : "[PASS] PCIe link speed(s): " + pcieSpeed);
+                                     : "[INFO] PCIe link speed(s): " + pcieSpeed);
 
     // eMMC/SD error proxy
     std::string mmcErr = envRunCmd("dmesg 2>/dev/null | grep -c -i 'mmc.*error\\|mmcblk.*I/O error'");
-    data.push_back(mmcErr == "0" ? "[PASS] No eMMC/SD errors (good connector contact)"
-                                 : "[WARN] eMMC/SD error count: " + mmcErr);
-
     // USB disconnect events
     std::string usbDisc = envRunCmd("dmesg 2>/dev/null | grep -c 'USB disconnect'");
-    data.push_back(usbDisc == "0" ? "[PASS] No USB disconnect events"
-                                  : "[WARN] USB disconnects: " + usbDisc);
 
+    long mmcE = -1, usbD = -1;
+    bool logReadable = envParseLong(mmcErr, mmcE) && envParseLong(usbDisc, usbD);
+    if (!logReadable)
+    {
+        data.push_back("[SKIP] Kernel log (dmesg) unreadable — vibration proxies (eMMC/SD + USB error counters) cannot be measured");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back(mmcE == 0 ? "[PASS] 0 eMMC/SD errors (good connector contact)"
+                             : "[FAIL] eMMC/SD error count: " + std::to_string(mmcE));
+    data.push_back(usbD == 0 ? "[PASS] 0 USB disconnect events"
+                             : "[FAIL] USB disconnects: " + std::to_string(usbD));
+
+    if (mmcE > 0 || usbD > 0)
+    {
+        data.push_back("[FAIL] Kernel log shows storage/USB connectivity errors — consistent with contact instability");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] No kernel-log evidence of contact instability (0 eMMC/SD errors, 0 USB disconnects)");
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -219,8 +340,7 @@ TestOutput EnvironmentalTesting::testShockResistance()
         TestOutput _out;
         _out.status = !pstoreHasCrash ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = !pstoreHasCrash ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -245,20 +365,28 @@ TestOutput EnvironmentalTesting::testEmiemcCompliance()
     // CPU frequency (high clocks → more EMI)
     std::string cpuFreq = envReadFile("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq");
     if (!cpuFreq.empty())
-        data.push_back("[INFO] CPU0 current freq: " + std::to_string(std::stol(cpuFreq) / 1000) + " MHz");
+    {
+        long freqKhz = 0;
+        if (envParseLong(cpuFreq, freqKhz))
+            data.push_back("[INFO] CPU0 current freq: " + std::to_string(freqKhz / 1000) + " MHz");
+        else
+            data.push_back("[WARN] CPU0 current freq value unparseable: '" + cpuFreq + "'");
+    }
 
     // Check metal shielding / EMI cans reported via device tree
     std::string dtComp = envRunCmd(
         "cat /proc/device-tree/compatible 2>/dev/null | tr '\\0' '\\n' | head -3");
     data.push_back("[INFO] Device-tree compatible: " + dtComp);
 
-    data.push_back("[PASS] Pi5 CM is designed to meet CE/FCC Class B (board-level)");
+    // Acceptance criteria: radiated-emissions compliance (CISPR 32 / EN 55032)
+    // can only be verified with an RF shielded lab; no software path can yield
+    // a trustworthy PASS. Document the configuration and SKIP.
+    data.push_back("[SKIP] CISPR 32 / EN 55032 radiated-emissions verification requires an RF shielded lab — software can only document SSC configuration above");
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
+        _out.status = hal::Status::SKIPPED;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -295,8 +423,7 @@ TestOutput EnvironmentalTesting::testEsdProtection()
         TestOutput _out;
         _out.status = gpioPresent ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = gpioPresent ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -326,17 +453,37 @@ TestOutput EnvironmentalTesting::testSaltSprayResistance()
                             : "[INFO] Standard Pi5 — no IP/salt-spray rating");
     }
 
-    // Corrosion indicators: elevated I2C/SPI errors over time
+    // Acceptance criteria (measurable): the corrosion proxy is the bus error
+    // counter in the kernel log. Log unreadable -> SKIP; errors -> FAIL;
+    // none -> PASS (with the documented limitation that a physical
+    // IEC 60068-2-11 salt-fog test still requires a chamber).
     std::string i2cErr = envRunCmd("dmesg 2>/dev/null | grep -c -i 'i2c.*error\\|spi.*error'");
-    data.push_back(i2cErr == "0" ? "[PASS] No I2C/SPI communication errors detected"
-                                 : "[WARN] Bus errors (possible corrosion indicator): " + i2cErr);
+    long busErr = -1;
+    if (!envParseLong(i2cErr, busErr))
+    {
+        data.push_back("[SKIP] Kernel log (dmesg) unreadable — corrosion proxy (bus error counters) cannot be measured");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (busErr > 0)
+    {
+        data.push_back("[FAIL] " + std::to_string(busErr) + " I2C/SPI bus error(s) — possible connector corrosion indicator");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
+    data.push_back("[PASS] 0 I2C/SPI communication errors (no corrosion indicator; note: chamber test still required for formal rating)");
     {
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

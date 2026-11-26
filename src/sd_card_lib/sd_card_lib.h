@@ -1,31 +1,32 @@
 /**
  * @file sd_card_lib.h
- * @brief SdCardTesting — tests the sd_card peripheral.
- * @details Linux interface: MMC sysfs (/sys/class/mmc_host/mmc1/) and block device
- * @note HARDWARE-UNVERIFIED — all test implementations require on-target
- *       execution against real hardware.
- */
-#pragma once
+ * @brief Header for SdCardTesting class (Raspberry Pi 5 SD card testing)
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+#ifndef SDCARDTESTING_H
+#define SDCARDTESTING_H
 #include "lib_base.h"
-#include <string>
-#include <vector>
 
-class SdCardTesting : public TestBase {
-public:
+/**
+ * @class SdCardTesting
+ * @brief Tests SD card presence, capacity, and block-device access.
+ */
+class SdCardTesting : public TestBase
+{
+  public:
     SdCardTesting();
-    ~SdCardTesting() override;
+    ~SdCardTesting();
 
-    // ── TestBase interface ──────────────────────────────────────────────
+    TestOutput testSdCardPresent();
+    TestOutput testSdCardCapacity();
+    TestOutput testSdCardBlockAccess();
+    TestOutput testSdCardSpeed();
+
     std::vector<std::string> getAvailableTests() override;
-    std::vector<TestResult>  runAllTests()       override;
-    TestResult               runSingleTest(const std::string& testName) override;
+    TestResult runSingleTest(const std::string& testName) override;
 
-    // ── Module-specific tests ───────────────────────────────────────────
-    TestOutput testPresence(); // HARDWARE-UNVERIFIED
-    TestOutput testCapacity(); // HARDWARE-UNVERIFIED
-    TestOutput testCID(); // HARDWARE-UNVERIFIED
-    TestOutput testReadWrite(); // HARDWARE-UNVERIFIED
-
-protected:
-    std::string device_path_; // resolved device path (may be empty if not found)
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
+
+#endif // SDCARDTESTING_H

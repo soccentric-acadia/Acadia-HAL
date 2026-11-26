@@ -1,31 +1,33 @@
 /**
  * @file battery_lib.h
- * @brief BatteryTesting — tests the battery peripheral.
- * @details Linux interface: power-supply sysfs (/sys/class/power_supply/battery/)
- * @note HARDWARE-UNVERIFIED — all test implementations require on-target
- *       execution against real hardware.
- */
-#pragma once
+ * @brief Header for BatteryTesting class (Raspberry Pi 5 battery testing)
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+#ifndef BATTERYTESTING_H
+#define BATTERYTESTING_H
 #include "lib_base.h"
-#include <string>
-#include <vector>
 
-class BatteryTesting : public TestBase {
-public:
+/**
+ * @class BatteryTesting
+ * @brief Tests battery presence, charge, health, and electrical readings via
+ *        /sys/class/power_supply (MXL7704 PMIC / HAT battery).
+ */
+class BatteryTesting : public TestBase
+{
+  public:
     BatteryTesting();
-    ~BatteryTesting() override;
+    ~BatteryTesting();
 
-    // ── TestBase interface ──────────────────────────────────────────────
+    TestOutput testBatteryPresent();
+    TestOutput testBatteryChargeLevel();
+    TestOutput testBatteryHealth();
+    TestOutput testBatteryVoltageCurrent();
+
     std::vector<std::string> getAvailableTests() override;
-    std::vector<TestResult>  runAllTests()       override;
-    TestResult               runSingleTest(const std::string& testName) override;
+    TestResult runSingleTest(const std::string& testName) override;
 
-    // ── Module-specific tests ───────────────────────────────────────────
-    TestOutput testPresence(); // HARDWARE-UNVERIFIED
-    TestOutput testChargeLevel(); // HARDWARE-UNVERIFIED
-    TestOutput testVoltage(); // HARDWARE-UNVERIFIED
-    TestOutput testStatus(); // HARDWARE-UNVERIFIED
-
-protected:
-    std::string device_path_; // resolved device path (may be empty if not found)
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
+
+#endif // BATTERYTESTING_H

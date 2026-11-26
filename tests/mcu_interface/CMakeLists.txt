@@ -4,3 +4,5 @@ target_include_directories(test_mcu_interface PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_mcu_interface COMMAND test_mcu_interface)
 set_tests_properties(test_mcu_interface PROPERTIES TIMEOUT 300)
 install(TARGETS test_mcu_interface RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_mcu_interface PROPERTIES LABELS "target-required")

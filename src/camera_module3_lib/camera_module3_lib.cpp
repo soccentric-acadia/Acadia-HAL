@@ -18,10 +18,12 @@
 
 #include <array>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 // ---------------------------------------------------------------------------
@@ -102,8 +104,7 @@ TestOutput CameraModule3Testing::testCameraDetection()
         TestOutput _out;
         _out.status = (imx708Found || vid0) ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = (imx708Found || vid0) ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -118,37 +119,47 @@ TestOutput CameraModule3Testing::testSensorResolution()
     data.push_back("[INFO] IMX708 full resolution: 4608 × 2592 (12.3 MP)");
     data.push_back("[INFO] Binned modes: 2304×1296 (2×2), 1152×648 (4×4)");
 
+    // Acceptance criteria (measurable): a CSI camera is attached AND it
+    // advertises its full mode (4608/2592) in the V4L2/libcamera format list.
+    // No camera attached -> SKIPPED (Module 3 hardware absent).
+
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - Camera Module 3 resolution cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
+
     // v4l2-ctl: list formats
+    bool fullRes = false;
     std::string fmts = cm3RunCmd("v4l2-ctl --device=/dev/video0 --list-formats-ext 2>/dev/null | head -20");
     if (!fmts.empty())
     {
         data.push_back("[PASS] v4l2-ctl formats:\n" + fmts);
-        bool fullRes = fmts.find("4608") != std::string::npos ||
-                       fmts.find("2592") != std::string::npos;
+        fullRes = fmts.find("4608") != std::string::npos ||
+                  fmts.find("2592") != std::string::npos;
         data.push_back(fullRes ? "[PASS] Full 4608×2592 resolution advertised"
-                               : "[INFO] 4608×2592 not found in format list");
-        {
-            TestOutput _out;
-            _out.status = hal::Status::PASS;
-            _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+                               : "[FAIL] 4608×2592 not found in the format list");
     }
 
-    // Fallback: libcamera-hello --list-cameras is more verbose
-    std::string lcInfo = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
-    bool fullRes = lcInfo.find("4608") != std::string::npos;
-    data.push_back(fullRes ? "[PASS] 4608 found in libcamera camera info"
-                           : "[INFO] Resolution info not available without camera");
+    // Fallback: libcamera camera info also carries mode geometry
+    if (!fullRes) {
+        fullRes = lcList.find("4608") != std::string::npos;
+        data.push_back(fullRes ? "[PASS] 4608 found in libcamera camera info"
+                               : "[FAIL] Full 4608×2592 resolution not advertised by the camera");
+    }
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = fullRes ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = fullRes ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -163,32 +174,47 @@ TestOutput CameraModule3Testing::testAutofocus()
     data.push_back("[INFO] IMX708 supports phase-detection AF with VCM actuator");
     data.push_back("[INFO] AF modes: AfModeContinuous, AfModeAuto, AfModeManual");
 
+    // Acceptance criteria (measurable): a CSI camera is attached AND AF/VCM
+    // evidence is present (AF controls in the libcamera camera list, or a
+    // VCM actuator driver in dmesg). The IMX708 has PDAF, so an attached
+    // camera without AF evidence -> FAIL. No camera -> SKIPPED.
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - Camera Module 3 AF cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
+
     // libcamera-hello: check AF controls
     std::string afCtl = cm3RunCmd(
         "libcamera-hello --list-cameras 2>/dev/null | grep -i 'focus\\|vcm\\|af'");
     if (!afCtl.empty())
         data.push_back("[PASS] AF-related control found:\n" + afCtl);
     else
-        data.push_back("[INFO] AF control info not available (camera may be absent)");
+        data.push_back("[INFO] No AF/VCM control listed by libcamera");
 
     // Check for VCM I2C device (DW9807 or similar) — typically shows up in dmesg
     std::string vcmDmesg = cm3RunCmd("dmesg 2>/dev/null | grep -i 'vcm\\|dw9807\\|focus' | head -3");
     if (!vcmDmesg.empty())
         data.push_back("[PASS] VCM actuator in dmesg: " + vcmDmesg);
 
-    // Capture with AF: quick 100ms preview
-    std::string afTest = cm3RunCmd(
-        "libcamera-still --timeout 100 --autofocus-mode continuous "
-        "--output /tmp/cm3_af_test.jpg 2>&1 | head -5");
-    if (!afTest.empty())
-        data.push_back("[INFO] AF capture: " + afTest);
+    bool afEvidence = !afCtl.empty() || !vcmDmesg.empty();
+    if (afEvidence)
+        data.push_back("[PASS] AF/VCM evidence present on the attached camera");
+    else
+        data.push_back("[FAIL] Camera attached but no AF/VCM evidence - IMX708 PDAF is expected");
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = afEvidence ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = afEvidence ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -203,24 +229,61 @@ TestOutput CameraModule3Testing::testHdrMode()
     data.push_back("[INFO] IMX708 HDR uses staggered dual-exposure readout");
     data.push_back("[INFO] libcamera HDR control: --hdr (HdrModeMultiExposure / SingleExposure)");
 
-    std::string hdrInfo = cm3RunCmd(
-        "libcamera-hello --list-cameras 2>/dev/null | grep -i 'hdr'");
-    data.push_back(hdrInfo.empty() ? "[INFO] HDR not listed (camera absent or old libcamera)"
-                                   : "[PASS] HDR info: " + hdrInfo);
+    // Acceptance criteria (measurable): a camera is attached AND a real HDR
+    // still capture (libcamera-still --hdr) produces a non-empty image file.
+    // No camera -> SKIPPED; libcamera tooling absent -> SKIPPED (HAL-033);
+    // capture failure / empty file -> FAIL.
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - Camera Module 3 HDR cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
+
+    if (cm3RunCmd("command -v libcamera-still 2>/dev/null").empty() &&
+        cm3RunCmd("command -v rpicam-still 2>/dev/null").empty()) {
+        data.push_back("[SKIP] libcamera-still/rpicam-still not installed - HDR capture cannot be executed");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     // Try an HDR capture
+    const std::string outPath = "/tmp/cm3_hdr_test.jpg";
+    cm3RunCmd("rm -f " + outPath);
+    std::string tool = cm3RunCmd("command -v libcamera-still 2>/dev/null");
+    if (tool.empty()) tool = cm3RunCmd("command -v rpicam-still 2>/dev/null");
+    // Use rpicam-still if libcamera-still is not present (HAL-025).
     std::string hdrTest = cm3RunCmd(
-        "libcamera-still --timeout 100 --hdr --output /tmp/cm3_hdr_test.jpg 2>&1 | head -5");
+        tool + " --timeout 100 --hdr --output " + outPath + " 2>&1 | head -5");
     if (!hdrTest.empty())
         data.push_back("[INFO] HDR capture output: " + hdrTest);
 
-    data.push_back("[INFO] HDR tonemapping done in bcm2835-isp (not on-sensor)");
+    // Verify a non-empty image file was produced - measurable acceptance.
+    std::ifstream imgCheck(outPath, std::ios::binary | std::ios::ate);
+    bool hdrOk = false;
+    if (imgCheck) {
+        long sz = imgCheck.tellg();
+        hdrOk = (sz > 0);
+        data.push_back(hdrOk ? "[PASS] HDR still captured: " + std::to_string(sz) + " bytes"
+                             : "[FAIL] HDR capture produced an empty file");
+    } else {
+        data.push_back("[FAIL] HDR capture produced no image file - libcamera-still --hdr did not succeed");
+    }
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hdrOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = hdrOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -233,26 +296,76 @@ TestOutput CameraModule3Testing::testStillCapture()
     std::vector<std::string> data;
     data.push_back("=== Camera Module 3 Still Capture ===");
 
-    std::string out = cm3RunCmd(
-        "libcamera-still --timeout 200 --output /tmp/cm3_still.jpg 2>&1 | head -10");
-    bool ok = !out.empty() && out.find("ERROR") == std::string::npos &&
-              out.find("error") == std::string::npos;
-    data.push_back(out.empty() ? "[INFO] libcamera-still not available"
-                               : (ok ? "[PASS] Still capture OK:\n" + out
-                                     : "[INFO] Still capture output:\n" + out));
+    // Acceptance criteria (measurable): a real still capture executes and
+    // writes a non-empty image file. No camera attached -> SKIPPED;
+    // libcamera tooling absent -> SKIPPED (HAL-033); capture / file failure
+    // -> FAIL.
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - still capture cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
 
-    // Check output file
+    // HAL-517: unique private output path (mkstemp) instead of the fixed
+    // /tmp/cm3_still.jpg (symlink-race target that was never cleaned up).
+    std::string outPath;
+    {
+        const char* tmpl = "/tmp/cm3_still_XXXXXX";
+        std::vector<char> buf(tmpl, tmpl + std::strlen(tmpl) + 1);
+        int fd = ::mkstemp(buf.data());
+        if (fd >= 0) {
+            ::close(fd); // the capture tool writes the file itself
+            ::unlink(buf.data()); // remove the empty placeholder; tool recreates it
+            outPath = buf.data();
+        } else {
+            data.push_back("[SKIP] mkstemp failed (" + std::string(strerror(errno)) +
+                           ") — cannot create a private capture output path");
+            TestOutput _out;
+            _out.status = hal::Status::SKIPPED;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+    }
+
+    std::string tool = cm3RunCmd("command -v rpicam-still 2>/dev/null");
+    if (tool.empty()) tool = cm3RunCmd("command -v libcamera-still 2>/dev/null");
+    if (tool.empty()) {
+        data.push_back("[SKIP] rpicam-still/libcamera-still not installed - cannot execute a still capture");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    std::string out = cm3RunCmd(
+        tool + " --timeout 200 --output " + outPath + " 2>&1 | head -10");
+    if (!out.empty())
+        data.push_back("[INFO] Capture tool output:\n" + out);
+
+    // Check output file - measurable acceptance criterion.
     struct stat st {};
-    if (stat("/tmp/cm3_still.jpg", &st) == 0 && st.st_size > 0)
-        data.push_back("[PASS] /tmp/cm3_still.jpg written (" +
-                       std::to_string(st.st_size / 1024) + " KB)");
+    bool fileOk = (stat(outPath.c_str(), &st) == 0 && st.st_size > 0);
+    data.push_back(fileOk
+                       ? "[PASS] Capture written (" + std::to_string(st.st_size / 1024) + " KB)"
+                       : "[FAIL] Capture output was not written (or is empty) - capture did not succeed");
+
+    // Clean up the private capture file.
+    cm3RunCmd("rm -f " + outPath);
 
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = fileOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = fileOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -285,8 +398,7 @@ TestOutput CameraModule3Testing::testMipiCsiInterface()
         TestOutput _out;
         _out.status = unicam ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = unicam ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -300,36 +412,47 @@ TestOutput CameraModule3Testing::testPixelFormats()
     data.push_back("=== Camera Module 3 Pixel Formats ===");
     data.push_back("[INFO] Expected: SRGGB10 (RAW10), RG10, YUYV, RGB888, NV12");
 
-    bool vid0 = cm3PathExists(RPI5_CSI_DEVICE0);
-    if (vid0)
-    {
-        std::string fmts = cm3RunCmd(
-            "v4l2-ctl --device=/dev/video0 --list-formats 2>/dev/null");
-        if (!fmts.empty())
-        {
-            data.push_back("[PASS] v4l2 formats:\n" + fmts);
-            bool raw10 = fmts.find("RG10") != std::string::npos ||
-                         fmts.find("SRGGB10") != std::string::npos;
-            data.push_back(raw10 ? "[PASS] RAW10 format available"
-                                 : "[INFO] RAW10 format not found");
-            {
-                TestOutput _out;
-                _out.status = hal::Status::PASS;
-                _out.severity = hal::Severity::INFO;
-                for (size_t _i = 0; _i < data.size(); ++_i)
-                    _out.reason["detail_" + std::to_string(_i)] = data[_i];
-                return _out;
-            }
-        }
+    // Acceptance criteria (measurable): the attached IMX708 camera advertises
+    // a RAW Bayer format (RAW10: RG10/SRGGB10/SGRBG10/SGBRG10/SBGGR10).
+    // No camera attached -> SKIPPED; attached but no RAW10 -> FAIL.
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - pixel formats cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
+
+    std::string fmts = cm3RunCmd("v4l2-ctl --device=/dev/video0 --list-formats 2>/dev/null");
+    if (!fmts.empty())
+        data.push_back("[PASS] v4l2 formats:\n" + fmts);
+    else if (cm3RunCmd("command -v v4l2-ctl 2>/dev/null").empty()) {
+        data.push_back("[SKIP] v4l2-ctl not installed - V4L2 pixel formats cannot be enumerated");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    data.push_back("[INFO] /dev/video0 not present; pixel format list unavailable");
+    bool raw10 = fmts.find("RG10") != std::string::npos ||
+                 fmts.find("SRGGB10") != std::string::npos ||
+                 fmts.find("SGRBG10") != std::string::npos ||
+                 fmts.find("SGBRG10") != std::string::npos ||
+                 fmts.find("SBGGR10") != std::string::npos;
+    data.push_back(raw10 ? "[PASS] RAW10 (10-bit Bayer) format advertised"
+                         : "[FAIL] Camera attached but no RAW10 Bayer format advertised");
+
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = raw10 ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = raw10 ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -342,26 +465,53 @@ TestOutput CameraModule3Testing::testVideoStreaming()
     std::vector<std::string> data;
     data.push_back("=== Camera Module 3 Video Streaming (1080p30) ===");
 
+    // Acceptance criteria (measurable): a real 1080p30 H.264 capture
+    // executes and writes a non-empty video file. No camera attached ->
+    // SKIPPED; libcamera tooling absent -> SKIPPED (HAL-033); no file / empty
+    // capture -> FAIL.
+    bool camPresent = cm3PathExists(RPI5_CSI_DEVICE0);
+    std::string lcList = cm3RunCmd("libcamera-hello --list-cameras 2>/dev/null");
+    if (lcList.find("imx708") != std::string::npos) camPresent = true;
+    if (!camPresent) {
+        data.push_back("[SKIP] No CSI camera attached - video streaming cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] CSI camera attached (Camera Module 3 expected: IMX708)");
+
+    const std::string outPath = "/tmp/cm3_video.h264";
+    cm3RunCmd("rm -f " + outPath);
+    std::string tool = cm3RunCmd("command -v libcamera-vid 2>/dev/null");
+    if (tool.empty()) tool = cm3RunCmd("command -v rpicam-vid 2>/dev/null");
+    if (tool.empty()) {
+        data.push_back("[SKIP] libcamera-vid/rpicam-vid not installed - cannot execute video capture");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
     std::string out = cm3RunCmd(
-        "libcamera-vid --timeout 500 --width 1920 --height 1080 --framerate 30 "
-        "--output /tmp/cm3_video.h264 2>&1 | head -8");
-    bool ok = !out.empty() && out.find("ERROR") == std::string::npos;
-    data.push_back(out.empty() ? "[INFO] libcamera-vid not available"
-                               : (ok ? "[PASS] Video stream started:\n" + out
-                                     : "[INFO] Video output:\n" + out));
+        tool + " --timeout 500 --width 1920 --height 1080 --framerate 30 "
+               "--output " + outPath + " 2>&1 | head -8");
+    if (!out.empty())
+        data.push_back("[INFO] Capture tool output:\n" + out);
 
     struct stat st {};
-    if (stat("/tmp/cm3_video.h264", &st) == 0 && st.st_size > 0)
-        data.push_back("[PASS] /tmp/cm3_video.h264 written (" +
-                       std::to_string(st.st_size / 1024) + " KB)");
+    bool fileOk = (stat(outPath.c_str(), &st) == 0 && st.st_size > 0);
+    data.push_back(fileOk
+                       ? "[PASS] " + outPath + " written (" + std::to_string(st.st_size / 1024) + " KB) - 1080p30 H.264 stream succeeded"
+                       : "[FAIL] " + outPath + " was not written (or is empty) - the 1080p30 H.264 stream did not succeed");
 
-    data.push_back("[INFO] Pi5 H.264 encoding via V4L2 m2m (bcm2835-codec)");
     {
         TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = fileOk ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = fileOk ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

@@ -11,7 +11,9 @@
 
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <fstream>
 #include <net/if.h>
 #include <netinet/in.h>
@@ -80,6 +82,45 @@ static int getLinkSpeedMbps(const std::string& iface)
     return -1;
 }
 
+/** True when the given kernel module is loaded or available on the module path. */
+static bool ethModuleAvailable(const char* mod)
+{
+    if (access(("/sys/module/" + std::string(mod)).c_str(), F_OK) == 0) return true;
+    std::string path = ethRunCmd(("modinfo -F filename " + std::string(mod) + " 2>/dev/null").c_str());
+    return !path.empty();
+}
+
+/** True when the tc (iproute2) binary is available. */
+static bool ethTcAvailable()
+{
+    return access("/usr/sbin/tc", F_OK) == 0 || access("/sbin/tc", F_OK) == 0 ||
+           access("/usr/bin/tc", F_OK) == 0;
+}
+
+/**
+ * Measure wake-up jitter of a periodic 1 ms clock_nanosleep(CLOCK_MONOTONIC,
+ * TIMER_ABSTIME) loop. Returns the maximum observed lateness in microseconds
+ * (negative on invalid input). Software TSN on Pi5 targets <=50 us typical;
+ * 1 ms is the hard acceptance ceiling.
+ */
+static double ethMeasureMaxJitterUs(int iterations)
+{
+    if (iterations <= 0) return -1.0;
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) return -1.0;
+    double maxLatenessUs = 0.0;
+    for (int i = 0; i < iterations; ++i) {
+        ts.tv_nsec += 1000000L; // 1 ms
+        if (ts.tv_nsec >= 1000000000L) { ++ts.tv_sec; ts.tv_nsec -= 1000000000L; }
+        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, nullptr);
+        struct timespec now;
+        if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return -1.0;
+        double latenessUs = ((now.tv_sec - ts.tv_sec) * 1e9 + (now.tv_nsec - ts.tv_nsec)) / 1000.0;
+        if (latenessUs > maxLatenessUs) maxLatenessUs = latenessUs;
+    }
+    return maxLatenessUs;
+}
+
 // ---------------------------------------------------------------------------
 // Constructor / Destructor
 // ---------------------------------------------------------------------------
@@ -110,8 +151,7 @@ TestOutput EthernetTesting::test10GigabitLinkEstablishment()
             TestOutput _out;
             _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
             _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -140,8 +180,7 @@ TestOutput EthernetTesting::test10GigabitLinkEstablishment()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -161,10 +200,9 @@ TestOutput EthernetTesting::test10gbeTransmitThroughput()
         data.push_back("SKIP: Interface not present.");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -193,8 +231,7 @@ TestOutput EthernetTesting::test10gbeTransmitThroughput()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -214,10 +251,9 @@ TestOutput EthernetTesting::test10gbeReceiveThroughput()
         data.push_back("SKIP: Interface not present.");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -243,8 +279,7 @@ TestOutput EthernetTesting::test10gbeReceiveThroughput()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -264,10 +299,9 @@ TestOutput EthernetTesting::testFullduplexOperation()
         data.push_back("SKIP: Interface not present.");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -291,8 +325,7 @@ TestOutput EthernetTesting::testFullduplexOperation()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -312,10 +345,9 @@ TestOutput EthernetTesting::testJumboFramesSupport()
         data.push_back("SKIP: Interface not present.");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -345,8 +377,7 @@ TestOutput EthernetTesting::testJumboFramesSupport()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -358,30 +389,48 @@ TestOutput EthernetTesting::testJumboFramesSupport()
 TestOutput EthernetTesting::testFlowControl()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("IEEE 802.3x flow control (PAUSE frames) check");
 
-    std::string fc = ethRunCmd("ethtool -a eth0 2>/dev/null");
-    if (!fc.empty()) {
-        data.push_back("ethtool -a eth0: " + fc.substr(0, 200));
-    } else {
-        data.push_back("ethtool not available or interface down.");
-        data.push_back("Pi5 bcmgenet driver: flow control configurable via ethtool -A.");
+    // Acceptance criteria (measurable): ethtool must report the interface's
+    // PAUSE-frame capability (Supports/RX/TX fields). ethtool missing or
+    // interface absent -> SKIPPED, capability missing -> FAIL.
+    if (!ifaceExists(ETH_IFACE)) {
+        data.push_back("[SKIP] Interface " + std::string(ETH_IFACE) + " not present — flow control cannot be queried");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    // Check RX/TX pause frame counters
-    long long txPause = ethReadInt("/sys/class/net/" + std::string(ETH_IFACE) + "/statistics/tx_carrier_errors");
-    (void)txPause;
-    data.push_back("Flow control: check with ethtool -a eth0 when link is up.");
-    data.push_back("PASS: Flow control check complete.");
+    std::string fc = ethRunCmd("ethtool -a eth0 2>/dev/null");
+    if (fc.empty()) {
+        data.push_back("[SKIP] ethtool unavailable — flow-control capability cannot be observed");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("ethtool -a eth0: " + fc.substr(0, 200));
 
+    if (fc.find("Supports") == std::string::npos && fc.find("RX") == std::string::npos &&
+        fc.find("rx") == std::string::npos) {
+        data.push_back("[FAIL] Flow-control (PAUSE frame) capability not reported by the driver");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Flow-control capability reported by the driver (PAUSE frames configurable via ethtool -A)");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -393,34 +442,55 @@ TestOutput EthernetTesting::testFlowControl()
 TestOutput EthernetTesting::testVlanTagging()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("VLAN tagging (IEEE 802.1Q) capability check");
 
-    // Check if 8021q module is loaded
+    // Acceptance criteria (measurable): VLAN capability is demonstrated by
+    // the 8021q module being loaded, an existing VLAN interface, or VLAN
+    // offload features advertised by the driver. None observable -> FAIL;
+    // cannot observe at all -> SKIP.
     std::string vlanMod = ethRunCmd("lsmod 2>/dev/null | grep 8021q");
     data.push_back(std::string("8021q kernel module: ") + (vlanMod.empty() ? "not loaded (load with: modprobe 8021q)" : "LOADED"));
 
-    // Check existing VLAN interfaces
     std::string vlanIfs = ethRunCmd("ip link show type vlan 2>/dev/null");
     if (!vlanIfs.empty()) data.push_back("Existing VLAN interfaces: " + vlanIfs.substr(0, 200));
     else data.push_back("No VLAN interfaces currently configured.");
 
-    // Check if bcmgenet supports VLAN offload
     std::string vlanFeature = ethRunCmd("ethtool -k eth0 2>/dev/null | grep -i vlan");
     if (!vlanFeature.empty()) data.push_back("VLAN offload features: " + vlanFeature.substr(0, 200));
+    else data.push_back("ethtool -k: unavailable (cannot confirm VLAN offload features)");
 
-    data.push_back("Pi5 supports software VLAN via 8021q kernel module.");
-    data.push_back("PASS: VLAN capability check complete.");
-
-    {
+    if (!vlanMod.empty()) {
+        data.push_back("[PASS] 8021q module loaded — VLAN tagging available");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (!vlanIfs.empty()) {
+        data.push_back("[PASS] VLAN interfaces present — VLAN tagging available");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (!vlanFeature.empty()) {
+        data.push_back("[PASS] VLAN offload advertised by the driver (8021q module loadable on demand)");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] No VLAN capability observed (8021q not loaded and no VLAN features reported by ethtool)");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -430,26 +500,41 @@ TestOutput EthernetTesting::testVlanTagging()
 TestOutput EthernetTesting::testChecksumOffload()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Checksum offload (TX/RX) check for Pi5 GbE");
 
+    // Acceptance criteria (measurable): ethtool -k must advertise both RX and
+    // TX checksum offload. ethtool unavailable -> SKIPPED; features missing ->
+    // FAIL.
     std::string features = ethRunCmd("ethtool -k eth0 2>/dev/null | grep -i 'checksum\\|offload'");
-    if (!features.empty()) {
-        data.push_back("Offload features: " + features.substr(0, 500));
-    } else {
-        data.push_back("ethtool: not available. Using sysfs fallback.");
-        // Pi5 bcmgenet supports RX/TX checksum offload
-        data.push_back("Pi5 bcmgenet: supports TX/RX IPv4/IPv6 checksum offload.");
+    if (features.empty()) {
+        data.push_back("[SKIP] ethtool unavailable — checksum offload capability cannot be observed");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("Offload features: " + features.substr(0, 500));
+
+    bool rx = features.find("rx-checksumming") != std::string::npos;
+    bool tx = features.find("tx-checksumming") != std::string::npos;
+    if (!rx || !tx) {
+        data.push_back("[FAIL] Driver does not advertise ");
+        data.back() += std::string(!rx ? "rx-checksumming " : "") + (!tx ? "tx-checksumming" : "");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    data.push_back("PASS: Checksum offload check complete.");
+    data.push_back("[PASS] TX/RX checksum offload advertised by the driver");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -461,36 +546,48 @@ TestOutput EthernetTesting::testChecksumOffload()
 TestOutput EthernetTesting::testIeee8021asTimeSynchronization()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("IEEE 802.1AS / PTP time synchronization check");
 
-    // Check for PTP hardware clock
+    // Acceptance criteria (measurable): a PTP hardware clock (/dev/ptp0) or a
+    // timestamping capability reported by ethtool -T is required for 802.1AS.
+    // Neither observable (ethtool missing) -> SKIPPED; both absent -> FAIL.
     bool ptpDev = (access("/dev/ptp0", F_OK) == 0);
     data.push_back("PTP hardware clock (/dev/ptp0): " + std::string(ptpDev ? "present" : "not found"));
 
-    // Check phc2sys / ptp4l
     bool ptp4l = (access("/usr/sbin/ptp4l", F_OK) == 0) || (access("/usr/bin/ptp4l", F_OK) == 0);
     data.push_back("ptp4l (linuxptp): " + std::string(ptp4l ? "installed" : "not installed (apt install linuxptp)"));
 
-    // Check if bcmgenet has PTP offload
     std::string ptpFeature = ethRunCmd("ethtool -T eth0 2>/dev/null");
     if (!ptpFeature.empty()) {
         data.push_back("ethtool -T: " + ptpFeature.substr(0, 300));
     } else {
-        data.push_back("Pi5 bcmgenet: basic PTP via software timestamping.");
-        data.push_back("      Hardware PTP requires BCM54213PE PHY timestamping support.");
+        data.push_back("ethtool -T: unavailable (cannot query timestamping capabilities)");
     }
 
-    data.push_back("PASS: PTP/gPTP check complete.");
-    {
+    if (ptpDev) {
+        data.push_back("[PASS] PTP hardware clock present — hardware timestamping path available for 802.1AS");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (!ptpFeature.empty()) {
+        data.push_back("[PASS] Kernel timestamping capabilities reported (software 802.1AS path; hardware PTP requires BCM54213PE PHY support)");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[SKIP] ethtool unavailable and no /dev/ptp0 — PTP capability cannot be observed");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -499,24 +596,43 @@ TestOutput EthernetTesting::testIeee8021asTimeSynchronization()
 TestOutput EthernetTesting::testIeee8021qbv()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("IEEE 802.1Qbv Time-Aware Shaper (TAS) check");
     data.push_back("Pi5 bcmgenet: does NOT support hardware TAS/TAPRIO.");
     data.push_back("Software TAPRIO: available via Linux TC TAPRIO qdisc.");
 
-    std::string taprio = ethRunCmd("tc qdisc show dev eth0 2>/dev/null | grep taprio");
-    data.push_back("TAPRIO qdisc active: " + (taprio.empty() ? "no" : "YES — " + taprio));
-
-    data.push_back("PASS: TAS check complete (software-only on Pi5).");
-    {
+    // Acceptance criteria (measurable): the sch_taprio qdisc must be loaded
+    // or available, or a TAPRIO qdisc active. tc missing -> SKIPPED;
+    // capability absent -> FAIL.
+    if (!ethTcAvailable()) {
+        data.push_back("[SKIP] tc (iproute2) not installed — TAPRIO qdisc availability cannot be verified");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    std::string taprio = ethRunCmd("tc qdisc show dev eth0 2>/dev/null | grep taprio");
+    data.push_back("TAPRIO qdisc active: " + (taprio.empty() ? "no" : "YES — " + taprio));
+    bool modAvail = ethModuleAvailable("sch_taprio");
+    data.push_back(std::string("sch_taprio module: ") + (modAvail ? "available" : "not available"));
+
+    if (!taprio.empty() || modAvail) {
+        data.push_back("[PASS] Software TAS available (sch_taprio) — hardware TAS remains N/A on Pi5");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] sch_taprio module not loaded/available and no TAPRIO qdisc active — software TAS cannot be configured");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -525,20 +641,41 @@ TestOutput EthernetTesting::testIeee8021qbv()
 TestOutput EthernetTesting::testIeee8021qbu()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("IEEE 802.1Qbu Frame Preemption check");
-    data.push_back("Pi5 bcmgenet: frame preemption NOT supported in hardware.");
-    data.push_back("      Frame preemption requires TSN-capable NIC (Intel I225, Microchip LAN9668, etc.).");
-    data.push_back("PASS: Frame preemption check complete (N/A on Pi5).");
-    {
+
+    // Acceptance criteria: frame preemption requires a TSN-capable NIC that
+    // implements MAC-merge (Intel I225, Microchip LAN9668, etc.). BCM2712/
+    // bcmgenet does not implement it — hardware capability is absent by
+    // design, so the honest verdict is SKIPPED (not applicable), never PASS.
+    std::string preemption = ethRunCmd("ethtool --show-frame-preemption eth0 2>/dev/null");
+    if (!preemption.empty() &&
+        preemption.find("not supported") == std::string::npos &&
+        preemption.find("netlink error") == std::string::npos) {
+        data.push_back("Frame preemption state: " + preemption.substr(0, 200));
+        data.push_back("[PASS] MAC-merge/frame-preemption capability reported by the NIC");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (preemption.empty()) {
+        data.push_back("[SKIP] ethtool unavailable — preemption capability cannot be queried");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("Frame preemption requires a TSN-capable NIC (Intel I225, Microchip LAN9668, etc.).");
+    data.push_back("[SKIP] bcmgenet does not implement 802.1Qbu frame preemption — not applicable on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -547,23 +684,41 @@ TestOutput EthernetTesting::testIeee8021qbu()
 TestOutput EthernetTesting::testIeee8021qav()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("IEEE 802.1Qav Credit-Based Shaper (CBS) check");
 
-    std::string cbs = ethRunCmd("tc qdisc show dev eth0 2>/dev/null | grep cbs");
-    data.push_back("CBS qdisc active: " + (cbs.empty() ? "no" : "YES — " + cbs));
-
-    data.push_back("CBS available via Linux TC cbs qdisc (software implementation).");
-    data.push_back("PASS: CBS check complete.");
-    {
+    // Acceptance criteria (measurable): the sch_cbs qdisc must be loaded or
+    // available, or a CBS qdisc active. tc missing -> SKIPPED; capability
+    // absent -> FAIL.
+    if (!ethTcAvailable()) {
+        data.push_back("[SKIP] tc (iproute2) not installed — CBS qdisc availability cannot be verified");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    std::string cbs = ethRunCmd("tc qdisc show dev eth0 2>/dev/null | grep cbs");
+    data.push_back("CBS qdisc active: " + (cbs.empty() ? "no" : "YES — " + cbs));
+    bool modAvail = ethModuleAvailable("sch_cbs");
+    data.push_back(std::string("sch_cbs module: ") + (modAvail ? "available" : "not available"));
+
+    if (!cbs.empty() || modAvail) {
+        data.push_back("[PASS] Software CBS available (sch_cbs) — credit-based shaping can be configured");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] sch_cbs module not loaded/available and no CBS qdisc active");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -572,24 +727,45 @@ TestOutput EthernetTesting::testIeee8021qav()
 TestOutput EthernetTesting::testTsnTrafficScheduling()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("TSN traffic scheduling check (Pi5 software TSN via Linux TC)");
+
+    // Acceptance criteria (measurable): at least one software TSN qdisc
+    // module (TAPRIO/CBS/ETF) must be available. tc missing -> SKIPPED;
+    // none available -> FAIL.
+    if (!ethTcAvailable()) {
+        data.push_back("[SKIP] tc (iproute2) not installed — qdisc availability cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     std::string tc = ethRunCmd("tc qdisc show dev eth0 2>/dev/null");
     data.push_back("tc qdisc: " + (tc.empty() ? "(empty/default)" : tc.substr(0, 300)));
 
-    data.push_back("Pi5 supports software TSN: TAPRIO, CBS, ETF qdiscs.");
-    data.push_back("Hardware TSN requires dedicated TSN-MAC NIC.");
-    data.push_back("PASS: TSN scheduling check complete.");
-    {
+    bool taprio = ethModuleAvailable("sch_taprio");
+    bool cbs    = ethModuleAvailable("sch_cbs");
+    bool etf    = ethModuleAvailable("sch_etf");
+    data.push_back(std::string("qdisc modules — taprio: ") + (taprio ? "yes" : "no") +
+                   ", cbs: " + (cbs ? "yes" : "no") + ", etf: " + (etf ? "yes" : "no"));
+
+    if (taprio || cbs || etf) {
+        data.push_back("[PASS] Software TSN qdisc support available (Pi5: TAPRIO/CBS/ETF; hardware TSN requires a dedicated TSN-MAC NIC)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[FAIL] None of sch_taprio/sch_cbs/sch_etf is available — software TSN scheduling cannot be configured");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -598,13 +774,26 @@ TestOutput EthernetTesting::testTsnTrafficScheduling()
 TestOutput EthernetTesting::testTsnLatencyGuarantees()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("TSN latency guarantee check");
     data.push_back("Pi5 with software TSN: software-controlled scheduling jitter ~10–50 µs");
     data.push_back("Hardware TSN (<1 µs jitter): requires dedicated TSN NIC.");
 
-    // Check cyclictest / RT kernel
+    // Acceptance criteria (measurable): a measured periodic-wake latency.
+    // 100 iterations of a 1 ms clock_nanosleep loop; the maximum lateness
+    // must stay within the 1 ms software-TSN budget.
+    double maxJitterUs = ethMeasureMaxJitterUs(100);
+    if (maxJitterUs < 0.0) {
+        data.push_back("[SKIP] Wake-up jitter measurement failed (clock interface error) — TSN latency cannot be measured");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("Measured wake-up jitter (100 × 1 ms clock_nanosleep): max " +
+                   std::to_string(maxJitterUs) + " µs");
+
     bool rtKernel = false;
     std::ifstream kver("/proc/version");
     if (kver.is_open()) {
@@ -613,16 +802,25 @@ TestOutput EthernetTesting::testTsnLatencyGuarantees()
         data.push_back("Kernel: " + v.substr(0, 80));
         rtKernel = (v.find("PREEMPT_RT") != std::string::npos || v.find("PREEMPT RT") != std::string::npos);
     }
-    data.push_back("RT kernel (PREEMPT_RT): " + std::string(rtKernel ? "YES" : "no (use rpi-realtime kernel for TSN)"));
-    data.push_back("PASS: TSN latency check complete.");
-    {
+    data.push_back(std::string("RT kernel (PREEMPT_RT): ") + (rtKernel ? "YES" : "no (use rpi-realtime kernel for tighter bounds)"));
+
+    if (maxJitterUs < 1000.0) {
+        data.push_back("[PASS] Measured scheduling lateness within the 1 ms software-TSN budget (max " +
+                       std::to_string(maxJitterUs) + " µs)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[FAIL] Measured scheduling lateness " + std::to_string(maxJitterUs) +
+                   " µs exceeds the 1 ms software-TSN budget");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -631,25 +829,72 @@ TestOutput EthernetTesting::testTsnLatencyGuarantees()
 TestOutput EthernetTesting::testTsnTimePrecision()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("TSN time precision check");
 
-    // Check NTP/PTP synchronization offset
+    // Acceptance criteria (measurable): the system clock discipline state must
+    // be observable and (when measurable) within 1 ms of the reference.
+    // chrony present -> parse the tracked offset; systemd-timesyncd state is
+    // the fallback; neither -> SKIPPED.
     std::string chrony = ethRunCmd("chronyc tracking 2>/dev/null | grep -i 'System time'");
-    if (!chrony.empty()) data.push_back("chrony: " + chrony);
-
-    std::string ptp = ethRunCmd("ptp4l -i eth0 -q -2 --summary_interval=0 2>/dev/null &");
-    data.push_back("Time sync method: chrony/NTP for software-only Pi5 TSN.");
-    data.push_back("PASS: Time precision check complete.");
-    {
+    if (!chrony.empty()) {
+        data.push_back("chrony: " + chrony);
+        size_t pos = chrony.find_first_of("0123456789");
+        if (pos != std::string::npos) {
+            char* end = nullptr;
+            double offsetSec = strtod(chrony.c_str() + pos, &end);
+            if (end != chrony.c_str() + pos) {
+                double offsetUs = offsetSec * 1e6;
+                if (offsetUs >= 0.0 && offsetUs <= 1000.0) {
+                    data.push_back("[PASS] System clock within " + std::to_string(offsetUs) +
+                                   " µs of NTP time (≤1 ms precision budget)");
+                    TestOutput _out;
+                    _out.status = hal::Status::PASS;
+                    _out.severity = hal::Severity::INFO;
+                    StampDiagnostics(_out, data);
+                    return _out;
+                }
+                data.push_back("[FAIL] System clock offset " + std::to_string(offsetUs) +
+                               " µs exceeds the 1 ms precision budget");
+                TestOutput _out;
+                _out.status = hal::Status::FAIL;
+                _out.severity = hal::Severity::ERROR;
+                StampDiagnostics(_out, data);
+                return _out;
+            }
+        }
+        data.push_back("[SKIP] chrony tracking output not parseable — time precision cannot be measured");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    std::string tsync = ethRunCmd("timedatectl show-timesync --value 2>/dev/null | grep -i 'NTPSynchronized'");
+    if (!tsync.empty()) {
+        if (tsync.find("yes") != std::string::npos) {
+            data.push_back("[PASS] systemd-timesyncd reports NTP-synchronized clock");
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        data.push_back("[FAIL] Timesyncd reports an unsynchronized clock — time precision cannot be guaranteed");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[SKIP] No time-sync daemon observable (chrony absent, timedatectl absent) — time precision cannot be measured");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -697,8 +942,7 @@ TestOutput EthernetTesting::test1gPhyFunctionality()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -710,26 +954,64 @@ TestOutput EthernetTesting::test1gPhyFunctionality()
 TestOutput EthernetTesting::testLinkSpeedNegotiation()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Auto-negotiation check for Pi5 GbE");
 
+    // Acceptance criteria (measurable): interface present, link up, and a
+    // negotiated speed reported with auto-negotiation enabled. Link down or
+    // ethtool missing -> SKIPPED; link up with no speed -> FAIL.
+    if (!ifaceExists(ETH_IFACE)) {
+        data.push_back("[SKIP] Interface " + std::string(ETH_IFACE) + " not present");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
     std::string autoneg = ethRunCmd("ethtool eth0 2>/dev/null | grep -i 'auto-negotiation'");
-    data.push_back("Auto-negotiation: " + (autoneg.empty() ? "(ethtool not available)" : autoneg));
+    if (autoneg.empty()) {
+        data.push_back("[SKIP] ethtool unavailable — auto-negotiation state cannot be observed");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("Auto-negotiation: " + autoneg);
 
     std::string advertised = ethRunCmd("ethtool eth0 2>/dev/null | grep -i 'advertised'");
     if (!advertised.empty()) data.push_back("Advertised modes: " + advertised.substr(0, 200));
 
+    std::string state = getLinkState(ETH_IFACE);
     int spd = getLinkSpeedMbps(ETH_IFACE);
-    data.push_back("Negotiated speed: " + (spd > 0 ? std::to_string(spd) + " Mbps" : "(link down)"));
+    data.push_back("Link state: " + state);
+    data.push_back("Negotiated speed: " + (spd > 0 ? std::to_string(spd) + " Mbps" : "(link down)") +
+                   " (" + std::to_string(ETH_SPEED_MBPS) + " Mbps PHY)");
 
-    data.push_back("PASS: Link speed negotiation check complete.");
+    if (state != "up") {
+        data.push_back("[SKIP] Link is down — negotiation outcome not observable (no cable/peer)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (spd <= 0) {
+        data.push_back("[FAIL] Link is up but the PHY reports no negotiated speed");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Negotiated " + std::to_string(spd) + " Mbps with auto-negotiation enabled");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -741,24 +1023,38 @@ TestOutput EthernetTesting::testLinkSpeedNegotiation()
 TestOutput EthernetTesting::testAutomdimdix()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Auto-MDIX check — Pi5 BCM54213PE PHY");
     data.push_back("BCM54213PE supports Auto-MDIX — straight and crossover cables work.");
 
-    std::string mdix = ethRunCmd("ethtool eth0 2>/dev/null | grep -i 'MDI'");
-    if (!mdix.empty()) data.push_back("MDI-X status: " + mdix);
-    else data.push_back("MDI-X: configurable via ethtool -s eth0 mdix auto");
-
-    data.push_back("PASS: Auto-MDIX supported by BCM54213PE.");
-    {
+    // Acceptance criteria (measurable): ethtool must report the MDI-X state
+    // of the PHY. ethtool missing or interface absent -> SKIPPED.
+    if (!ifaceExists(ETH_IFACE)) {
+        data.push_back("[SKIP] Interface " + std::string(ETH_IFACE) + " not present");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    std::string mdix = ethRunCmd("ethtool eth0 2>/dev/null | grep -i 'MDI'");
+    if (!mdix.empty()) {
+        data.push_back("MDI-X status: " + mdix);
+        data.push_back("[PASS] PHY reports Auto-MDIX state via ethtool (straight and crossover cables both work)");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[SKIP] ethtool does not report MDI-X status — Auto-MDIX operation cannot be verified on this DUT");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -768,39 +1064,62 @@ TestOutput EthernetTesting::testAutomdimdix()
 TestOutput EthernetTesting::testEthernetCableDiagnostics()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Ethernet cable diagnostics (Pi5)");
 
-    // Check cable test support
-    std::string cableTest = ethRunCmd("ethtool --cable-test eth0 2>/dev/null");
-    if (!cableTest.empty() && cableTest.find("not supported") == std::string::npos) {
-        data.push_back("Cable test result: " + cableTest.substr(0, 300));
-    } else {
-        data.push_back("Cable test via ethtool: not supported or link is up.");
+    // Acceptance criteria (measurable): ethtool --cable-test must return an
+    // actual TDR result (requires a PHY with ETHTOOL_MSG_CABLE_TEST support
+    // and a link-down port). Not supported / link up / ethtool missing ->
+    // SKIPPED; RX-error counters are reported as informational evidence.
+    if (!ifaceExists(ETH_IFACE)) {
+        data.push_back("[SKIP] Interface " + std::string(ETH_IFACE) + " not present — cable diagnostics cannot run");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    // Report cable type from ethtool port field
-    std::string port = ethRunCmd("ethtool eth0 2>/dev/null | grep -i 'port'");
-    if (!port.empty()) data.push_back("Port type: " + port);
+    std::string cableTest = ethRunCmd("ethtool --cable-test eth0 2>/dev/null");
+    bool haveResults = !cableTest.empty() &&
+                       cableTest.find("not supported") == std::string::npos &&
+                       cableTest.find("netlink error") == std::string::npos &&
+                       cableTest.find("Operation not permitted") == std::string::npos;
+    if (haveResults) {
+        data.push_back("Cable test result: " + cableTest.substr(0, 300));
+        // Report cable type from ethtool port field
+        std::string port = ethRunCmd("ethtool eth0 2>/dev/null | grep -i 'port'");
+        if (!port.empty()) data.push_back("Port type: " + port);
+        data.push_back("[PASS] PHY cable-test completed and returned pair diagnostics");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
-    // Check for RJ45 loopback detection
     long long rxErrors = ethReadInt("/sys/class/net/" + std::string(ETH_IFACE) + "/statistics/rx_errors");
     if (rxErrors == 0) {
-        data.push_back("No RX errors — cable appears healthy.");
+        data.push_back("No RX errors — cable appears healthy (informational only).");
     } else if (rxErrors > 0) {
         data.push_back("RX errors: " + std::to_string(rxErrors) + " — check cable/connector.");
     }
 
-    data.push_back("PASS: Cable diagnostics check complete.");
-    {
+    if (cableTest.empty()) {
+        data.push_back("[SKIP] ethtool missing or cable-test command failed — wire diagnostics cannot run");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] Cable test not supported by the PHY (or link is up) — pair-level diagnostics unavailable");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**

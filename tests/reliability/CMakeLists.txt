@@ -4,3 +4,5 @@ target_include_directories(test_reliability PRIVATE ${CMAKE_SOURCE_DIR}/src)
 add_test(NAME test_reliability COMMAND test_reliability)
 set_tests_properties(test_reliability PROPERTIES TIMEOUT 300)
 install(TARGETS test_reliability RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_reliability PROPERTIES LABELS "host")

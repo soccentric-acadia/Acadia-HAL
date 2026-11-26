@@ -1,31 +1,31 @@
 /**
  * @file mipi_dsi_lib.h
- * @brief MipiDsiTesting — tests the mipi_dsi peripheral.
- * @details Linux interface: DRM/KMS (/sys/class/drm/ and drmIoctl)
- * @note HARDWARE-UNVERIFIED — all test implementations require on-target
- *       execution against real hardware.
- */
-#pragma once
+ * @brief Header for MipiDsiTesting class (Raspberry Pi 5 MIPI DSI display testing)
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+#ifndef MIPIDSITESTING_H
+#define MIPIDSITESTING_H
 #include "lib_base.h"
-#include <string>
-#include <vector>
 
-class MipiDsiTesting : public TestBase {
-public:
+/**
+ * @class MipiDsiTesting
+ * @brief Tests the MIPI DSI display controller and connected DSI panel.
+ */
+class MipiDsiTesting : public TestBase
+{
+  public:
     MipiDsiTesting();
-    ~MipiDsiTesting() override;
+    ~MipiDsiTesting();
 
-    // ── TestBase interface ──────────────────────────────────────────────
+    TestOutput testMipiDsiControllerPresent();
+    TestOutput testMipiDsiPanelConnected();
+    TestOutput testMipiDsiDrmConnector();
+
     std::vector<std::string> getAvailableTests() override;
-    std::vector<TestResult>  runAllTests()       override;
-    TestResult               runSingleTest(const std::string& testName) override;
+    TestResult runSingleTest(const std::string& testName) override;
 
-    // ── Module-specific tests ───────────────────────────────────────────
-    TestOutput testPresence(); // HARDWARE-UNVERIFIED
-    TestOutput testStatus(); // HARDWARE-UNVERIFIED
-    TestOutput testModes(); // HARDWARE-UNVERIFIED
-    TestOutput testFramebuffer(); // HARDWARE-UNVERIFIED
-
-protected:
-    std::string device_path_; // resolved device path (may be empty if not found)
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
+
+#endif // MIPIDSITESTING_H

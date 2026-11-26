@@ -1,104 +1,190 @@
 /**
  * @file pwm_output_lib.cpp
- * @brief PwmOutputTesting implementation — PWM sysfs (/sys/class/pwm/pwmchip0/)
- * @note HARDWARE-UNVERIFIED — on-target execution required to validate.
- */
-#include "pwm_output_lib.h"
+ * @brief Implementation of PwmOutputTesting for Raspberry Pi 5.
+ * @details Tests PWM chips via /sys/class/pwm. Note: Pi5 RP1 does not expose a
+ *          user-space PWM sysfs controller on the standard 40-pin header; PWM is
+ *          usually emulated via PWM sysfs on a HAT or via pigpio. This module
+ *          verifies the sysfs interface when a PWM controller is present.
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
 
-#include <chrono>
+#include "pwm_output_lib.h"
+#include "../platform_rpi5.h"
+#include <dirent.h>
 #include <fstream>
-#include <sstream>
 #include <string>
+#include <sys/stat.h>
 #include <vector>
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-[[maybe_unused]] static std::string readSysfs(const std::string& path) {
+static std::string readSysfs(const std::string& path)
+{
     std::ifstream f(path);
-    std::string line;
-    if (f.is_open()) std::getline(f, line);
-    return line;
+    if (!f.is_open())
+        return {};
+    std::string val;
+    std::getline(f, val);
+    while (!val.empty() && (val.back() == '\n' || val.back() == '\r' || val.back() == ' '))
+        val.pop_back();
+    return val;
 }
 
-// ── constructor / destructor ─────────────────────────────────────────────────
-PwmOutputTesting::PwmOutputTesting() = default;
-PwmOutputTesting::~PwmOutputTesting() = default;
-
-// ── TestBase interface ────────────────────────────────────────────────────────
-std::vector<std::string> PwmOutputTesting::getAvailableTests() {
-    return {"testPresence", "testExport", "testPeriod", "testDutyCycle"};
+static bool pathExists(const std::string& p)
+{
+    struct stat s;
+    return stat(p.c_str(), &s) == 0;
 }
 
-std::vector<TestResult> PwmOutputTesting::runAllTests() {
-    auto names = getAvailableTests();
-    return runSelectedTests(names);
-}
-
-TestResult PwmOutputTesting::runSingleTest(const std::string& testName) {
-    auto names = getAvailableTests();
-    for (const auto& n : names) {
-        if (n == testName) return runSelectedTests({testName})[0];
+static std::vector<std::string> listDir(const std::string& base)
+{
+    std::vector<std::string> out;
+    DIR* dir = opendir(base.c_str());
+    if (!dir)
+        return out;
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string n = entry->d_name;
+        if (n == "." || n == "..")
+            continue;
+        out.push_back(n);
     }
-    TestResult r;
-    r.module_id        = "pwm_output";
-    r.test_id          = testName;
-    r.name             = testName;
-    r.timestamp        = std::chrono::system_clock::now();
-    r.output.status    = Status::ERROR;
-    r.output.severity  = Severity::ERROR;
-    r.output.error_message = "unknown test: " + testName;
-    return r;
-}
-
-// HARDWARE-UNVERIFIED: requires real pwm_output hardware on target.
-TestOutput PwmOutputTesting::testPresence() {
-    TestOutput out;
-    // Detect PWM chip in sysfs
-    // Linux interface: PWM sysfs (/sys/class/pwm/pwmchip0/)
-    // TODO: implement against PWM sysfs (/sys/class/pwm/pwmchip0/)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["chip_found"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testPresence: not yet implemented — HARDWARE-UNVERIFIED";
+    closedir(dir);
     return out;
 }
 
-// HARDWARE-UNVERIFIED: requires real pwm_output hardware on target.
-TestOutput PwmOutputTesting::testExport() {
-    TestOutput out;
-    // Export PWM channel via sysfs
-    // Linux interface: PWM sysfs (/sys/class/pwm/pwmchip0/)
-    // TODO: implement against PWM sysfs (/sys/class/pwm/pwmchip0/)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["export_ok"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testExport: not yet implemented — HARDWARE-UNVERIFIED";
-    return out;
+PwmOutputTesting::PwmOutputTesting() {}
+PwmOutputTesting::~PwmOutputTesting() {}
+
+TestOutput PwmOutputTesting::testPwmChipPresent()
+{
+    std::vector<std::string> data;
+    data.push_back("=== PWM Chip Presence ===");
+    bool found = false;
+    if (pathExists(RPI5_PWM_SYSFS)) {
+        for (const auto& c : listDir(RPI5_PWM_SYSFS)) {
+            if (c.rfind("pwmchip", 0) == 0) {
+                data.push_back("[PASS] PWM chip: " + c);
+                found = true;
+            }
+        }
+    }
+    if (!found)
+        data.push_back("[INFO] No PWM chips present (RP1 header has no user PWM; HAT may add one)");
+    {
+        TestOutput _out;
+        _out.status = found ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = found ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 }
 
-// HARDWARE-UNVERIFIED: requires real pwm_output hardware on target.
-TestOutput PwmOutputTesting::testPeriod() {
-    TestOutput out;
-    // Set and verify PWM period
-    // Linux interface: PWM sysfs (/sys/class/pwm/pwmchip0/)
-    // TODO: implement against PWM sysfs (/sys/class/pwm/pwmchip0/)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["period_ns"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testPeriod: not yet implemented — HARDWARE-UNVERIFIED";
-    return out;
+TestOutput PwmOutputTesting::testPwmExportChannel()
+{
+    std::vector<std::string> data;
+    data.push_back("=== PWM Channel Export ===");
+    bool exported = false;
+    if (pathExists(RPI5_PWM_SYSFS)) {
+        for (const auto& c : listDir(RPI5_PWM_SYSFS)) {
+            if (c.rfind("pwmchip", 0) != 0)
+                continue;
+            std::string npwm = readSysfs(std::string(RPI5_PWM_SYSFS) + "/" + c + "/npwm");
+            if (!npwm.empty()) {
+                data.push_back("[INFO] " + c + " npwm=" + npwm);
+                exported = true;
+            }
+        }
+    }
+    if (!exported)
+        data.push_back("[INFO] No PWM channel count readable");
+    {
+        TestOutput _out;
+        _out.status = exported ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = exported ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 }
 
-// HARDWARE-UNVERIFIED: requires real pwm_output hardware on target.
-TestOutput PwmOutputTesting::testDutyCycle() {
-    TestOutput out;
-    // Set and verify duty cycle
-    // Linux interface: PWM sysfs (/sys/class/pwm/pwmchip0/)
-    // TODO: implement against PWM sysfs (/sys/class/pwm/pwmchip0/)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["duty_cycle_ns"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testDutyCycle: not yet implemented — HARDWARE-UNVERIFIED";
-    return out;
+TestOutput PwmOutputTesting::testPwmDutyCycle()
+{
+    std::vector<std::string> data;
+    data.push_back("=== PWM Duty Cycle / Frequency ===");
+    bool examined = false;
+    if (pathExists(RPI5_PWM_SYSFS)) {
+        for (const auto& c : listDir(RPI5_PWM_SYSFS)) {
+            if (c.rfind("pwmchip", 0) != 0)
+                continue;
+            std::string pwmRoot = std::string(RPI5_PWM_SYSFS) + "/" + c;
+            // look for an already-exported pwm0 dir
+            if (pathExists(pwmRoot + "/pwm0")) {
+                std::string period = readSysfs(pwmRoot + "/pwm0/period");
+                std::string duty = readSysfs(pwmRoot + "/pwm0/duty_cycle");
+                data.push_back("[INFO] " + c + "/pwm0 period=" + period + " duty=" + duty + " ns");
+                examined = true;
+            }
+        }
+    }
+    if (!examined)
+        data.push_back("[INFO] No exported PWM channel to inspect duty cycle");
+    {
+        TestOutput _out;
+        _out.status = examined ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = examined ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 }
 
+std::vector<TestResult> PwmOutputTesting::runAllTests()
+{
+    std::vector<TestResult> results;
+    const std::vector<std::pair<std::string, TestOutput (PwmOutputTesting::*)()>> tests = {
+        {"testPwmChipPresent", &PwmOutputTesting::testPwmChipPresent},
+        {"testPwmExportChannel", &PwmOutputTesting::testPwmExportChannel},
+        {"testPwmDutyCycle", &PwmOutputTesting::testPwmDutyCycle},
+    };
+    for (const auto& t : tests) {
+        auto start = std::chrono::high_resolution_clock::now();
+        TestOutput out = (this->*t.second)();
+        auto end = std::chrono::high_resolution_clock::now();
+        TestResult _tr;
+        _tr.name = t.first;
+        _tr.test_id = t.first;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        _tr.output = out;
+        results.push_back(std::move(_tr));
+    }
+    return results;
+}
 
+std::vector<std::string> PwmOutputTesting::getAvailableTests()
+{
+    return { "testPwmChipPresent", "testPwmExportChannel", "testPwmDutyCycle" };
+}
+
+TestResult PwmOutputTesting::runSingleTest(const std::string& testName)
+{
+    auto start = std::chrono::high_resolution_clock::now();
+    TestOutput out;
+    out.status = hal::Status::ERROR;
+    out.severity = hal::Severity::ERROR;
+    out.error_message = "test not dispatched";
+    bool known = true;
+    if (testName == "testPwmChipPresent") out = testPwmChipPresent();
+    else if (testName == "testPwmExportChannel") out = testPwmExportChannel();
+    else if (testName == "testPwmDutyCycle") out = testPwmDutyCycle();
+    else known = false;
+    auto end = std::chrono::high_resolution_clock::now();
+    TestResult _tr;
+    _tr.name = known ? testName : testName + " (UNKNOWN)";
+    _tr.test_id = testName;
+    _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+    if (!known) {
+        _tr.output.status = hal::Status::ERROR;
+        _tr.output.severity = hal::Severity::ERROR;
+        _tr.output.error_message = "Unknown test name: " + testName;
+    } else {
+        _tr.output = out;
+    }
+    return _tr;
+}

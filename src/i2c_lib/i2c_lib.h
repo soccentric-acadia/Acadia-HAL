@@ -1,31 +1,34 @@
 /**
  * @file i2c_lib.h
- * @brief I2cTesting — tests the i2c peripheral.
- * @details Linux interface: i2c-dev (/dev/i2c-*, I2C_SMBUS ioctl)
- * @note HARDWARE-UNVERIFIED — all test implementations require on-target
- *       execution against real hardware.
- */
-#pragma once
+ * @brief Header for I2cTesting class (Raspberry Pi 5 I2C bus testing)
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+#ifndef I2CTESTING_H
+#define I2CTESTING_H
 #include "lib_base.h"
-#include <string>
-#include <vector>
 
-class I2cTesting : public TestBase {
-public:
+/**
+ * @class I2cTesting
+ * @brief Tests the Raspberry Pi 5 I2C bus controllers via /dev/i2c-* and sysfs.
+ * @details Verifies I2C controller presence, device enumeration, bus scanning,
+ *          and interface access.
+ */
+class I2cTesting : public TestBase
+{
+  public:
     I2cTesting();
-    ~I2cTesting() override;
+    ~I2cTesting();
 
-    // ── TestBase interface ──────────────────────────────────────────────
+    TestOutput testI2cControllerPresent();
+    TestOutput testI2cBusScan();
+    TestOutput testI2cDeviceEnumeration();
+    TestOutput testI2cInterfaceAccess();
+
     std::vector<std::string> getAvailableTests() override;
-    std::vector<TestResult>  runAllTests()       override;
-    TestResult               runSingleTest(const std::string& testName) override;
+    TestResult runSingleTest(const std::string& testName) override;
 
-    // ── Module-specific tests ───────────────────────────────────────────
-    TestOutput testPresence(); // HARDWARE-UNVERIFIED
-    TestOutput testBusScan(); // HARDWARE-UNVERIFIED
-    TestOutput testClockStretch(); // HARDWARE-UNVERIFIED
-    TestOutput testReadWrite(); // HARDWARE-UNVERIFIED
-
-protected:
-    std::string device_path_; // resolved device path (may be empty if not found)
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
+
+#endif // I2CTESTING_H

@@ -45,6 +45,25 @@ static std::string wdRunCmd(const char* cmd)
     return std::string(buf);
 }
 
+// HAL-041: watchdog facts are gathered EXCLUSIVELY through the read-only
+// sysfs class attributes (/sys/class/watchdog/watchdog0/*). Tests must never
+// open /dev/watchdog0: opening arms the hardware countdown, and with
+// CONFIG_WATCHDOG_NOWAYOUT=y (or a failed magic-close 'V') closing the fd
+// reboots the board. It would also race the image's watchdog daemon /
+// boot-watchdog, which own the device.
+static const char* kWatchdogSysfsDir = "/sys/class/watchdog/watchdog0";
+
+static std::string wdSysfsAttr(const std::string& attr)
+{
+    return wdReadFile(std::string(kWatchdogSysfsDir) + "/" + attr);
+}
+
+static bool wdSysfsAvailable()
+{
+    std::ifstream f(std::string(kWatchdogSysfsDir) + "/identity");
+    return f.is_open();
+}
+
 // ---------------------------------------------------------------------------
 // Constructor / Destructor
 // ---------------------------------------------------------------------------
@@ -62,64 +81,70 @@ WatchdogAndResetTesting::~WatchdogAndResetTesting()
 TestOutput WatchdogAndResetTesting::testWatchdogTimerFunctionality()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
-    data.push_back("Watchdog timer test (Pi5: RP1 watchdog, /dev/watchdog0)");
+    data.push_back("Watchdog timer test (Pi5: RP1 watchdog, read-only sysfs)");
 
-    bool wdExists = (access("/dev/watchdog0", F_OK) == 0);
-    data.push_back("/dev/watchdog0 present: " + std::string(wdExists ? "yes" : "no"));
-
-    if (!wdExists) {
+    // HAL-041: never open /dev/watchdog0 (it arms the timer and races the
+    // system watchdog daemon). The sysfs class exposes the same facts.
+    if (!wdSysfsAvailable()) {
+        data.push_back("INFO: watchdog sysfs (" + std::string(kWatchdogSysfsDir) + ") not available");
         data.push_back("INFO: Load watchdog driver: modprobe bcm2835-wdt or bcm2712-wdt");
         data.push_back("INFO: Enable via /boot/firmware/config.txt: dtparam=watchdog=on");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            _out.error_message = "watchdog sysfs not available — test skipped";
+            StampDiagnostics(_out, data);
             return _out;
         } // Not a hard failure — watchdog may not be enabled
     }
 
-    // Open watchdog (read-only check — do NOT send keep-alive or set timeout here)
-    int fd = open("/dev/watchdog0", O_WRONLY | O_CLOEXEC);
-    if (fd >= 0) {
-        struct watchdog_info info = {};
-        if (ioctl(fd, WDIOC_GETSUPPORT, &info) == 0) {
-            data.push_back("Identity:  " + std::string(reinterpret_cast<char*>(info.identity)));
-            data.push_back("Firmware:  " + std::to_string(info.firmware_version));
-            data.push_back("Options:   0x" + [&]() {
-                char h[16]; snprintf(h, sizeof(h), "%08x", info.options); return std::string(h);
-            }());
-        }
+    std::string identity = wdSysfsAttr("identity");
+    std::string options  = wdSysfsAttr("options");
+    std::string timeout  = wdSysfsAttr("timeout");
+    std::string bootstat = wdSysfsAttr("bootstatus");
+    std::string state    = wdSysfsAttr("state");
 
-        int timeout = 0;
-        if (ioctl(fd, WDIOC_GETTIMEOUT, &timeout) == 0)
-            data.push_back("Current timeout: " + std::to_string(timeout) + " s");
+    if (!identity.empty()) data.push_back("Identity:  " + identity);
+    if (!options.empty())  data.push_back("Options:   " + options);
+    if (!timeout.empty())  data.push_back("Current timeout: " + timeout + " s");
+    if (!state.empty())    data.push_back("State:     " + state);
+    if (!bootstat.empty())
+        data.push_back(std::string("Boot status (watchdog reset flag): ") +
+                       (bootstat != "0" ? "WATCHDOG RESET" : "normal boot"));
 
-        int bootStatus = 0;
-        if (ioctl(fd, WDIOC_GETBOOTSTATUS, &bootStatus) == 0)
-            data.push_back(std::string("Boot status (watchdog reset flag): ") +
-                           (bootStatus ? "WATCHDOG RESET" : "normal boot"));
+    data.push_back("INFO: read-only sysfs access — no /dev/watchdog0 open; system watchdog daemon (if any) unaffected");
 
-        // Write 'V' to disable watchdog on close (magic close)
-        (void)write(fd, "V", 1);
-        close(fd);
-        data.push_back("PASS: Watchdog opened and queried successfully.");
-    } else {
-        data.push_back("WARNING: Cannot open /dev/watchdog0: " + std::string(strerror(errno)));
-        data.push_back("       (May be held by systemd-watchdogd or watchdog daemon)");
-    }
-
+    // Acceptance criteria (measurable): the watchdog identity must be
+    // readable and its configured timeout must parse positive.
+    long timeoutS = 0;
+    bool timeoutOk = !timeout.empty() && sscanf(timeout.c_str(), "%ld", &timeoutS) == 1 && timeoutS > 0;
+    if (identity.empty())
     {
+        data.push_back("[FAIL] Watchdog sysfs present but identity attribute unreadable — watchdog state not confirmable");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (timeout.empty() || !timeoutOk)
+    {
+        data.push_back("[FAIL] Watchdog timeout attribute missing or non-positive");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Watchdog queried via sysfs (identity '" + identity + "', timeout " + std::to_string(timeoutS) + " s)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +153,6 @@ TestOutput WatchdogAndResetTesting::testWatchdogTimerFunctionality()
 TestOutput WatchdogAndResetTesting::testWatchdogTimeoutConfiguration()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Watchdog timeout configuration check (Pi5)");
 
@@ -156,15 +180,29 @@ TestOutput WatchdogAndResetTesting::testWatchdogTimeoutConfiguration()
     }
 
     data.push_back("Pi5 RP1 watchdog max timeout: 1048575 seconds (~12 days)");
-    data.push_back("PASS: Timeout configuration check complete.");
+
+    // Acceptance criteria (measurable): a timeout configuration source must
+    // be readable (systemd watchdog properties, watchdog.conf, or the sysfs
+    // timeout attribute). Nothing -> SKIP.
+    std::string sysfsTimeout = wdSysfsAvailable() ? wdSysfsAttr("timeout") : std::string();
+    bool anyEvidence = !sdWd.empty() || !sdReb.empty() || wdConf || procWd || !sysfsTimeout.empty();
+    if (!anyEvidence)
     {
+        data.push_back("[SKIP] No watchdog timeout configuration source readable — timeout configuration cannot be verified");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[PASS] Watchdog timeout configuration readable (" +
+                   std::string(!sysfsTimeout.empty() ? "sysfs timeout " + sysfsTimeout + " s" : wdConf ? "watchdog.conf" : "systemd watchdog properties") + ")");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -174,49 +212,61 @@ TestOutput WatchdogAndResetTesting::testWatchdogTimeoutConfiguration()
 TestOutput WatchdogAndResetTesting::testWatchdogResetGeneration()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Watchdog reset generation capability check");
     data.push_back("NOTE: Test does NOT trigger a reset — only checks capability.");
 
-    bool wdExists = (access("/dev/watchdog0", F_OK) == 0);
-    if (!wdExists) {
-        data.push_back("INFO: /dev/watchdog0 not found. Enable via dtparam=watchdog=on");
+    // HAL-041: capability flags come from the read-only sysfs `options`
+    // attribute; never open the watchdog device.
+    if (!wdSysfsAvailable()) {
+        data.push_back("INFO: watchdog sysfs not available — capability check skipped");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            _out.error_message = "watchdog sysfs not available — test skipped";
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
 
-    int fd = open("/dev/watchdog0", O_WRONLY | O_CLOEXEC);
-    if (fd >= 0) {
-        struct watchdog_info info = {};
-        if (ioctl(fd, WDIOC_GETSUPPORT, &info) == 0) {
-            bool canReset = (info.options & WDIOF_CARDRESET) != 0;
-            data.push_back("WDIOF_CARDRESET support: " + std::string(canReset ? "YES" : "no"));
-
-            bool canPretimeout = (info.options & WDIOF_PRETIMEOUT) != 0;
-            data.push_back("WDIOF_PRETIMEOUT support: " + std::string(canPretimeout ? "YES" : "no"));
-        }
-        (void)write(fd, "V", 1);
-        close(fd);
-        data.push_back("PASS: Watchdog reset capability verified.");
-    } else {
-        data.push_back("INFO: Cannot open watchdog (possibly held by system daemon).");
-    }
-
+    std::string options = wdSysfsAttr("options");
+    if (options.empty())
     {
+        data.push_back("[SKIP] Watchdog options attribute unreadable — reset-generation capability cannot be measured");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    unsigned long long flags = 0;
+    if (sscanf(options.c_str(), "0x%llx", &flags) == 1 ||
+        sscanf(options.c_str(), "%llx", &flags) == 1)
+    {
+        // WDIOF_CARDRESET only marks a *previous* watchdog reset; reset
+        // generation itself is a universal watchdog capability — the
+        // measurable criterion is the readable capability bitmap.
+        data.push_back("WDIOF_CARDRESET support: " +
+                       std::string((flags & WDIOF_CARDRESET) ? "YES" : "no"));
+        data.push_back("WDIOF_PRETIMEOUT support: " +
+                       std::string((flags & WDIOF_PRETIMEOUT) ? "YES" : "no"));
+        data.push_back("[PASS] Watchdog reset capability verified via sysfs (options bitmap 0x" +
+                       options + ")");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[SKIP] Watchdog options attribute unparseable: '" + options + "'");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -225,48 +275,65 @@ TestOutput WatchdogAndResetTesting::testWatchdogResetGeneration()
 TestOutput WatchdogAndResetTesting::testWatchdogInterruptGeneration()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Watchdog interrupt/pretimeout check (Pi5 RP1 watchdog)");
 
-    bool wdExists = (access("/dev/watchdog0", F_OK) == 0);
-    if (!wdExists) {
-        data.push_back("INFO: /dev/watchdog0 not present.");
+    // HAL-041: read-only sysfs access; never open /dev/watchdog0.
+    if (!wdSysfsAvailable()) {
+        data.push_back("INFO: watchdog sysfs not present.");
         {
             TestOutput _out;
-            _out.status = hal::Status::PASS;
+            _out.status = hal::Status::SKIPPED;
             _out.severity = hal::Severity::INFO;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            _out.error_message = "watchdog sysfs not available — test skipped";
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
 
-    int fd = open("/dev/watchdog0", O_WRONLY | O_CLOEXEC);
-    if (fd >= 0) {
-        struct watchdog_info info = {};
-        if (ioctl(fd, WDIOC_GETSUPPORT, &info) == 0) {
-            bool canIrq = (info.options & WDIOF_PRETIMEOUT) != 0;
+    std::string options = wdSysfsAttr("options");
+    if (!options.empty()) {
+        unsigned long long flags = 0;
+        if (sscanf(options.c_str(), "0x%llx", &flags) == 1 ||
+            sscanf(options.c_str(), "%llx", &flags) == 1) {
+            bool canIrq = (flags & WDIOF_PRETIMEOUT) != 0;
             data.push_back("Pretimeout interrupt: " + std::string(canIrq ? "supported" : "not supported"));
         }
-
-        int pretimeout = 0;
-        if (ioctl(fd, WDIOC_GETPRETIMEOUT, &pretimeout) == 0)
-            data.push_back("Pretimeout: " + std::to_string(pretimeout) + " s");
-
-        (void)write(fd, "V", 1);
-        close(fd);
     }
 
-    data.push_back("PASS: Interrupt/pretimeout check complete.");
+    std::string pretimeout = wdSysfsAttr("pretimeout");
+    if (!pretimeout.empty())
+        data.push_back("Pretimeout: " + pretimeout + " s");
+
+    // Acceptance criteria (measurable): pretimeout interrupt support must be
+    // reported in the capability bitmap. Not supported -> SKIP (RP1 watchdog
+    // without pretimeout — N/A, not a PASS).
+    bool canIrq = false;
+    unsigned long long flags = 0;
+    if (!options.empty() &&
+        (sscanf(options.c_str(), "0x%llx", &flags) == 1 ||
+         sscanf(options.c_str(), "%llx", &flags) == 1))
     {
+        canIrq = (flags & WDIOF_PRETIMEOUT) != 0;
+        data.push_back(std::string("Pretimeout interrupt: ") +
+                       (canIrq ? "supported" : "not supported"));
+    }
+    if (canIrq)
+    {
+        data.push_back("[PASS] Watchdog interrupt/pretimeout supported via sysfs");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] Pretimeout interrupts not supported by this watchdog (WDIOF_PRETIMEOUT absent) — interrupt generation not applicable");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -275,7 +342,6 @@ TestOutput WatchdogAndResetTesting::testWatchdogInterruptGeneration()
 TestOutput WatchdogAndResetTesting::testPoweronReset()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Power-on reset check (Pi5)");
 
@@ -303,15 +369,46 @@ TestOutput WatchdogAndResetTesting::testPoweronReset()
         }
     }
 
-    data.push_back("PASS: Power-on reset check complete.");
+    // Acceptance criteria (measurable): firmware power-on flags must be
+    // readable. Clean flags -> PASS (clean power-on); flags set -> FAIL.
+    if (throttled.empty())
     {
+        data.push_back("[SKIP] Firmware power flags unavailable (vcgencmd absent) — power-on reset state cannot be verified");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    unsigned long flags = 0;
+    if (sscanf(throttled.c_str(), "throttled=0x%lx", &flags) == 1)
+    {
+        if (flags == 0)
+        {
+            data.push_back("[PASS] Clean power-on: no throttle/under-voltage events recorded by firmware");
+            TestOutput _out;
+            _out.status = hal::Status::PASS;
+            _out.severity = hal::Severity::INFO;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+        if (flags & 0x10000)
+        {
+            data.push_back("[FAIL] Power-on with a recorded under-voltage event (brownout at boot)");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+    }
+
+    data.push_back("[PASS] Power-on reset state recorded with no under-voltage event");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -320,7 +417,6 @@ TestOutput WatchdogAndResetTesting::testPoweronReset()
 TestOutput WatchdogAndResetTesting::testHardwareResetButton()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Hardware reset button check (Pi5)");
     data.push_back("Pi5 has a dedicated reset button (J2 header) wired to RP1.");
@@ -335,15 +431,25 @@ TestOutput WatchdogAndResetTesting::testHardwareResetButton()
     if (!gpioKeys.empty()) data.push_back("dmesg: " + gpioKeys.substr(0, 200));
 
     data.push_back("Hardware reset: pull J2 pin 1 (RUN) low to trigger immediate reset.");
-    data.push_back("PASS: Reset button check complete (cannot activate without physical access).");
+
+    // Acceptance criteria (measurable): the button's driver binding (gpio-keys
+    // / reset-button kernel messages) must be observable. None -> SKIP.
+    if (!gpioKeys.empty())
     {
+        data.push_back("[PASS] Reset-button driver binding observed (gpio-keys/reset-button kernel messages)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No reset-button driver binding observable — the physical button cannot be exercised from software (requires physical access)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -352,7 +458,6 @@ TestOutput WatchdogAndResetTesting::testHardwareResetButton()
 TestOutput WatchdogAndResetTesting::testSoftwareReset()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Software reset capability check (Pi5)");
     data.push_back("NOTE: Test does NOT trigger reset.");
@@ -370,15 +475,27 @@ TestOutput WatchdogAndResetTesting::testSoftwareReset()
     data.push_back("/proc/sys/kernel/sysrq: " + sysrq);
 
     data.push_back("Software reset methods: systemctl reboot, /proc/sysrq-trigger (b), reboot(2) syscall");
-    data.push_back("PASS: Software reset capability confirmed.");
+
+    // Acceptance criteria (measurable): at least one reset path must exist
+    // (reboot binary, systemctl, or sysrq enabled).
+    bool sysrqEnabled = !sysrq.empty() && sysrq != "0";
+    if (rebootCmd || systemctl || sysrqEnabled)
     {
+        data.push_back("[PASS] Software reset capability confirmed (" +
+                       std::string(rebootCmd ? "reboot binary" : systemctl ? "systemctl" : "sysrq") + ")");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[SKIP] No software-reset path available (no reboot/systemctl binaries, sysrq disabled) — capability cannot be verified");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -388,40 +505,71 @@ TestOutput WatchdogAndResetTesting::testSoftwareReset()
 TestOutput WatchdogAndResetTesting::testWatchdogReset()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Watchdog reset history check (Pi5)");
 
-    bool wdExists = (access("/dev/watchdog0", F_OK) == 0);
-    if (wdExists) {
-        int fd = open("/dev/watchdog0", O_WRONLY | O_CLOEXEC);
-        if (fd >= 0) {
-            int bootStatus = 0;
-            if (ioctl(fd, WDIOC_GETBOOTSTATUS, &bootStatus) == 0) {
-                data.push_back("WDIOC_GETBOOTSTATUS: " + std::to_string(bootStatus));
-                if (bootStatus & WDIOF_CARDRESET)
+    // HAL-041: boot status via the read-only sysfs `bootstatus` attribute;
+    // never open /dev/watchdog0 (arms the timer, races the watchdog daemon).
+    if (wdSysfsAvailable()) {
+        std::string bootstat = wdSysfsAttr("bootstatus");
+        if (!bootstat.empty()) {
+            data.push_back("bootstatus (sysfs): " + bootstat);
+            unsigned long long bs = 0;
+            if (sscanf(bootstat.c_str(), "%llu", &bs) == 1) {
+                if (bs & WDIOF_CARDRESET)
                     data.push_back("  -> System was reset by watchdog timer.");
                 else
                     data.push_back("  -> No watchdog reset on last boot.");
             }
-            (void)write(fd, "V", 1);
-            close(fd);
+        } else {
+            data.push_back("INFO: bootstatus attribute not readable");
         }
+    } else {
+        data.push_back("INFO: watchdog sysfs not available — device boot status unavailable");
     }
 
     // Check dmesg for watchdog reset message
     std::string wdMsg = wdRunCmd("dmesg 2>/dev/null | grep -i watchdog | tail -5");
     if (!wdMsg.empty()) data.push_back("dmesg watchdog: " + wdMsg.substr(0, 300));
 
-    data.push_back("PASS: Watchdog reset history check complete.");
+    // Acceptance criteria (measurable): the boot-status register must be
+    // readable. A recorded watchdog reset is reported as the measured state.
+    if (!wdSysfsAvailable())
     {
+        data.push_back("[SKIP] Watchdog sysfs not available — watchdog reset history cannot be read");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+    std::string bootstat = wdSysfsAttr("bootstatus");
+    if (bootstat.empty())
+    {
+        data.push_back("[SKIP] bootstatus attribute unreadable — watchdog reset history cannot be read");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    unsigned long long bs = 0;
+    if (sscanf(bootstat.c_str(), "%llu", &bs) == 1 && (bs & WDIOF_CARDRESET))
+    {
+        data.push_back("[PASS] Watchdog reset history readable — previous boot WAS reset by the watchdog timer");
+        TestOutput _out;
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[PASS] Watchdog reset history readable — previous boot was NOT reset by the watchdog timer");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -430,7 +578,6 @@ TestOutput WatchdogAndResetTesting::testWatchdogReset()
 TestOutput WatchdogAndResetTesting::testThermalReset()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Thermal reset check (Pi5)");
     data.push_back("BCM2712 soft thermal shutdown at " +
@@ -461,15 +608,39 @@ TestOutput WatchdogAndResetTesting::testThermalReset()
         }
     }
 
-    data.push_back("PASS: Thermal reset history check complete.");
+    // Acceptance criteria (measurable): thermal-limit history must be
+    // observable via firmware flags; a live over-temperature reading is a
+    // FAIL.
+    if (tempMilliC > 0)
     {
+        double tempC = tempMilliC / 1000.0;
+        if (tempC >= RPI5_THERMAL_SHUTDOWN_C)
+        {
+            data.push_back("[FAIL] SoC temperature at/above the soft shutdown threshold (" +
+                           std::to_string(tempC) + " °C) — thermal reset imminent");
+            TestOutput _out;
+            _out.status = hal::Status::FAIL;
+            _out.severity = hal::Severity::ERROR;
+            StampDiagnostics(_out, data);
+            return _out;
+        }
+    }
+    if (tempMilliC <= 0 && throttled.empty())
+    {
+        data.push_back("[SKIP] Thermal state not observable (temperature unreadable, throttle flags unavailable)");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[PASS] Thermal reset history check complete (SoC within thermal limits)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 // ---------------------------------------------------------------------------
@@ -478,7 +649,6 @@ TestOutput WatchdogAndResetTesting::testThermalReset()
 TestOutput WatchdogAndResetTesting::testResetReasonLogging()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("Reset reason logging check (Pi5)");
 
@@ -507,15 +677,26 @@ TestOutput WatchdogAndResetTesting::testResetReasonLogging()
         }
     }
 
-    data.push_back("PASS: Reset reason logging check complete.");
+    // Acceptance criteria (measurable): at least one reset-reason source must
+    // be readable (journal, wtmp, or firmware flags).
+    bool anySource = !journal.empty() || !reason.empty() || !throttled.empty();
+    if (!anySource)
     {
+        data.push_back("[SKIP] No reset-reason source readable (journal, wtmp and firmware flags all unavailable) — reset reason logging cannot be verified");
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[PASS] Reset reason logging verified (" +
+                   std::string(!throttled.empty() ? "firmware flags" : !journal.empty() ? "journal" : "wtmp") + " source readable)");
+    TestOutput _out;
+    _out.status = hal::Status::PASS;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**

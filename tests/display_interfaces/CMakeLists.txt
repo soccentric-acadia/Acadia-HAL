@@ -4,3 +4,5 @@ target_include_directories(test_display_interfaces PRIVATE ${CMAKE_SOURCE_DIR}/s
 add_test(NAME test_display_interfaces COMMAND test_display_interfaces)
 set_tests_properties(test_display_interfaces PROPERTIES TIMEOUT 300)
 install(TARGETS test_display_interfaces RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_display_interfaces PROPERTIES LABELS "optional-hardware")

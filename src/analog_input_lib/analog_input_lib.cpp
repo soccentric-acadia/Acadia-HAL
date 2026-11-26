@@ -1,104 +1,183 @@
 /**
  * @file analog_input_lib.cpp
- * @brief AnalogInputTesting implementation — IIO sysfs (/sys/bus/iio/devices/iio:device*, voltage channels)
- * @note HARDWARE-UNVERIFIED — on-target execution required to validate.
- */
-#include "analog_input_lib.h"
+ * @brief Implementation of AnalogInputTesting for Raspberry Pi 5.
+ * @details Checks IIO ADC devices (/sys/bus/iio/devices/iio:device*), reads raw
+ *          channel values, and reports the number of enabled channels. Requires
+ *          an external ADC (e.g. MCP3008 via SPI) - Pi5 has no onboard ADC.
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
 
-#include <chrono>
+#include "analog_input_lib.h"
+#include "../platform_rpi5.h"
+#include <dirent.h>
 #include <fstream>
-#include <sstream>
 #include <string>
 #include <vector>
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-[[maybe_unused]] static std::string readSysfs(const std::string& path) {
+static std::string readSysfs(const std::string& path)
+{
     std::ifstream f(path);
-    std::string line;
-    if (f.is_open()) std::getline(f, line);
-    return line;
+    if (!f.is_open())
+        return {};
+    std::string val;
+    std::getline(f, val);
+    while (!val.empty() && (val.back() == '\n' || val.back() == '\r' || val.back() == ' '))
+        val.pop_back();
+    return val;
 }
 
-// ── constructor / destructor ─────────────────────────────────────────────────
-AnalogInputTesting::AnalogInputTesting() = default;
-AnalogInputTesting::~AnalogInputTesting() = default;
-
-// ── TestBase interface ────────────────────────────────────────────────────────
-std::vector<std::string> AnalogInputTesting::getAvailableTests() {
-    return {"testPresence", "testChannelRead", "testResolution", "testSampleRate"};
-}
-
-std::vector<TestResult> AnalogInputTesting::runAllTests() {
-    auto names = getAvailableTests();
-    return runSelectedTests(names);
-}
-
-TestResult AnalogInputTesting::runSingleTest(const std::string& testName) {
-    auto names = getAvailableTests();
-    for (const auto& n : names) {
-        if (n == testName) return runSelectedTests({testName})[0];
+static std::vector<std::string> listDir(const std::string& base)
+{
+    std::vector<std::string> out;
+    DIR* dir = opendir(base.c_str());
+    if (!dir)
+        return out;
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string n = entry->d_name;
+        if (n == "." || n == "..")
+            continue;
+        out.push_back(n);
     }
-    TestResult r;
-    r.module_id        = "analog_input";
-    r.test_id          = testName;
-    r.name             = testName;
-    r.timestamp        = std::chrono::system_clock::now();
-    r.output.status    = Status::ERROR;
-    r.output.severity  = Severity::ERROR;
-    r.output.error_message = "unknown test: " + testName;
-    return r;
-}
-
-// HARDWARE-UNVERIFIED: requires real analog_input hardware on target.
-TestOutput AnalogInputTesting::testPresence() {
-    TestOutput out;
-    // Detect IIO voltage device in sysfs
-    // Linux interface: IIO sysfs (/sys/bus/iio/devices/iio:device*, voltage channels)
-    // TODO: implement against IIO sysfs (/sys/bus/iio/devices/iio:device*, voltage channels)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["device_found"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testPresence: not yet implemented — HARDWARE-UNVERIFIED";
+    closedir(dir);
     return out;
 }
 
-// HARDWARE-UNVERIFIED: requires real analog_input hardware on target.
-TestOutput AnalogInputTesting::testChannelRead() {
-    TestOutput out;
-    // Read raw voltage from channel 0
-    // Linux interface: IIO sysfs (/sys/bus/iio/devices/iio:device*, voltage channels)
-    // TODO: implement against IIO sysfs (/sys/bus/iio/devices/iio:device*, voltage channels)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["voltage_mv"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testChannelRead: not yet implemented — HARDWARE-UNVERIFIED";
-    return out;
+AnalogInputTesting::AnalogInputTesting() {}
+AnalogInputTesting::~AnalogInputTesting() {}
+
+TestOutput AnalogInputTesting::testAdcDevicePresent()
+{
+    std::vector<std::string> data;
+    data.push_back("=== ADC Device Presence ===");
+    bool found = false;
+    for (const auto& d : listDir(RPI5_IIO_SYSFS)) {
+        if (d.rfind("iio:device", 0) == 0) {
+            std::string name = readSysfs(std::string(RPI5_IIO_SYSFS) + "/" + d + "/name");
+            data.push_back("[PASS] IIO device " + d + " name=" + name);
+            found = true;
+        }
+    }
+    if (!found) {
+        data.push_back("[FAIL] No IIO ADC device found");
+        data.push_back("[INFO] Pi5 has no onboard ADC; connect MCP3008/ADS1115 via SPI/I2C");
+    }
+    {
+        TestOutput _out;
+        _out.status = found ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = found ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 }
 
-// HARDWARE-UNVERIFIED: requires real analog_input hardware on target.
-TestOutput AnalogInputTesting::testResolution() {
-    TestOutput out;
-    // Verify ADC bit resolution from sysfs
-    // Linux interface: IIO sysfs (/sys/bus/iio/devices/iio:device*, voltage channels)
-    // TODO: implement against IIO sysfs (/sys/bus/iio/devices/iio:device*, voltage channels)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["bits"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testResolution: not yet implemented — HARDWARE-UNVERIFIED";
-    return out;
+TestOutput AnalogInputTesting::testAdcChannelRead()
+{
+    std::vector<std::string> data;
+    data.push_back("=== ADC Channel Read ===");
+    bool read = false;
+    for (const auto& d : listDir(RPI5_IIO_SYSFS)) {
+        if (d.rfind("iio:device", 0) != 0)
+            continue;
+        // scan for in_voltage*_raw or in_accel*_raw files
+        for (const auto& f : listDir(std::string(RPI5_IIO_SYSFS) + "/" + d)) {
+            if (f.rfind("in_voltage", 0) == 0 && f.find("_raw") != std::string::npos) {
+                std::string v = readSysfs(std::string(RPI5_IIO_SYSFS) + "/" + d + "/" + f);
+                if (!v.empty()) {
+                    data.push_back("[PASS] " + f + "=" + v);
+                    read = true;
+                }
+            }
+        }
+    }
+    if (!read)
+        data.push_back("[INFO] No ADC channel raw values readable (no ADC attached)");
+    {
+        TestOutput _out;
+        _out.status = read ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = read ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 }
 
-// HARDWARE-UNVERIFIED: requires real analog_input hardware on target.
-TestOutput AnalogInputTesting::testSampleRate() {
-    TestOutput out;
-    // Verify configured sample rate
-    // Linux interface: IIO sysfs (/sys/bus/iio/devices/iio:device*, voltage channels)
-    // TODO: implement against IIO sysfs (/sys/bus/iio/devices/iio:device*, voltage channels)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["sample_rate_hz"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testSampleRate: not yet implemented — HARDWARE-UNVERIFIED";
-    return out;
+TestOutput AnalogInputTesting::testAdcResolution()
+{
+    std::vector<std::string> data;
+    data.push_back("=== ADC Resolution ===");
+    bool read = false;
+    for (const auto& d : listDir(RPI5_IIO_SYSFS)) {
+        if (d.rfind("iio:device", 0) != 0)
+            continue;
+        std::string bits = readSysfs(std::string(RPI5_IIO_SYSFS) + "/" + d + "/in_voltage_scale");
+        if (bits.empty())
+            bits = readSysfs(std::string(RPI5_IIO_SYSFS) + "/" + d + "/in_voltage_resolution");
+        if (!bits.empty()) {
+            data.push_back("[INFO] " + d + " scale/resolution=" + bits);
+            read = true;
+        }
+    }
+    if (!read)
+        data.push_back("[INFO] ADC resolution not exposed");
+    {
+        TestOutput _out;
+        _out.status = read ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = read ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 }
 
+std::vector<TestResult> AnalogInputTesting::runAllTests()
+{
+    std::vector<TestResult> results;
+    const std::vector<std::pair<std::string, TestOutput (AnalogInputTesting::*)()>> tests = {
+        {"testAdcDevicePresent", &AnalogInputTesting::testAdcDevicePresent},
+        {"testAdcChannelRead", &AnalogInputTesting::testAdcChannelRead},
+        {"testAdcResolution", &AnalogInputTesting::testAdcResolution},
+    };
+    for (const auto& t : tests) {
+        auto start = std::chrono::high_resolution_clock::now();
+        TestOutput out = (this->*t.second)();
+        auto end = std::chrono::high_resolution_clock::now();
+        TestResult _tr;
+        _tr.name = t.first;
+        _tr.test_id = t.first;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        _tr.output = out;
+        results.push_back(std::move(_tr));
+    }
+    return results;
+}
 
+std::vector<std::string> AnalogInputTesting::getAvailableTests()
+{
+    return { "testAdcDevicePresent", "testAdcChannelRead", "testAdcResolution" };
+}
+
+TestResult AnalogInputTesting::runSingleTest(const std::string& testName)
+{
+    auto start = std::chrono::high_resolution_clock::now();
+    TestOutput out;
+    out.status = hal::Status::ERROR;
+    out.severity = hal::Severity::ERROR;
+    out.error_message = "test not dispatched";
+    bool known = true;
+    if (testName == "testAdcDevicePresent") out = testAdcDevicePresent();
+    else if (testName == "testAdcChannelRead") out = testAdcChannelRead();
+    else if (testName == "testAdcResolution") out = testAdcResolution();
+    else known = false;
+    auto end = std::chrono::high_resolution_clock::now();
+    TestResult _tr;
+    _tr.name = known ? testName : testName + " (UNKNOWN)";
+    _tr.test_id = testName;
+    _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+    if (!known) {
+        _tr.output.status = hal::Status::ERROR;
+        _tr.output.severity = hal::Severity::ERROR;
+        _tr.output.error_message = "Unknown test name: " + testName;
+    } else {
+        _tr.output = out;
+    }
+    return _tr;
+}

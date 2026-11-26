@@ -4,3 +4,5 @@ target_include_directories(test_debug_and_development_interfaces PRIVATE ${CMAKE
 add_test(NAME test_debug_and_development_interfaces COMMAND test_debug_and_development_interfaces)
 set_tests_properties(test_debug_and_development_interfaces PROPERTIES TIMEOUT 300)
 install(TARGETS test_debug_and_development_interfaces RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_debug_and_development_interfaces PROPERTIES LABELS "host")

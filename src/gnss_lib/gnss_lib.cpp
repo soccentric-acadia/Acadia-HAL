@@ -114,8 +114,7 @@ TestOutput GnssTesting::testGpsSignalReception()
         const bool _ok = portFound || gpsdState == "active";
         _out.status = _ok ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = _ok ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -145,14 +144,37 @@ TestOutput GnssTesting::testGlonassSupport()
         data.push_back("[INFO] UBX MON-GNSS:\n" + ubxInfo);
 
     data.push_back("[INFO] Multi-constellation GNSS requires u-blox M10 or equivalent module");
+
+    // Acceptance criteria (measurable): GLONASS support is proven when a
+    // GLONASS ($GLGSV) or combined ($GNGSV) sentence is received from the
+    // module. No GNSS data at all -> SKIPPED (module absent); GPS-only
+    // traffic -> FAIL.
+    bool anyGnss = !gnssRunCmd("timeout 2 gpspipe -r 2>/dev/null | grep -m1 '^\\$G.GSV\\|^\\$GPRMC'").empty();
+    if (!glgsv.empty())
     {
+        data.push_back("[PASS] GLONASS constellation tracked (GLGSV/GNGSV sentence received)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (!anyGnss)
+    {
+        data.push_back("[SKIP] No GNSS receiver output observable — GLONASS support cannot be verified without a module");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] GNSS data flows but no GLONASS sentence ($GLGSV/$GNGSV) within the observation window — module is not tracking GLONASS");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -165,19 +187,41 @@ TestOutput GnssTesting::testGalileoSupport()
 
     std::string gagsv = gnssRunCmd("timeout 2 gpspipe -r 2>/dev/null | grep -m1 '^\\$GAGSV\\|^\\$GNGSV'");
     if (!gagsv.empty())
-        data.push_back("[PASS] Galileo GSV sentence: " + gagsv.substr(0, 80));
+        data.push_back("Galileo GSV sentence: " + gagsv.substr(0, 80));
     else
         data.push_back("[INFO] No Galileo sentence (module absent or Galileo not enabled)");
 
     data.push_back("[INFO] Galileo support requires u-blox M10 / ZED-F9P or equivalent");
+
+    // Acceptance criteria (measurable): Galileo support is proven when a
+    // Galileo ($GAGSV) or combined ($GNGSV) sentence is received. No GNSS
+    // data at all -> SKIPPED (module absent); GPS-only data -> FAIL.
+    bool anyGnss = !gnssRunCmd("timeout 2 gpspipe -r 2>/dev/null | grep -m1 '^\\$G.GSV\\|^\\$GPRMC'").empty();
+    if (!gagsv.empty())
     {
+        data.push_back("[PASS] Galileo constellation tracked (GAGSV/GNGSV sentence received)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (!anyGnss)
+    {
+        data.push_back("[SKIP] No GNSS receiver output observable — Galileo support cannot be verified without a module");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] GNSS data flows but no Galileo sentence ($GAGSV/$GNGSV) within the observation window");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -190,19 +234,41 @@ TestOutput GnssTesting::testBeidouSupport()
 
     std::string gbgsv = gnssRunCmd("timeout 2 gpspipe -r 2>/dev/null | grep -m1 '^\\$GBGSV\\|^\\$GNGSV'");
     if (!gbgsv.empty())
-        data.push_back("[PASS] BeiDou GSV sentence: " + gbgsv.substr(0, 80));
+        data.push_back("BeiDou GSV sentence: " + gbgsv.substr(0, 80));
     else
         data.push_back("[INFO] No BeiDou sentence");
 
     data.push_back("[INFO] BeiDou support requires multi-constellation module");
+
+    // Acceptance criteria (measurable): BeiDou support is proven when a
+    // BeiDou ($GBGSV) or combined ($GNGSV) sentence is received. No GNSS
+    // data at all -> SKIPPED (module absent); GPS-only data -> FAIL.
+    bool anyGnss = !gnssRunCmd("timeout 2 gpspipe -r 2>/dev/null | grep -m1 '^\\$G.GSV\\|^\\$GPRMC'").empty();
+    if (!gbgsv.empty())
     {
+        data.push_back("[PASS] BeiDou constellation tracked (GBGSV/GNGSV sentence received)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
+    if (!anyGnss)
+    {
+        data.push_back("[SKIP] No GNSS receiver output observable — BeiDou support cannot be verified without a module");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] GNSS data flows but no BeiDou sentence ($GBGSV/$GNGSV) within the observation window");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -226,28 +292,40 @@ TestOutput GnssTesting::testPositionAccuracy()
         {
             if (idx == 8 && !token.empty())
             {
-                data.push_back("[INFO] HDOP: " + token);
-                double hdop = std::stod(token);
-                data.push_back(hdop < 2.0 ? "[PASS] HDOP < 2.0 (good accuracy)"
-                                           : "[WARN] HDOP >= 2.0 (poor geometry)");
+                char* end = nullptr;
+                double hdop = strtod(token.c_str(), &end);
+                if (end != token.c_str() && hdop > 0.0 && hdop < 100.0)
+                {
+                    data.push_back("[INFO] HDOP: " + token);
+                    data.push_back(hdop < 2.0 ? "[PASS] HDOP < 2.0 (good accuracy)"
+                                              : "[FAIL] HDOP >= 2.0 (poor satellite geometry)");
+                    if (hdop >= 2.0)
+                    {
+                        TestOutput _out;
+                        _out.status = hal::Status::FAIL;
+                        _out.severity = hal::Severity::ERROR;
+                        StampDiagnostics(_out, data);
+                        return _out;
+                    }
+                    data.push_back("[INFO] Typical L1 single-band accuracy: 2–5 m CEP; RTK: <10 cm");
+                    TestOutput _out;
+                    _out.status = hal::Status::PASS;
+                    _out.severity = hal::Severity::INFO;
+                    StampDiagnostics(_out, data);
+                    return _out;
+                }
+                data.push_back("[INFO] HDOP field unparseable: '" + token + "'");
             }
             idx++;
         }
     }
-    else
-    {
-        data.push_back("[INFO] No GGA data — cannot assess position accuracy");
-    }
 
-    data.push_back("[INFO] Typical L1 single-band accuracy: 2–5 m CEP; RTK: <10 cm");
-    {
-        TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
-        return _out;
-    }
+    data.push_back("[SKIP] No GGA data within the observation window — position accuracy cannot be assessed (GNSS module absent or no fix)");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -259,26 +337,41 @@ TestOutput GnssTesting::testTimetofirstfix()
     data.push_back("=== GNSS Time To First Fix (Pi5) ===");
     data.push_back("[INFO] TTFF measurement requires tracking fix acquisition from cold/warm start");
 
-    // Check gpsd fix status via gpspipe JSON
+    // Acceptance criteria (measurable): a 2D/3D fix (gpsd TPV mode 2/3) must
+    // be observed within the observation window. gpsd absent or silent ->
+    // SKIPPED; receiver data flowing but unfixed -> FAIL.
+    bool gpsdInstalled = !gnssRunCmd("which gpspipe 2>/dev/null").empty();
+
     std::string tpv = gnssRunCmd("timeout 3 gpspipe -w 2>/dev/null | grep -m1 '\"mode\":[23]'");
     if (!tpv.empty())
     {
-        data.push_back("[PASS] GNSS fix detected: " + tpv.substr(0, 100));
-    }
-    else
-    {
-        data.push_back("[INFO] No 2D/3D fix within timeout (cold start or no signal)");
-        data.push_back("[INFO] Cold TTFF: ~30–60 s; warm: ~5–15 s; hot: ~1–3 s");
-    }
-
-    {
+        data.push_back("GNSS fix detected: " + tpv.substr(0, 100));
+        data.push_back("[PASS] 2D/3D fix observed within the observation window (hot-fix path verified)");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    bool dataFlows = !gnssRunCmd("timeout 3 gpspipe -r 2>/dev/null | head -1").empty();
+    if (!gpsdInstalled && !dataFlows)
+    {
+        data.push_back("[SKIP] gpsd/gpspipe not available and no receiver data — TTFF cannot be measured without a GNSS module");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    data.push_back("[FAIL] Receiver data flows but no 2D/3D fix within the observation window");
+    data.push_back("[INFO] Cold TTFF: ~30–60 s; warm: ~5–15 s; hot: ~1–3 s");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -301,18 +394,30 @@ TestOutput GnssTesting::testGnssAntennaConnection()
         {
             if (idx == 3 && !token.empty())
             {
-                int svCount = std::stoi(token);
-                data.push_back("[INFO] Satellites in view: " + std::to_string(svCount));
-                data.push_back(svCount >= 4 ? "[PASS] Antenna receiving signal from " +
-                                                  std::to_string(svCount) + " satellites"
-                                            : "[WARN] < 4 satellites in view — check antenna");
+                char* end = nullptr;
+                long svCount = strtol(token.c_str(), &end, 10);
+                if (end != token.c_str() && svCount >= 0 && svCount <= 100)
+                {
+                    data.push_back("[INFO] Satellites in view: " + std::to_string(svCount));
+                    if (svCount >= 4)
+                    {
+                        data.push_back("[PASS] Antenna receiving signal from " + std::to_string(svCount) + " satellites");
+                        TestOutput _out;
+                        _out.status = hal::Status::PASS;
+                        _out.severity = hal::Severity::INFO;
+                        StampDiagnostics(_out, data);
+                        return _out;
+                    }
+                    data.push_back("[FAIL] Only " + std::to_string(svCount) + " satellite(s) in view — antenna disconnected, blocked, or failed");
+                    TestOutput _out;
+                    _out.status = hal::Status::FAIL;
+                    _out.severity = hal::Severity::ERROR;
+                    StampDiagnostics(_out, data);
+                    return _out;
+                }
             }
             idx++;
         }
-    }
-    else
-    {
-        data.push_back("[INFO] No GSV data — module absent or antenna disconnected");
     }
 
     // Check for antenna-short alarm in u-blox UBX
@@ -320,14 +425,12 @@ TestOutput GnssTesting::testGnssAntennaConnection()
     if (!ubxMon.empty())
         data.push_back("[INFO] UBX antenna status: " + ubxMon);
 
-    {
-        TestOutput _out;
-        _out.status = hal::Status::PASS;
-        _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
-        return _out;
-    }
+    data.push_back("[SKIP] No GSV data within the observation window — GNSS module absent or antenna path dead; antenna connection cannot be measured");
+    TestOutput _out;
+    _out.status = hal::Status::SKIPPED;
+    _out.severity = hal::Severity::INFO;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -356,17 +459,41 @@ TestOutput GnssTesting::testAgpsFunctionality()
 
     // Verify internet connectivity (for AGPS download)
     std::string netCheck = gnssRunCmd("ping -c 1 -W 2 8.8.8.8 2>/dev/null | grep -c '1 received'");
-    data.push_back(netCheck == "1" ? "[PASS] Internet reachable (AGPS download possible)"
-                                   : "[INFO] Internet not reachable — offline AGPS only");
+    bool netOk = (netCheck == "1");
+    data.push_back(netOk ? "[INFO] Internet reachable (AGPS download possible)"
+                         : "[INFO] Internet not reachable — offline AGPS only");
 
+    // Acceptance criteria (measurable): an assistance-data path must exist —
+    // either a correction client (ntripclient), an offline assistance tool
+    // (ubxload), or internet reachability for online assistance. gpsd absent
+    // entirely -> SKIPPED; none of the above -> FAIL.
+    if (gpsdVer.empty())
     {
+        data.push_back("[SKIP] gpsd not installed — no GNSS stack to which assistance data could be supplied");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    if (!ntripcli.empty() || !assistNow.empty())
+    {
+        data.push_back("[PASS] Assistance-data tooling present (" +
+                       std::string(!ntripcli.empty() ? "ntripclient" : "ubxload") +
+                       (!netOk ? ", offline mode" : ", internet reachable") + ")");
         TestOutput _out;
         _out.status = hal::Status::PASS;
         _out.severity = hal::Severity::INFO;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
+
+    data.push_back("[FAIL] gpsd installed but no AGPS/assistance-data path available (no ntripclient/ubxload and no internet)");
+    TestOutput _out;
+    _out.status = hal::Status::FAIL;
+    _out.severity = hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**

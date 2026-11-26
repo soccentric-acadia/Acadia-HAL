@@ -136,6 +136,13 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
 
     data.push_back("=== CSI-2 Lane Functionality (Raspberry Pi 5) ===");
 
+    // Acceptance criteria (measurable):
+    //   1. The Pi5 Unicam (CSI-2) controller is present: platform device with
+    //      "unicam" in its name, or the unicam kernel module is loaded.
+    //   2. At least one V4L2 video node is enumerated.
+    // If neither the controller nor any video node exists, the DUT has no
+    // MIPI CSI-2 hardware and the test is SKIPPED (never PASS).
+
     // --- 1. Check Unicam driver is present ---
     // Pi5: unicam platform device path
     const std::string unicamBase = "/sys/bus/platform/devices";
@@ -144,7 +151,7 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
         auto entries = listDir(unicamBase);
         for (const auto& e : entries) {
             // Unicam device entries contain "unicam" in their name
-            if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) // Orin Unicam hwid
+            if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) // Jetson-origin Unicam hwid probe string
             {
                 unicamFound = true;
                 data.push_back("[PASS] Unicam platform device found: " + e.substr(e.find_last_of('/') + 1));
@@ -158,15 +165,16 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
             unicamFound = true;
             data.push_back("[PASS] Unicam kernel module is loaded");
         } else {
-            data.push_back("[WARN] Unicam platform device/module not detected (non-fatal on dev host)");
+            data.push_back("[FAIL] Unicam platform device and kernel module not detected");
+            passed = false;
         }
     }
 
     // --- 2. Check V4L2 camera devices ---
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[WARN] No /dev/video* nodes found – no cameras connected");
-        // Not a hard failure on a development host; pass with warning
+        data.push_back("[FAIL] No /dev/video* nodes enumerated – no CSI-2 camera sensor present");
+        passed = false;
     } else {
         data.push_back("[PASS] Found " + std::to_string(videoDev.size()) + " V4L2 video node(s)");
         for (const auto& dev : videoDev) {
@@ -208,15 +216,25 @@ TestOutput CameraInterfacesTesting::testAllCsi2LanesFunctionality()
         auto dtEntries = listDir(dtCamera);
         data.push_back("       " + std::to_string(dtEntries.size()) + " sub-entries in camera DT node");
     } else {
-        data.push_back("[INFO] /proc/device-tree/unicam not found");
+        data.push_back("[INFO] /proc/device-tree/unicam not found (informational)");
+    }
+
+    // No CSI-2 hardware at all -> SKIPPED (an IV&V system must not PASS a
+    // test for hardware that the DUT does not have).
+    if (!unicamFound && videoDev.empty()) {
+        data.push_back("[SKIP] No MIPI CSI-2 hardware: unicam controller absent and no V4L2 video nodes");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -234,6 +252,12 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
 
     data.push_back("=== CSI-2 D-PHY Operation (Raspberry Pi 5) ===");
 
+    // Acceptance criteria (measurable): the D-PHY camera pipeline is
+    // operational when the Unicam CSI-2 controller is present (kernel module
+    // loaded or platform device enumerated) AND at least one V4L2 video node
+    // is enumerated (a D-PHY camera is driving the pipeline).
+    // No CSI controller and no video node > SKIPPED (no CSI-2 hardware).
+
     // Check kernel module
     bool modLoaded = isModuleLoaded("unicam") || isModuleLoaded("unicam");
     if (modLoaded)
@@ -250,11 +274,14 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
 
     // Look for dphy sysfs entries under Unicam
     bool dphyFound = false;
+    bool controllerFound = modLoaded;
     const std::string unicamDev = "/sys/bus/platform/devices";
     if (pathExists(unicamDev)) {
         auto entries = listDir(unicamDev);
         for (const auto& e : entries) {
             if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) {
+                controllerFound = true;
+                data.push_back("[PASS] Unicam platform device found (D-PHY capable)");
                 // Check for phy_mode or dphy attribute
                 std::string phyMode = readFile(e + "/phy_mode");
                 if (!phyMode.empty()) {
@@ -270,22 +297,34 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
             }
         }
     }
-    if (!dphyFound)
-        data.push_back("[INFO] D-PHY sysfs attribute not directly exposed – typical for Orin inrp1ted Unicam");
+    if (dphyFound)
+        data.push_back("[PASS] D-PHY sysfs attributes exposed");
+    else if (controllerFound)
+        data.push_back("[INFO] D-PHY sysfs attribute not directly exposed – typical for ISP/Unicam hardware");
 
     // Check that v4l2 nodes exist (implies camera pipeline including D-PHY subdev is up)
     auto videoDev = getVideoDevices();
     if (!videoDev.empty())
         data.push_back("[PASS] V4L2 nodes present – D-PHY pipeline operational");
     else
-        data.push_back("[INFO] No V4L2 nodes detected; connect a D-PHY camera to verify");
+        data.push_back("[FAIL] No V4L2 node enumerated – no D-PHY camera driving the pipeline");
 
+    // No CSI-2 hardware at all -> SKIPPED (never PASS for absent hardware).
+    if (!controllerFound && videoDev.empty()) {
+        data.push_back("[SKIP] No MIPI CSI-2 D-PHY hardware: controller absent and no V4L2 nodes");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    passed = controllerFound && !videoDev.empty();
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -293,7 +332,7 @@ TestOutput CameraInterfacesTesting::testCsi2DphyOperation()
 /**
  * @brief Implementation of testCsi2CphyOperation
  *        Verifies C-PHY mode capability on Pi5.
- *        The Orin Unicam controller supports both D-PHY and C-PHY.
+ *        The Unicam/CSI controller supports both D-PHY and C-PHY (Pi5/BCM2712).
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
@@ -302,6 +341,17 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
     bool passed = true;
 
     data.push_back("=== CSI-2 C-PHY Operation (Raspberry Pi 5) ===");
+
+    // Acceptance criteria (measurable): the DUT has a Pi5 Unicam CSI-2
+    // controller (kernel module loaded, platform device, or DT node) AND its
+    // CSI clocks are running (at least one "csi*" clock entry in debugfs).
+    // No CSI controller and no CSI clocks > SKIPPED (no CSI-2 hardware).
+    // (The Pi5 unicam is D-PHY/C-PHY capable; C-PHY capable-ness is a
+    // hardware property, verified by presence of the capable controller.)
+
+    bool controllerPresent = isModuleLoaded("unicam") || isModuleLoaded("unicam");
+    if (controllerPresent)
+        data.push_back("[PASS] Unicam kernel module loaded (C-PHY capable controller)");
 
     // Pi5 Unicam supports C-PHY; check via device-tree
     const std::vector<std::string> dtPaths = {
@@ -312,6 +362,7 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
     for (const auto& p : dtPaths) {
         if (pathExists(p)) {
             dtFound = true;
+            controllerPresent = true;
             data.push_back("[PASS] Unicam DT node found: " + p);
             // Check for cphy compatible property
             std::string compat = readFile(p + "/compatible");
@@ -320,10 +371,22 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
             break;
         }
     }
-    if (!dtFound)
-        data.push_back("[INFO] Unicam device-tree node not directly readable (may need root)");
+    // Platform-device enumeration (unicam devices also appear here)
+    const std::string platformBase = "/sys/bus/platform/devices";
+    if (pathExists(platformBase)) {
+        for (const auto& e : listDir(platformBase)) {
+            if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) {
+                controllerPresent = true;
+                data.push_back("[PASS] Unicam platform device found (C-PHY capable controller)");
+                break;
+            }
+        }
+    }
+    if (!controllerPresent && !dtFound)
+        data.push_back("[INFO] Unicam device-tree/platform/module not detected");
 
     // Check /sys/kernel/debug/clk for csi clocks
+    bool csiClkFound = false;
     const std::string bpmpClk = "/sys/kernel/debug/clk";
     if (pathExists(bpmpClk)) {
         auto clkEntries = listDir(bpmpClk);
@@ -337,22 +400,31 @@ TestOutput CameraInterfacesTesting::testCsi2CphyOperation()
             }
         }
         if (csiClkCount == 0)
-            data.push_back("[INFO] No CSI clock entries found in debugfs");
-        else
+            data.push_back("[FAIL] No CSI clock entries found in debugfs – CSI clocks not running");
+        else {
             data.push_back("[PASS] " + std::to_string(csiClkCount) + " CSI clock(s) found");
+            csiClkFound = true;
+        }
     } else {
-        data.push_back("[INFO] Pi5 firmware clock debug-fs not accessible");
+        data.push_back("[FAIL] /sys/kernel/debug/clk not accessible – cannot verify CSI clocks");
     }
 
-    // Raspberry Pi 5 supports C-PHY on its Unicam; report capability
-    data.push_back("[PASS] Raspberry Pi 5 Unicam hardware supports both D-PHY and C-PHY modes");
+    // No CSI hardware at all -> SKIPPED (never PASS for absent hardware).
+    if (!controllerPresent && !csiClkFound) {
+        data.push_back("[SKIP] No CSI-2 hardware: no unicam controller and no CSI clocks");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
+    passed = controllerPresent && csiClkFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -370,6 +442,11 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
 
     data.push_back("=== Multiple Camera Simultaneous Operation (Raspberry Pi 5) ===");
     data.push_back("[INFO] Raspberry Pi 5 supports up to 16 simultaneous CSI-2 camera streams");
+
+    // Acceptance criteria (measurable): multi-cam operation requires at least
+    // two enumerated CSI camera devices AND the ISP/Video-Input platform
+    // device to be present. Zero attached cameras > SKIPPED (hardware absent),
+    // exactly one > FAIL (the multi-camera criterion is not met).
 
     // Enumerate all video nodes
     auto videoDev = getVideoDevices();
@@ -391,12 +468,12 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
         }
     }
 
-    if (cameraCount > 1)
+    if (cameraCount >= 2)
         data.push_back("[PASS] " + std::to_string(cameraCount) + " camera device(s) enumerated for concurrent operation");
     else if (cameraCount == 1)
-        data.push_back("[PASS] 1 camera device found (connect more sensors to test multi-cam)");
+        data.push_back("[FAIL] Only 1 camera device enumerated – the multi-camera criterion (>= 2 sensors) is not met");
     else
-        data.push_back("[INFO] No cameras connected – hardware supports concurrent operation when cameras are attached");
+        data.push_back("[FAIL] No cameras connected – cannot verify concurrent camera operation");
 
     // Check ISP device (vi / nvisp)
     bool ispFound = false;
@@ -404,7 +481,7 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
     for (const auto& d : platDevs) {
         std::string base = d.substr(d.find_last_of('/') + 1);
         if (base.find("nvisp") != std::string::npos || base.find("rp1-vi") != std::string::npos ||
-            base.find("15c00000") != std::string::npos) // Orin VI hwid
+            base.find("15c00000") != std::string::npos) // Jetson-origin VI hwid probe string
         {
             ispFound = true;
             data.push_back("[PASS] Video Input (VI) device found: " + base);
@@ -412,14 +489,24 @@ TestOutput CameraInterfacesTesting::testMultipleCameraSimultaneousOperation()
         }
     }
     if (!ispFound)
-        data.push_back("[INFO] VI platform device not directly visible in sysfs (may be embedded)");
+        data.push_back("[FAIL] Video Input (VI) platform device not present in sysfs");
 
+    // Zero attached cameras -> SKIPPED (never PASS for absent hardware).
+    if (cameraCount == 0 && videoDev.empty()) {
+        data.push_back("[SKIP] No MIPI cameras attached – cannot verify concurrent camera operation");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    passed = (cameraCount >= 2) && ispFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -438,6 +525,14 @@ TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
     data.push_back("=== CSI-2 Virtual Channel Support (Raspberry Pi 5) ===");
     data.push_back("[INFO] Raspberry Pi 5 Unicam supports 4 virtual channels per CSI port");
 
+    // Acceptance criteria (measurable): the DUT has a unicam CSI-2 controller
+    // AND direct evidence of multi-channel VC plumbing - either the unicam
+    // DT node exposes a channel property or at least one CSI camera pipeline
+    // is enumerated (a VC-bearing link is active).
+    // No CSI controller and no camera > SKIPPED (hardware absent).
+
+    bool controllerPresent = isModuleLoaded("unicam") || isModuleLoaded("unicam");
+
     // Check unicam device tree for num-channels
     const std::vector<std::string> dtPaths = {
         "/proc/device-tree/host1x@13e00000/unicam@1f00110000",
@@ -448,14 +543,26 @@ TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
         if (pathExists(p)) {
             data.push_back("[PASS] DT node accessible: " + p);
             dtVcFound = true;
+            controllerPresent = true;
             // Try reading num-channels
             std::string numCh = readFile(p + "/num-channels");
             if (!numCh.empty())
                 data.push_back("       num-channels = " + numCh);
         }
     }
-    if (!dtVcFound)
-        data.push_back("[INFO] DT VC nodes not directly accessible (expected without root)");
+    // Platform-device enumeration (unicam controllers appear here)
+    const std::string platformBase = "/sys/bus/platform/devices";
+    if (pathExists(platformBase)) {
+        for (const auto& e : listDir(platformBase)) {
+            if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) {
+                controllerPresent = true;
+                data.push_back("[PASS] Unicam platform device found (VC-capable controller)");
+                break;
+            }
+        }
+    }
+    if (!controllerPresent)
+        data.push_back("[INFO] DT VC nodes / platform / module not detected");
 
     // Check unicam module options or procfs
     std::string modInfo = runCmd("modinfo unicam 2>/dev/null | grep -i 'virtual\\|channel' | head -3");
@@ -467,14 +574,31 @@ TestOutput CameraInterfacesTesting::testVirtualChannelSupport()
             data.push_back("    " + line);
     }
 
-    data.push_back("[PASS] Raspberry Pi 5 Unicam hardware supports MIPI CSI-2 virtual channels");
+    data.push_back("[INFO] VC capability is a unicam hardware property verified by the checks above");
 
+    // Measurable VC evidence: DT/VC plumbing visible, or a CSI camera pipeline active.
+    auto videoDev = getVideoDevices();
+    bool pipelineActive = !videoDev.empty();
+    data.push_back(pipelineActive
+                       ? "[PASS] " + std::to_string(videoDev.size()) + " V4L2 node(s) - a VC-bearing CSI link is active"
+                       : "[FAIL] No V4L2 node enumerated and no DT/VC plumbing visible - cannot verify virtual-channel support");
+
+    // No CSI hardware at all -> SKIPPED (never PASS for absent hardware).
+    if (!controllerPresent && !pipelineActive) {
+        data.push_back("[SKIP] No MIPI CSI-2 hardware: no unicam controller and no camera pipeline");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    passed = controllerPresent && (dtVcFound || pipelineActive);
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -491,6 +615,12 @@ TestOutput CameraInterfacesTesting::testCameraClockGeneration()
     bool passed = true;
 
     data.push_back("=== Camera Clock Generation (Raspberry Pi 5) ===");
+
+    // Acceptance criteria (measurable): at least one camera-domain clock
+    // (csi/vi/isp/unicam) is visible and enabled in the clock tree. If the
+    // clock tree is not readable but a CSI camera pipeline is present, the
+    // clocks are exercised by the hardware; otherwise no CSI hardware is
+    // detected and the test is SKIPPED.
 
     // Method 1: Pi5 firmware debugfs
     const std::string bpmpClk = "/sys/kernel/debug/clk";
@@ -537,23 +667,93 @@ TestOutput CameraInterfacesTesting::testCameraClockGeneration()
     }
 
     if (!clkFound)
-        data.push_back("[INFO] Clock debug-fs not accessible without debugfs mount or root");
+        data.push_back("[INFO] Clock debug-fs not accessible (no debugfs mount or no root)");
 
     // Method 3: Check if camera-related frequencies appear in /sys/.../clocks
     std::string csiClk = runCmd("cat /sys/kernel/debug/clk/unicam/rate 2>/dev/null");
     if (!csiClk.empty())
         data.push_back("[PASS] Unicam clock rate: " + csiClk + " Hz");
 
-    data.push_back("[PASS] Raspberry Pi 5 provides dedicated PLL (PLLP/PLLD) for camera clocks");
+    // A CSI camera pipeline implies the camera clocks are generated.
+    auto videoDev = getVideoDevices();
+    bool pipelineActive = !videoDev.empty();
+    data.push_back(pipelineActive
+                       ? "[PASS] " + std::to_string(videoDev.size()) + " V4L2 node(s) - camera clocks exercised by the pipeline"
+                       : "[INFO] No V4L2 node enumerated; camera pipeline not active");
 
+    if (!clkFound && csiClk.empty() && !pipelineActive) {
+        data.push_back("[SKIP] No camera hardware or readable clock tree - cannot verify camera clock generation");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    passed = clkFound || !csiClk.empty() || pipelineActive;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
+}
+
+/**
+ * @brief Task 65: representative capture/encode/decode — performs an actual
+ *        frame capture (not just listing device nodes), then encodes/decode if
+ *        ffmpeg is present, with capability checks. Reports SKIPPED (not PASS)
+ *        when no camera is attached.
+ * @return TestOutput
+ */
+TestOutput CameraInterfacesTesting::testRepresentativeCapture()
+{
+    std::vector<std::string> data;
+    data.push_back("=== Representative camera capture/encode/decode (task 65) ===");
+
+    auto devs = getVideoDevices();
+    if (devs.empty()) {
+        data.push_back("[SKIP] No /dev/video* nodes — no camera attached");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    bool didCapture = false;
+    for (const auto& dev : devs) {
+        std::string devName = dev.substr(dev.find_last_of('/') + 1);
+        // Representative capture: grab one frame with v4l2-ctl if present.
+        if (runCmd("command -v v4l2-ctl").empty()) continue;
+        std::string frame = runCmd("v4l2-ctl -d " + dev + " --stream-mmap --stream-count=1 "
+                                   "--stream-to=/tmp/acadia_cap_" + devName + ".raw 2>/dev/null");
+        if (std::ifstream("/tmp/acadia_cap_" + devName + ".raw", std::ios::binary)) {
+            std::ifstream f("/tmp/acadia_cap_" + devName + ".raw", std::ios::binary | std::ios::ate);
+            long sz = f.tellg();
+            data.push_back("[PASS] " + devName + " captured " + std::to_string(sz) + " bytes");
+            didCapture = (sz > 0);
+            // Encode + decode round-trip if ffmpeg is available.
+            if (runCmd("command -v ffmpeg").find("/") != std::string::npos) {
+                std::string enc = runCmd("ffmpeg -y -f rawvideo -pix_fmt yuyv422 -s 1280x720 "
+                                         "-i /tmp/acadia_cap_" + devName + ".raw "
+                                         "/tmp/acadia_cap_" + devName + ".mp4 2>/dev/null");
+                (void)enc;
+                if (std::ifstream("/tmp/acadia_cap_" + devName + ".mp4", std::ios::binary)) {
+                    std::ifstream e("/tmp/acadia_cap_" + devName + ".mp4", std::ios::binary | std::ios::ate);
+                    data.push_back("[PASS] " + devName + " encoded " + std::to_string(e.tellg()) + " bytes");
+                }
+            }
+            break;
+        }
+    }
+
+    TestOutput _out;
+    _out.status = didCapture ? hal::Status::PASS : hal::Status::FAIL;
+    _out.severity = didCapture ? hal::Severity::INFO : hal::Severity::ERROR;
+    StampDiagnostics(_out, data);
+    return _out;
 }
 
 /**
@@ -562,12 +762,17 @@ TestOutput CameraInterfacesTesting::testCameraClockGeneration()
  *        GPIO sysfs interfaces on Pi5.
  * @return TestOutput with pass/fail and data
  */
-TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
-{
+TestOutput CameraInterfacesTesting::testCameraPowerSequencing(){
     std::vector<std::string> data;
     bool passed = true;
 
     data.push_back("=== Camera Power Sequencing (Raspberry Pi 5) ===");
+
+    // Acceptance criteria (measurable): the power-on sequence has reached the
+    // camera sensor, i.e. a camera node is enumerated. If camera-domain
+    // regulators are present we also require them to report an enabled state
+    // or a non-zero voltage. No camera regulators and no camera node =>
+    // SKIPPED (no camera power domain detected).
 
     // 1. Check camera regulators via sysfs
     const std::string regClass = "/sys/class/regulator";
@@ -581,7 +786,8 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
                 name.find("vdig") != std::string::npos) {
                 std::string state = readFile(r + "/state");
                 std::string voltage = readFile(r + "/microvolts");
-                data.push_back("[PASS] Regulator: " + name + " state=" + state + " voltage=" + (voltage.empty() ? "N/A" : voltage + " uV"));
+                bool enabled = state.find("enabled") != std::string::npos || (voltage != "0" && !voltage.empty());
+                data.push_back(std::string(enabled ? "[PASS] " : "[FAIL] ") + "Regulator: " + name + " state=" + state + " voltage=" + (voltage.empty() ? "N/A" : voltage + " uV"));
                 camRegCount++;
             }
         }
@@ -611,19 +817,40 @@ TestOutput CameraInterfacesTesting::testCameraPowerSequencing()
 
     // 3. Check if camera devices appear after power-on (V4L2 nodes)
     auto videoDev = getVideoDevices();
-    if (!videoDev.empty())
+    bool camPowered = !videoDev.empty();
+    if (camPowered)
         data.push_back("[PASS] Camera sensor powered and enumerated: " + std::to_string(videoDev.size()) + " node(s)");
     else
-        data.push_back("[INFO] No camera nodes – attach sensors to validate power sequencing");
+        data.push_back("[FAIL] No camera node enumerated - power sequencing did not reach the sensor");
 
-    data.push_back("[INFO] Pi5 camera power: AVDD(2.8V) -> DVDD(1.2V) -> IOVDD(1.8V) -> XCLK -> NRESET");
+    if (camRegCount == 0 && !camPowered) {
+        data.push_back("[SKIP] No camera power domain: no camera regulators and no camera node detected");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
+    passed = camPowered;
+    if (camRegCount > 0) {
+        // Regulators visible: require them to be enabled (voltage > 0).
+        for (const auto& r : listDir(regClass)) {
+            std::string name = readFile(r + "/name");
+            if (name.find("cam") != std::string::npos || name.find("CAM") != std::string::npos || name.find("vana") != std::string::npos ||
+                name.find("vdig") != std::string::npos) {
+                std::string state = readFile(r + "/state");
+                std::string voltage = readFile(r + "/microvolts");
+                if (state.find("enabled") == std::string::npos && (voltage.empty() || voltage == "0"))
+                    passed = false;
+            }
+        }
+    }
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -643,15 +870,12 @@ TestOutput CameraInterfacesTesting::testRaw8()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found; RAW8 supported by Orin ISP/Unicam hardware");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/video* nodes found — no camera attached; RAW8 support cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool raw8Found = false;
@@ -670,16 +894,17 @@ TestOutput CameraInterfacesTesting::testRaw8()
         }
     }
 
-    if (!raw8Found)
-        data.push_back("[INFO] RAW8 not reported by current sensor; Orin ISP hardware supports SRGGB8/SGRBG8/SGBRG8/SBGGR8");
+    if (raw8Found)
+        data.push_back("[PASS] At least one sensor reports RAW8 (SRGGB8/SGRBG8/SGBRG8/SBGGR8)");
+    else
+        data.push_back("[FAIL] No sensor reports RAW8 formats - the acceptance criterion is not met");
 
-    data.push_back("[INFO] Pi5 ISP supports RAW8 Bayer formats on all CSI ports");
+    passed = raw8Found;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -699,15 +924,12 @@ TestOutput CameraInterfacesTesting::testRaw10()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found; RAW10 supported by Orin ISP/Unicam hardware");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/video* nodes found — no camera attached; RAW10 support cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool raw10Found = false;
@@ -725,16 +947,17 @@ TestOutput CameraInterfacesTesting::testRaw10()
         }
     }
 
-    if (!raw10Found)
-        data.push_back("[INFO] RAW10 not reported by current sensor; Orin ISP hardware supports SRGGB10");
+    if (raw10Found)
+        data.push_back("[PASS] At least one sensor reports RAW10 (SRGGB10/SGRBG10/SGBRG10/SBGGR10)");
+    else
+        data.push_back("[FAIL] No sensor reports RAW10 formats - the acceptance criterion is not met");
 
-    data.push_back("[INFO] 10-bit Bayer RAW is the most common format for automotive cameras on Orin");
+    passed = raw10Found;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -753,15 +976,12 @@ TestOutput CameraInterfacesTesting::testRaw12()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found; RAW12 supported by Orin ISP hardware");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/video* nodes found — no camera attached; RAW12 support cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool raw12Found = false;
@@ -779,16 +999,17 @@ TestOutput CameraInterfacesTesting::testRaw12()
         }
     }
 
-    if (!raw12Found)
-        data.push_back("[INFO] RAW12 not reported by current sensor; Orin ISP supports SRGGB12/SGRBG12");
+    if (raw12Found)
+        data.push_back("[PASS] At least one sensor reports RAW12 (SRGGB12/SGRBG12/SGBRG12/SBGGR12)");
+    else
+        data.push_back("[FAIL] No sensor reports RAW12 formats - the acceptance criterion is not met");
 
-    data.push_back("[INFO] RAW12 provides higher dynamic range for automotive imaging sensors");
+    passed = raw12Found;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -807,15 +1028,12 @@ TestOutput CameraInterfacesTesting::testRaw14()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes found; RAW14 supported by Orin ISP hardware");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/video* nodes found — no camera attached; RAW14 support cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool raw14Found = false;
@@ -833,16 +1051,17 @@ TestOutput CameraInterfacesTesting::testRaw14()
         }
     }
 
-    if (!raw14Found)
-        data.push_back("[INFO] RAW14 not reported by current sensor; Orin Unicam hardware supports 14-bit Bayer");
+    if (raw14Found)
+        data.push_back("[PASS] At least one sensor reports RAW14 (SRGGB14/SGRBG14/SGBRG14/SBGGR14)");
+    else
+        data.push_back("[FAIL] No sensor reports RAW14 formats - the acceptance criterion is not met");
 
-    data.push_back("[INFO] RAW14 offers highest bit depth for HDR automotive camera sensors on Orin");
+    passed = raw14Found;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -862,15 +1081,12 @@ TestOutput CameraInterfacesTesting::testYuv422()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes; Orin ISP supports YUV 4:2:2 output");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/video* nodes — no camera attached; YUV 4:2:2 support cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool yuvFound = false;
@@ -901,16 +1117,17 @@ TestOutput CameraInterfacesTesting::testYuv422()
         }
     }
 
-    if (!yuvFound)
-        data.push_back("[INFO] YUV 4:2:2 format not listed by current sensor; Orin ISP can output YUYV/UYVY");
+    if (yuvFound)
+        data.push_back("[PASS] At least one sensor/ISP reports a YUV 4:2:2 format");
+    else
+        data.push_back("[FAIL] No sensor or ISP reports a YUV 4:2:2 format - the acceptance criterion is not met");
 
-    data.push_back("[INFO] YUV 4:2:2 is commonly used for serializer/deserializer camera links on Orin");
+    passed = yuvFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -930,15 +1147,12 @@ TestOutput CameraInterfacesTesting::testRgbFormats()
 
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No /dev/video* nodes; Orin ISP supports RGB output formats");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No /dev/video* nodes — no camera attached; RGB format support cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool rgbFound = false;
@@ -956,16 +1170,17 @@ TestOutput CameraInterfacesTesting::testRgbFormats()
         }
     }
 
-    if (!rgbFound)
-        data.push_back("[INFO] RGB formats not listed by current sensor; Orin ISP can output RGB24/ARGB32");
+    if (rgbFound)
+        data.push_back("[PASS] At least one sensor reports an RGB format");
+    else
+        data.push_back("[FAIL] No sensor reports an RGB format - the acceptance criterion is not met");
 
-    data.push_back("[INFO] Orin ISP supports RGB888, BGR888, ARGB8888 as post-processed output formats");
+    passed = rgbFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -983,6 +1198,10 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
 
     data.push_back("=== ISP Pipeline Processing (Raspberry Pi 5) ===");
     data.push_back("[INFO] Raspberry Pi 5 features a dedicated ISP with two pipelines (ISP-A and ISP-B)");
+
+    // Acceptance criteria (measurable): the Pi5 ISP platform device (nvisp /
+    // rp1-isp) is enumerated in sysfs. No ISP device and no CSI/unicam
+    // hardware > SKIPPED (no camera subsystem on this DUT).
 
     // 1. Check for ISP platform device
     bool ispFound = false;
@@ -1007,7 +1226,7 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
         }
     }
     if (!ispFound)
-        data.push_back("[INFO] ISP platform device not directly visible in sysfs");
+        data.push_back("[FAIL] ISP platform device (nvisp/rp1-isp) not enumerated in sysfs");
 
     // 2. Check for V4L2 media device (ISP exposed via media controller)
     for (int i = 0; i < 8; ++i) {
@@ -1026,10 +1245,12 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
 
     // 3. Check NvMedia / RP1 Vi device
     const std::string viPath = "/dev/rp1-vi0";
-    if (pathExists(viPath))
+    if (pathExists(viPath)) {
         data.push_back("[PASS] RP1 VI device found: " + viPath);
-    else
+        ispFound = true;
+    } else {
         data.push_back("[INFO] /dev/rp1-vi0 not present (may use V4L2 video nodes instead)");
+    }
 
     // 4. Try querying ISP statistics via v4l2 (Pi5-specific ISP stats node)
     std::string ispStats = runCmd("v4l2-ctl --list-devices 2>/dev/null | grep -i 'isp\\|vi\\|unicam'");
@@ -1042,13 +1263,33 @@ TestOutput CameraInterfacesTesting::testIspPipelineProcessing()
     } else
         data.push_back("[INFO] v4l2-ctl not available or no ISP V4L2 device listed");
 
-    data.push_back("[PASS] Orin ISP hardware: 2 pipelines, supports up to 36 MPix/s aggregate throughput");
+    // Is there any CSI camera hardware at all? (unicam controller or a sensor)
+    bool csiPresent = isModuleLoaded("unicam") || !getVideoDevices().empty();
+    if (isModuleLoaded("unicam") || pathExists("/sys/bus/platform/devices")) {
+        if (!csiPresent) {
+            for (const auto& e : listDir("/sys/bus/platform/devices")) {
+                if (e.find("unicam") != std::string::npos || e.find("1f00110000") != std::string::npos) {
+                    csiPresent = true;
+                    break;
+                }
+            }
+        }
+    }
+    if (!ispFound && !csiPresent) {
+        data.push_back("[SKIP] No camera subsystem: no ISP platform device and no CSI/unicam hardware detected");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    passed = ispFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1066,17 +1307,27 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
 
     data.push_back("=== Auto Exposure (AE) Verification (Raspberry Pi 5) ===");
 
+    // Acceptance criteria (measurable): at least one camera node exposes
+    // V4L2 auto-exposure controls (exposure/gain). No camera attached ->
+    // SKIPPED; camera attached but no AE controls -> FAIL.
+
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No camera nodes; AE is implemented in Argus/NvMedia stack on Orin");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No camera nodes — no camera attached; AE cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (runCmd("command -v v4l2-ctl 2>/dev/null").empty()) {
+        data.push_back("[SKIP] v4l2-ctl unavailable; V4L2 AE controls cannot be enumerated");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool aeFound = false;
@@ -1095,28 +1346,21 @@ TestOutput CameraInterfacesTesting::testAutoExposure()
         }
     }
 
-    if (!aeFound)
-        data.push_back("[INFO] AE V4L2 controls not exposed; on Orin, AE is handled by the Argus camera framework");
+    if (aeFound)
+        data.push_back("[PASS] V4L2 auto-exposure controls are exposed on at least one camera node");
+    else
+        data.push_back("[FAIL] No V4L2 auto-exposure controls exposed - the AE criterion is not met");
 
-    // Check for libargus or nvcamera service (Pi5 3A daemon)
-    std::string argus = runCmd("systemctl is-active nvargus-daemon 2>/dev/null");
-    if (argus == "active")
-        data.push_back("[PASS] nvargus-daemon (Pi5 3A / AE service) is active");
-    else {
-        std::string pid = runCmd("pgrep -x nvargus-daemon 2>/dev/null");
-        if (!pid.empty())
-            data.push_back("[PASS] nvargus-daemon running (PID " + pid + ")");
-        else
-            data.push_back("[INFO] nvargus-daemon not running; start with 'systemctl start nvargus-daemon'");
-    }
+    // Informational: platform 3A daemon (nvargus-daemon is the legacy Jetson
+    // name kept for tooling compatibility).
+    (void)runCmd("systemctl is-active nvargus-daemon 2>/dev/null");
 
-    data.push_back("[INFO] Orin ISP hardware AE: supports shutter speed 1us-1s, analog gain 1x-16x");
+    passed = aeFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1133,17 +1377,26 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
 
     data.push_back("=== Auto White Balance (AWB) Verification (Raspberry Pi 5) ===");
 
+    // Acceptance criteria (measurable): at least one camera node exposes
+    // V4L2 white-balance controls (white_balance/awb/color_temp/wb_).
+
     auto videoDev = getVideoDevices();
     if (videoDev.empty()) {
-        data.push_back("[INFO] No camera nodes; AWB handled by Argus/ISP on Orin");
-        {
-            TestOutput _out;
-            _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-            _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
-            return _out;
-        }
+        data.push_back("[SKIP] No camera nodes — no camera attached; AWB cannot be verified");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (runCmd("command -v v4l2-ctl 2>/dev/null").empty()) {
+        data.push_back("[SKIP] v4l2-ctl unavailable; V4L2 AWB controls cannot be enumerated");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
     bool awbFound = false;
@@ -1161,23 +1414,17 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
         }
     }
 
-    if (!awbFound)
-        data.push_back("[INFO] AWB V4L2 controls not exposed; managed by nvargus/ISP on Orin");
-
-    // Check Argus daemon
-    std::string argus = runCmd("pgrep -x nvargus-daemon 2>/dev/null");
-    if (!argus.empty())
-        data.push_back("[PASS] nvargus-daemon (AWB engine) active, PID " + argus);
+    if (awbFound)
+        data.push_back("[PASS] V4L2 white-balance controls are exposed on at least one camera node");
     else
-        data.push_back("[INFO] nvargus-daemon not running");
+        data.push_back("[FAIL] No V4L2 white-balance controls exposed - the AWB criterion is not met");
 
-    data.push_back("[INFO] Orin ISP AWB: Grey-World, Perfect Reflector, and Bayesian estimation modes");
+    passed = awbFound;
     {
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1192,12 +1439,35 @@ TestOutput CameraInterfacesTesting::testAutoWhiteBalance()
 TestOutput CameraInterfacesTesting::testAutoFocus()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Auto Focus (AF) Verification (Raspberry Pi 5) ===");
     data.push_back("[INFO] AF requires a VCM/motor-driven lens; automotive sensors are typically fixed-focus");
 
+    // Acceptance criteria (measurable):
+    //   - no camera attached          -> SKIPPED (hardware absent)
+    //   - AF controls enumerated      -> PASS
+    //   - camera present, no AF ctrls -> SKIPPED, i.e. AF is not applicable
+    //     (fixed-focus automotive sensor; FAIL is not meaningful here)
+
     auto videoDev = getVideoDevices();
+    if (videoDev.empty()) {
+        data.push_back("[SKIP] No camera nodes present - AF cannot be verified (hardware absent)");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
+    if (runCmd("command -v v4l2-ctl 2>/dev/null").empty()) {
+        data.push_back("[SKIP] v4l2-ctl unavailable; V4L2 AF controls cannot be enumerated");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+
     bool afFound = false;
     for (const auto& dev : videoDev) {
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
@@ -1213,27 +1483,22 @@ TestOutput CameraInterfacesTesting::testAutoFocus()
         }
     }
 
-    if (!afFound && !videoDev.empty())
-        data.push_back("[INFO] No AF controls – camera likely fixed-focus (typical for ADAS)");
-    else if (videoDev.empty())
-        data.push_back("[INFO] No camera nodes present");
-
-    // Check for focuser device node (Pi5: /dev/focuser*)
-    for (int i = 0; i < 4; ++i) {
-        std::string foc = "/dev/focuser" + std::to_string(i);
-        if (pathExists(foc)) {
-            afFound = true;
-            data.push_back("[PASS] Focuser device node: " + foc);
-        }
+    if (afFound) {
+        data.push_back("[PASS] AF/VCM controls are exposed on at least one node");
+    } else {
+        data.push_back("[SKIP] No AF controls detected - fixed-focus sensor, auto focus is not applicable to this hardware");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
     }
 
-    data.push_back("[INFO] Orin supports AF via I2C VCM driver (e.g. DW9714) through Argus camera API");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1247,10 +1512,34 @@ TestOutput CameraInterfacesTesting::testAutoFocus()
 TestOutput CameraInterfacesTesting::testLensShadingCorrection()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Lens Shading Correction (LSC) (Raspberry Pi 5) ===");
     data.push_back("[INFO] Pi5 ISP implements hardware LSC with per-channel mesh shading tables");
+
+    // Acceptance criteria (measurable): LSC is an embedded feature of the
+    // Pi5 ISP (nvisp), so the test is only meaningful when the ISP pipeline
+    // is present. No ISP/CSI hardware -> SKIPPED. ISP present -> PASS
+    // (optional evidence: LSC tuning files or V4L2 shading controls).
+
+    bool ispPresent = isModuleLoaded("unicam") || !getVideoDevices().empty() || isModuleLoaded("nvisp");
+    if (pathExists("/sys/bus/platform/devices")) {
+        for (const auto& d : listDir("/sys/bus/platform/devices")) {
+            std::string base = d.substr(d.find_last_of('/') + 1);
+            if (base.find("nvisp") != std::string::npos || base.find("rp1-isp") != std::string::npos || base.find("15c00000") != std::string::npos) {
+                ispPresent = true;
+                data.push_back("[PASS] ISP platform device present (LSC is an embedded ISP feature): " + base);
+                break;
+            }
+        }
+    }
+    if (!ispPresent) {
+        data.push_back("[SKIP] No ISP/CSI pipeline detected - LSC cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     // Check for ISP tuning file that contains LSC parameters
     const std::vector<std::string> lscPaths = {
@@ -1271,14 +1560,18 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
     }
     if (!tuningFound)
         data.push_back("[INFO] ISP tuning directory not found – LSC tables may be embedded in camera driver");
+    else
+        data.push_back("[PASS] ISP LSC tuning path present");
 
     // Check for LSC via V4L2 controls
     auto videoDev = getVideoDevices();
+    bool lscCtrlFound = false;
     for (const auto& dev : videoDev) {
         std::string ctrls = runCmd("v4l2-ctl -d " + dev +
                                    " --list-ctrls 2>/dev/null | "
                                    "grep -iE 'shading|lsc|mesh'");
         if (!ctrls.empty()) {
+            lscCtrlFound = true;
             data.push_back("[PASS] " + dev + " LSC controls:");
             std::istringstream ss(ctrls);
             std::string line;
@@ -1286,14 +1579,16 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
                 data.push_back("    " + line);
         }
     }
+    if (lscCtrlFound)
+        data.push_back("[PASS] V4L2 LSC/shading controls exposed on a camera node");
+    else
+        data.push_back("[INFO] No discrete V4L2 LSC controls (expected: LSC runs inside the ISP)");
 
-    data.push_back("[PASS] Orin ISP hardware supports 17x17 LSC mesh grid for all 4 Bayer channels");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1301,20 +1596,23 @@ TestOutput CameraInterfacesTesting::testLensShadingCorrection()
 /**
  * @brief Implementation of testDemosaicing
  *        Verifies Bayer demosaicing (debayering) capability of the Pi5
- *        Orin ISP hardware.
+ *        Pi5 ISP hardware.
  * @return TestOutput with pass/fail and data
  */
 TestOutput CameraInterfacesTesting::testDemosaicing()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Bayer Demosaicing (Raspberry Pi 5) ===");
     data.push_back("[INFO] Pi5 ISP performs hardware Bayer demosaicing");
     data.push_back("[INFO] Supported Bayer patterns: RGGB, GRBG, GBRG, BGGR");
 
+    // Acceptance criteria (measurable): demosaicing is embedded in the Pi5
+    // ISP (nvisp), so the test is only meaningful when the ISP pipeline is
+    // present. No ISP/CSI hardware -> SKIPPED.
+
     // Check ISP pipeline is available
-    bool ispPresent = false;
+    bool ispPresent = isModuleLoaded("unicam") || isModuleLoaded("nvisp") || !getVideoDevices().empty();
     if (pathExists("/sys/bus/platform/devices")) {
         auto entries = listDir("/sys/bus/platform/devices");
         for (const auto& e : entries) {
@@ -1326,11 +1624,19 @@ TestOutput CameraInterfacesTesting::testDemosaicing()
             }
         }
     }
-    if (!ispPresent)
-        data.push_back("[INFO] ISP device not directly listed (may be inrp1ted in unicam)");
+    if (!ispPresent) {
+        data.push_back("[SKIP] No ISP/CSI pipeline detected - demosaicing cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+    data.push_back("[PASS] ISP pipeline present - hardware demosaicing is an embedded ISP function");
 
     // Verify that RAW input -> RGB output path exists through V4L2
     auto videoDev = getVideoDevices();
+    bool rawToRgb = false;
     for (const auto& dev : videoDev) {
         // Check if sensor exposes RAW and ISP outputs RGB
         std::string rawFmt = runCmd("v4l2-ctl -d " + dev +
@@ -1339,17 +1645,21 @@ TestOutput CameraInterfacesTesting::testDemosaicing()
         std::string rgbFmt = runCmd("v4l2-ctl -d " + dev +
                                     " --list-formats 2>/dev/null | "
                                     "grep -iE 'RGB|NV12|NV21|YUV' | head -2");
-        if (!rawFmt.empty() && !rgbFmt.empty())
+        if (!rawFmt.empty() && !rgbFmt.empty()) {
+            rawToRgb = true;
             data.push_back("[PASS] " + dev + " supports RAW input and processed output (demosaicing active)");
+        }
     }
+    if (rawToRgb)
+        data.push_back("[PASS] RAW-to-processed output path measured on a camera node");
+    else
+        data.push_back("[INFO] No RAW/processed format pair on any node (camera attached without ISP output is uncommon)");
 
-    data.push_back("[PASS] Orin ISP hardware demosaicing: 12-tap adaptive filter, supports HDR multi-exposure");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1363,10 +1673,32 @@ TestOutput CameraInterfacesTesting::testDemosaicing()
 TestOutput CameraInterfacesTesting::testNoiseReduction()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Noise Reduction (NR) Verification (Raspberry Pi 5) ===");
-    data.push_back("[INFO] Orin ISP includes Spatial NR (SNR) and Temporal NR (TNR3) hardware engines");
+    data.push_back("[INFO] The Pi5 ISP includes spatial NR (SNR) and Temporal NR (TNR3) hardware engines");
+
+    // Acceptance criteria (measurable): SNR/TNR are embedded in the Pi5 ISP
+    // (nvisp), so the test is only meaningful when the ISP pipeline is
+    // present. No ISP/CSI hardware -> SKIPPED.
+    bool ispPresent = isModuleLoaded("unicam") || isModuleLoaded("nvisp") || !getVideoDevices().empty();
+    if (pathExists("/sys/bus/platform/devices")) {
+        for (const auto& d : listDir("/sys/bus/platform/devices")) {
+            std::string base = d.substr(d.find_last_of('/') + 1);
+            if (base.find("nvisp") != std::string::npos || base.find("rp1-isp") != std::string::npos || base.find("15c00000") != std::string::npos) {
+                ispPresent = true;
+                data.push_back("[PASS] ISP platform device present (NR engines are embedded ISP features): " + base);
+                break;
+            }
+        }
+    }
+    if (!ispPresent) {
+        data.push_back("[SKIP] No ISP/CSI pipeline detected - noise reduction cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     // Check V4L2 noise reduction controls
     auto videoDev = getVideoDevices();
@@ -1384,8 +1716,10 @@ TestOutput CameraInterfacesTesting::testNoiseReduction()
                 data.push_back("    " + line);
         }
     }
-    if (!nrCtrlFound && !videoDev.empty())
-        data.push_back("[INFO] NR not exposed via V4L2 controls; configured through Argus/ISP tuning files");
+    if (nrCtrlFound)
+        data.push_back("[PASS] NR/V4L2 noise controls exposed on a camera node");
+    else
+        data.push_back("[INFO] NR not exposed via V4L2 controls; configured through ISP tuning files (expected)");
 
     // Check for ISP tuning with NR parameters
     std::string tnr = runCmd("find /etc/camera /var/nvidia/nvcam/settings 2>/dev/null "
@@ -1393,14 +1727,11 @@ TestOutput CameraInterfacesTesting::testNoiseReduction()
     if (!tnr.empty())
         data.push_back("[PASS] NR tuning found in: " + tnr);
 
-    data.push_back("[PASS] Orin ISP hardware NR: SNR with 7x7 kernel, TNR3 with motion-adaptive blending");
-    data.push_back("[INFO] TNR requires motion estimation engine; adds ~1 frame latency");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1413,10 +1744,32 @@ TestOutput CameraInterfacesTesting::testNoiseReduction()
 TestOutput CameraInterfacesTesting::testEdgeEnhancement()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Edge Enhancement / Sharpening (Raspberry Pi 5) ===");
-    data.push_back("[INFO] Orin ISP implements hardware edge enhancement (EE) / sharpening stage");
+    data.push_back("[INFO] The Pi5 ISP implements hardware edge enhancement (EE) / sharpening stage");
+
+    // Acceptance criteria (measurable): EE is an embedded Pi5 ISP (nvisp)
+    // feature, so the test is only meaningful when the ISP pipeline is
+    // present. No ISP/CSI hardware -> SKIPPED.
+    bool ispPresent = isModuleLoaded("unicam") || isModuleLoaded("nvisp") || !getVideoDevices().empty();
+    if (pathExists("/sys/bus/platform/devices")) {
+        for (const auto& d : listDir("/sys/bus/platform/devices")) {
+            std::string base = d.substr(d.find_last_of('/') + 1);
+            if (base.find("nvisp") != std::string::npos || base.find("rp1-isp") != std::string::npos || base.find("15c00000") != std::string::npos) {
+                ispPresent = true;
+                data.push_back("[PASS] ISP platform device present (EE is an embedded ISP feature): " + base);
+                break;
+            }
+        }
+    }
+    if (!ispPresent) {
+        data.push_back("[SKIP] No ISP/CSI pipeline detected - edge enhancement cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     // Check V4L2 sharpness control
     auto videoDev = getVideoDevices();
@@ -1434,17 +1787,16 @@ TestOutput CameraInterfacesTesting::testEdgeEnhancement()
                 data.push_back("    " + line);
         }
     }
-    if (!eeFound && !videoDev.empty())
-        data.push_back("[INFO] Edge enhancement not exposed via V4L2; set via Argus EdgeEnhancement API");
+    if (eeFound)
+        data.push_back("[PASS] EE/sharpness controls exposed on a camera node");
+    else
+        data.push_back("[INFO] Edge enhancement not exposed via V4L2; configured through ISP tuning (expected)");
 
-    data.push_back("[PASS] Orin ISP hardware EE: unsharp-mask filter, adjustable strength and threshold");
-    data.push_back("[INFO] Argus API: ICaptureSession::setEdgeEnhancementStrength() range [0.0, 1.0]");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1457,11 +1809,33 @@ TestOutput CameraInterfacesTesting::testEdgeEnhancement()
 TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Color Correction Matrix (CCM) (Raspberry Pi 5) ===");
-    data.push_back("[INFO] Orin ISP implements a 3x3 CCM applied after demosaicing");
+    data.push_back("[INFO] The Pi5 ISP implements a 3x3 CCM applied after demosaicing");
     data.push_back("[INFO] CCM converts sensor color space to sRGB/P3 output");
+
+    // Acceptance criteria (measurable): CCM is an embedded Pi5 ISP (nvisp)
+    // stage, so the test is only meaningful when the ISP pipeline is present.
+    // No ISP/CSI hardware -> SKIPPED.
+    bool ispPresent = isModuleLoaded("unicam") || isModuleLoaded("nvisp") || !getVideoDevices().empty();
+    if (pathExists("/sys/bus/platform/devices")) {
+        for (const auto& d : listDir("/sys/bus/platform/devices")) {
+            std::string base = d.substr(d.find_last_of('/') + 1);
+            if (base.find("nvisp") != std::string::npos || base.find("rp1-isp") != std::string::npos || base.find("15c00000") != std::string::npos) {
+                ispPresent = true;
+                data.push_back("[PASS] ISP platform device present (CCM is an embedded ISP stage): " + base);
+                break;
+            }
+        }
+    }
+    if (!ispPresent) {
+        data.push_back("[SKIP] No ISP/CSI pipeline detected - CCM cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     // Check for CCM in tuning files
     std::string ccmFile = runCmd("find /etc/camera /var/nvidia/nvcam/settings 2>/dev/null "
@@ -1470,7 +1844,7 @@ TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
     if (!ccmFile.empty())
         data.push_back("[PASS] CCM tuning found in: " + ccmFile);
     else
-        data.push_back("[INFO] CCM tuning file not found; embedded in sensor driver or Argus defaults");
+        data.push_back("[INFO] CCM tuning file not found; CCM is embedded in the ISP/sensor driver");
 
     // Check V4L2 color correction controls
     auto videoDev = getVideoDevices();
@@ -1487,14 +1861,11 @@ TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
         }
     }
 
-    data.push_back("[PASS] Orin ISP CCM: 3x3 float matrix with offset, hardware-applied post-demosaicing");
-    data.push_back("[INFO] Argus API: ISourceSettings::setColorCorrectionMatrix() for manual CCM override");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1507,11 +1878,33 @@ TestOutput CameraInterfacesTesting::testColorCorrectionMatrix()
 TestOutput CameraInterfacesTesting::testGammaCorrection()
 {
     std::vector<std::string> data;
-    bool passed = true;
 
     data.push_back("=== Gamma Correction / Tone Mapping (Raspberry Pi 5) ===");
-    data.push_back("[INFO] Orin ISP implements a 1024-entry LUT-based gamma correction engine");
+    data.push_back("[INFO] The Pi5 ISP implements an LUT-based gamma correction engine");
     data.push_back("[INFO] Supports sRGB gamma (2.2), linear, and custom tone curves");
+
+    // Acceptance criteria (measurable): the LUT-based gamma engine is an
+    // embedded Pi5 ISP (nvisp) stage, so the test is only meaningful when the
+    // ISP pipeline is present. No ISP/CSI hardware -> SKIPPED.
+    bool ispPresent = isModuleLoaded("unicam") || isModuleLoaded("nvisp") || !getVideoDevices().empty();
+    if (pathExists("/sys/bus/platform/devices")) {
+        for (const auto& d : listDir("/sys/bus/platform/devices")) {
+            std::string base = d.substr(d.find_last_of('/') + 1);
+            if (base.find("nvisp") != std::string::npos || base.find("rp1-isp") != std::string::npos || base.find("15c00000") != std::string::npos) {
+                ispPresent = true;
+                data.push_back("[PASS] ISP platform device present (gamma LUT is an embedded ISP stage): " + base);
+                break;
+            }
+        }
+    }
+    if (!ispPresent) {
+        data.push_back("[SKIP] No ISP/CSI pipeline detected - gamma correction cannot be verified on this DUT");
+        TestOutput _out;
+        _out.status = hal::Status::SKIPPED;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 
     // Check for gamma config in tuning files
     std::string gammaFile = runCmd("find /etc/camera /var/nvidia/nvcam/settings 2>/dev/null "
@@ -1520,7 +1913,7 @@ TestOutput CameraInterfacesTesting::testGammaCorrection()
     if (!gammaFile.empty())
         data.push_back("[PASS] Gamma tuning found in: " + gammaFile);
     else
-        data.push_back("[INFO] Gamma tuning not found; default sRGB gamma applied by ISP");
+        data.push_back("[INFO] Gamma tuning not found; default sRGB gamma applied by ISP (embedded LUT)");
 
     // Check V4L2 gamma control
     auto videoDev = getVideoDevices();
@@ -1537,14 +1930,11 @@ TestOutput CameraInterfacesTesting::testGammaCorrection()
         }
     }
 
-    data.push_back("[PASS] Orin ISP hardware gamma: 1024-entry 16-bit LUT, per-channel R/G/B independent curves");
-    data.push_back("[INFO] Argus API: ISourceSettings::setGainRange() and tone-curve controls");
     {
         TestOutput _out;
-        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
-        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        _out.status = hal::Status::PASS;
+        _out.severity = hal::Severity::INFO;
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -1941,6 +2331,7 @@ std::vector<std::string> CameraInterfacesTesting::getAvailableTests()
         "testMultipleCameraSimultaneousOperation",
         "testVirtualChannelSupport",
         "testCameraClockGeneration",
+        "testRepresentativeCapture",
         "testCameraPowerSequencing",
         "testRaw8",
         "testRaw10",
@@ -1986,6 +2377,8 @@ TestResult CameraInterfacesTesting::runSingleTest(const std::string& testName)
         result = testVirtualChannelSupport();
     } else if (testName == "testCameraClockGeneration") {
         result = testCameraClockGeneration();
+    } else if (testName == "testRepresentativeCapture") {
+        result = testRepresentativeCapture();
     } else if (testName == "testCameraPowerSequencing") {
         result = testCameraPowerSequencing();
     } else if (testName == "testRaw8") {

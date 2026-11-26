@@ -1,31 +1,32 @@
 /**
  * @file accelerometer_lib.h
- * @brief AccelerometerTesting — tests the accelerometer peripheral.
- * @details Linux interface: IIO sysfs (/sys/bus/iio/devices/iio:device*)
- * @note HARDWARE-UNVERIFIED — all test implementations require on-target
- *       execution against real hardware.
- */
-#pragma once
+ * @brief Header for AccelerometerTesting class (Raspberry Pi 5 accelerometer testing)
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+#ifndef ACCELEROMETERTESTING_H
+#define ACCELEROMETERTESTING_H
 #include "lib_base.h"
-#include <string>
-#include <vector>
 
-class AccelerometerTesting : public TestBase {
-public:
+/**
+ * @class AccelerometerTesting
+ * @brief Tests an accelerometer (e.g. LSM6DSM, BNO055) exposed via the IIO
+ *        subsystem on the Raspberry Pi 5.
+ */
+class AccelerometerTesting : public TestBase
+{
+  public:
     AccelerometerTesting();
-    ~AccelerometerTesting() override;
+    ~AccelerometerTesting();
 
-    // ── TestBase interface ──────────────────────────────────────────────
+    TestOutput testAccelerometerPresent();
+    TestOutput testAccelerometerRead();
+    TestOutput testAccelerometerScale();
+
     std::vector<std::string> getAvailableTests() override;
-    std::vector<TestResult>  runAllTests()       override;
-    TestResult               runSingleTest(const std::string& testName) override;
+    TestResult runSingleTest(const std::string& testName) override;
 
-    // ── Module-specific tests ───────────────────────────────────────────
-    TestOutput testPresence(); // HARDWARE-UNVERIFIED
-    TestOutput testAxisReadback(); // HARDWARE-UNVERIFIED
-    TestOutput testDataRate(); // HARDWARE-UNVERIFIED
-    TestOutput testSelfTest(); // HARDWARE-UNVERIFIED
-
-protected:
-    std::string device_path_; // resolved device path (may be empty if not found)
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
+
+#endif // ACCELEROMETERTESTING_H

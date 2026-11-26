@@ -38,10 +38,13 @@ class IModuleHandler {
         hal::common::ResultEnvelope*     out) = 0;
 
     // Run tests in cycles for a fixed duration; write one envelope per cycle.
+    // `session_id` distinguishes concurrent runs of the same module so controls
+    // (Stop/Pause/Resume) target the right session (task 60).
     virtual grpc::Status StartLongTerm(
         grpc::ServerContext*                              ctx,
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
+        const std::string&                               session_id,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) = 0;
 
     // Run tests + sample monitor items each cycle; write one envelope per cycle.
@@ -50,6 +53,7 @@ class IModuleHandler {
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
         const hal::common::MonitoringParams&             monitoring,
+        const std::string&                               session_id,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) = 0;
 
     // Poll tests continuously; write an envelope each time the condition fires.
@@ -58,16 +62,18 @@ class IModuleHandler {
         const google::protobuf::Any&                     module_config,
         const hal::common::CommonConfig&                 common,
         const hal::common::EventCondition&               condition,
+        const std::string&                               session_id,
         grpc::ServerWriter<hal::common::ResultEnvelope>* writer) = 0;
 
-    // Abort any active background test.
-    virtual void Stop() = 0;
+    // Abort an active background session. Empty session_id stops all sessions
+    // for this module (task 60: session-scoped lifecycle).
+    virtual void Stop(const std::string& session_id) = 0;
 
-    // Pause the active background test (no-op if not running).
-    virtual void Pause() = 0;
+    // Pause an active background session (no-op if not running).
+    virtual void Pause(const std::string& session_id) = 0;
 
-    // Resume a paused background test (no-op if not paused).
-    virtual void Resume() = 0;
+    // Resume a paused background session (no-op if not paused).
+    virtual void Resume(const std::string& session_id) = 0;
 
     // Return the ModuleInfo proto for ListModules.
     virtual hal::ModuleInfo GetModuleInfo() const = 0;
@@ -147,6 +153,7 @@ class HalServiceImpl final : public hal::HalService::Service {
     grpc::Status Resolve(const std::string& module_id, IModuleHandler** out) const;
 
     std::unique_ptr<ModuleRegistry> registry_;
+    static std::string NewSessionId();  // Task 60: unique per-background-start id
 };
 
 } // namespace server

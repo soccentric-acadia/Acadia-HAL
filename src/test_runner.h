@@ -28,9 +28,12 @@
 #include "lib_base.h"
 
 #include <atomic>
+#include <cctype>
 #include <csignal>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -135,6 +138,59 @@ static std::vector<MonitorItem> trPi5MonitorItems()
 // ---------------------------------------------------------------------------
 // EventCriteria factory from a CLI keyword string
 // ---------------------------------------------------------------------------
+
+// Task 58: parse and evaluate a freeform numeric expression of the form
+//   <metric> <op> <number>   e.g. "cpu_temp_c > 80"
+// Supported ops: > >= < <= ==
+// Returns false for any invalid expression (so a malformed rule never fires).
+static inline bool trEvaluateEventExpression(const std::string& expr,
+                                      const std::function<double(const std::string&)>& value_of)
+{
+    // Trim surrounding whitespace.
+    std::string s = expr;
+    auto not_sp  = [](unsigned char c) { return !std::isspace(c); };
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), not_sp));
+    s.erase(std::find_if(s.rbegin(), s.rend(), not_sp).base(), s.end());
+    if (s.empty()) return false;
+
+    // Locate the operator between the metric name and the number.
+    size_t op_pos = std::string::npos;
+    size_t op_len = 0;
+    for (const char* op : {">=", "<=", "==", ">", "<", "="}) {
+        size_t p = s.find(op);
+        if (p != std::string::npos) { op_pos = p; op_len = std::strlen(op); break; }
+    }
+    if (op_pos == std::string::npos) return false;  // no operator
+    std::string metric = s.substr(0, op_pos);
+    std::string rhs    = s.substr(op_pos + op_len);
+    metric.erase(metric.begin(), std::find_if(metric.begin(), metric.end(), not_sp));
+    metric.erase(std::find_if(metric.rbegin(), metric.rend(), not_sp).base(), metric.end());
+    rhs.erase(rhs.begin(), std::find_if(rhs.begin(), rhs.end(), not_sp));
+    rhs.erase(std::find_if(rhs.rbegin(), rhs.rend(), not_sp).base(), rhs.end());
+
+    if (metric.empty() || rhs.empty()) return false;
+    // Metric name must be identifier-like (letters, digits, underscore, minus).
+    for (char c : metric)
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-') return false;
+    double threshold = 0.0;
+    try { threshold = std::stod(rhs); }
+    catch (...) { return false; }  // invalid number -> reject
+
+    std::string val = std::to_string(value_of(metric));
+    double value = 0.0;
+    try { value = std::stod(val); }
+    catch (...) { return false; }
+
+    const std::string op_str = s.substr(op_pos, op_len);
+    const char* op = op_str.c_str();
+    if (!std::strcmp(op, ">"))  return value >  threshold;
+    if (!std::strcmp(op, ">=")) return value >= threshold;
+    if (!std::strcmp(op, "<"))  return value <  threshold;
+    if (!std::strcmp(op, "<=")) return value <= threshold;
+    if (!std::strcmp(op, "==")) return value == threshold;
+    if (!std::strcmp(op, "="))  return value == threshold;
+    return false;
+}
 
 static EventCriteria trMakeCriteria(const std::string& spec)
 {

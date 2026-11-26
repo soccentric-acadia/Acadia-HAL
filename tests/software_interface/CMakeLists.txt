@@ -4,3 +4,5 @@ target_include_directories(test_software_interface PRIVATE ${CMAKE_SOURCE_DIR}/s
 add_test(NAME test_software_interface COMMAND test_software_interface)
 set_tests_properties(test_software_interface PROPERTIES TIMEOUT 300)
 install(TARGETS test_software_interface RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_software_interface PROPERTIES LABELS "host")

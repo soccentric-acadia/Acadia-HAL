@@ -1,31 +1,31 @@
 /**
  * @file bluetooth_lib.h
- * @brief BluetoothTesting — tests the bluetooth peripheral.
- * @details Linux interface: BlueZ via /sys/class/bluetooth/ and hci sockets
- * @note HARDWARE-UNVERIFIED — all test implementations require on-target
- *       execution against real hardware.
- */
-#pragma once
+ * @brief Header for BluetoothTesting class (Raspberry Pi 5 Bluetooth testing)
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+#ifndef BLUETOOTHTESTING_H
+#define BLUETOOTHTESTING_H
 #include "lib_base.h"
-#include <string>
-#include <vector>
 
-class BluetoothTesting : public TestBase {
-public:
+/**
+ * @class BluetoothTesting
+ * @brief Tests Bluetooth controller presence, power state, and HCI availability.
+ */
+class BluetoothTesting : public TestBase
+{
+  public:
     BluetoothTesting();
-    ~BluetoothTesting() override;
+    ~BluetoothTesting();
 
-    // ── TestBase interface ──────────────────────────────────────────────
+    TestOutput testBluetoothControllerPresent();
+    TestOutput testBluetoothPowered();
+    TestOutput testBluetoothHciAvailable();
+
     std::vector<std::string> getAvailableTests() override;
-    std::vector<TestResult>  runAllTests()       override;
-    TestResult               runSingleTest(const std::string& testName) override;
+    TestResult runSingleTest(const std::string& testName) override;
 
-    // ── Module-specific tests ───────────────────────────────────────────
-    TestOutput testPresence(); // HARDWARE-UNVERIFIED
-    TestOutput testAddress(); // HARDWARE-UNVERIFIED
-    TestOutput testPowerState(); // HARDWARE-UNVERIFIED
-    TestOutput testScanResult(); // HARDWARE-UNVERIFIED
-
-protected:
-    std::string device_path_; // resolved device path (may be empty if not found)
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
+
+#endif // BLUETOOTHTESTING_H

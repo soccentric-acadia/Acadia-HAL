@@ -2,7 +2,7 @@
  * @file debug_and_development_interfaces.cpp
  * @brief Implementation file for DebugAndDevelopmentInterfaces class
  * @details Provides real hardware tests for debug and development interfaces
- *          on the Raspberry Pi 5 platform (Cortex-A78AE, Orin SoC).
+ *          on the Raspberry Pi 5 platform (Cortex-A76, BCM2712).
  * @author sandesh ghimire
  * @copyright (C) Soccentric LLC */
 
@@ -11,6 +11,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
@@ -45,6 +47,19 @@ static constexpr const char* JTAG_DEV_PATH = "/dev/jtag0";
 // ---------------------------------------------------------------------------
 
 /** Read a single line from a file; returns empty string on failure. */
+
+// Safe numeric parsing: rejects empty/garbage input instead of throwing.
+static bool dbgParseLong(const std::string& s, long& out)
+{
+    if (s.empty()) return false;
+    char* end = nullptr;
+    errno = 0;
+    long v = strtol(s.c_str(), &end, 10);
+    if (end == s.c_str() || errno == ERANGE) return false;
+    out = v;
+    return true;
+}
+
 static std::string readLine(const std::string& path)
 {
     std::ifstream f(path);
@@ -129,7 +144,7 @@ DebugAndDevelopmentInterfaces::~DebugAndDevelopmentInterfaces()
  *     "jtag-generic" or RP1 JTAG driver is loaded.
  *  2. CoreSight sysfs bus is available (a prerequisite for JTAG debug).
  *  3. debugfs mount is accessible (JTAG operation commonly requires debugfs).
- *  4. RP1-fuse driver is present (provides jtag-disable fuse readback on Orin).
+ *  4. RP1-fuse driver is present (provides jtag-disable fuse readback on the target SoC).
  *
  * @return TestOutput with pass/fail and diagnostic data.
  */
@@ -189,8 +204,7 @@ TestOutput DebugAndDevelopmentInterfaces::testJtagInterface()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -219,8 +233,7 @@ TestOutput DebugAndDevelopmentInterfaces::testSerialWireDebug()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -237,7 +250,7 @@ TestOutput DebugAndDevelopmentInterfaces::testSerialWireDebug()
     // 3. Count CTI devices (Cross-Trigger Interface – needed for SWD halt/resume)
     int ctiCount = countMatchingEntries(CORESIGHT_BUS_PATH, "cti");
     data.push_back("CoreSight CTI devices found: " + std::to_string(ctiCount));
-    // Pi5 (Orin SoC) typically exposes 12+ CTI instances
+    // Pi5 (BCM2712) typically exposes 12+ CTI instances
     if (ctiCount == 0) {
         passed = false;
         data.push_back("FAIL: No CTI devices found – SWD halt/resume control unavailable.");
@@ -265,8 +278,7 @@ TestOutput DebugAndDevelopmentInterfaces::testSerialWireDebug()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -306,8 +318,7 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugUart()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -361,8 +372,7 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugUart()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -370,7 +380,7 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugUart()
 /**
  * @brief Test the ARM CoreSight Trace Port (ETM/ETF/ETR/TPIU) on Pi5.
  *
- * The Pi5 (Orin SoC) incorporates embedded CoreSight trace:
+ * The Pi5 (BCM2712) incorporates embedded CoreSight trace:
  *  - ETM  (Embedded Trace Macrocell)  – one per CPU cluster / core
  *  - ETF  (Embedded Trace FIFO/buffer)
  *  - TPIU (Trace Port Interface Unit) – drives external trace connector
@@ -397,8 +407,7 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -475,8 +484,7 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -490,12 +498,12 @@ TestOutput DebugAndDevelopmentInterfaces::testTracePort()
  *  - /proc/sys/kernel/perf_event_paranoid   – access control level
  *  - /sys/bus/event_source/devices/         – PMU device enumeration
  *  - /sys/bus/event_source/devices/armv8_*  – ARM PMU
- *  - /sys/bus/event_source/devices/gpu_*    – GPU PMU (Ampere GPU on Orin)
+ *  - /sys/bus/event_source/devices/gpu_*    – GPU PMU (Ampere GPU on the target SoC)
  *
  * Checks:
  *  1. perf_event_paranoid is readable and not fully locked (!=3/-1 only in debug builds).
  *  2. At least one ARM PMU event source exists.
- *  3. Orin GPU PMU event source exists.
+ *  3. GPU PMU event source availability is platform-specific.
  *  4. Number of hardware counters reported per PMU.
  *
  * @return TestOutput with pass/fail and diagnostic data.
@@ -514,12 +522,20 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
-    int paranoid = std::stoi(paranoidStr);
+    long paranoid = 0;
+    if (!dbgParseLong(paranoidStr, paranoid) || paranoid < 0 || paranoid > 4)
+    {
+        data.push_back("[FAIL] perf_event_paranoid value unparseable: '" + paranoidStr + "'");
+        TestOutput _out;
+        _out.status = hal::Status::FAIL;
+        _out.severity = hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
     data.push_back("perf_event_paranoid: " + paranoidStr);
     if (paranoid > 2) {
         data.push_back("  WARN: paranoid=" + paranoidStr + " – unprivileged access to hardware PMU counters is restricted.");
@@ -536,8 +552,7 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
             TestOutput _out;
             _out.status = hal::Status::FAIL;
             _out.severity = hal::Severity::ERROR;
-            for (size_t _i = 0; _i < data.size(); ++_i)
-                _out.reason["detail_" + std::to_string(_i)] = data[_i];
+            StampDiagnostics(_out, data);
             return _out;
         }
     }
@@ -597,8 +612,7 @@ TestOutput DebugAndDevelopmentInterfaces::testPerformanceCounters()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }
@@ -630,7 +644,7 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
     bool fusePresent = isDir(TEGRA_OTP_PATH);
     data.push_back(std::string("RP1-fuse sysfs: ") + (fusePresent ? "present" : "not found"));
     if (!fusePresent) {
-        // Try alternative path used on older L4T/Orin BSPs
+        // Try alternative path used on older BSPs
         std::string altFusePath = "/sys/devices/platform/13800000.efuse";
         bool altPresent = isDir(altFusePath);
         if (!altPresent) {
@@ -675,14 +689,14 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
     // /sys/devices/platform/rp1-fuse/chip_id or /proc/device-tree/compatible
     std::string chipId = readLine(std::string(TEGRA_OTP_PATH) + "/chip_id");
     if (!chipId.empty()) {
-        data.push_back("RP1 chip_id: " + chipId + " (expected: 0x23 / 35 = Orin)");
+        data.push_back("RP1 chip_id: " + chipId + " (expected: 0x23 / 35 (BCM2712))");
     } else {
         // Fallback: read from device-tree compatible
         std::string dtcompat = readLine("/proc/device-tree/compatible");
         if (!dtcompat.empty()) {
             data.push_back("DT compatible: " + dtcompat);
             if (dtcompat.find("orin") == std::string::npos && dtcompat.find("t234") == std::string::npos) {
-                data.push_back("  WARN: DT compatible does not mention Orin/T234.");
+                data.push_back("  WARN: DT compatible does not mention the target SoC/T234.");
             }
         } else {
             data.push_back("  INFO: chip_id and DT compatible not readable.");
@@ -720,8 +734,7 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
         TestOutput _out;
         _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
         _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
-        for (size_t _i = 0; _i < data.size(); ++_i)
-            _out.reason["detail_" + std::to_string(_i)] = data[_i];
+        StampDiagnostics(_out, data);
         return _out;
     }
 }

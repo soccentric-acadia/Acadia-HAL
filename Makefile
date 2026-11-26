@@ -1,14 +1,15 @@
 # Master Makefile for Acadia HAL
-# Supports both native and Docker-based builds with Ninja
+# Docker-based builds: the default (and only) build path is Docker.
 
-.PHONY: all build configure clean test format cppcheck doc help
+.DEFAULT_GOAL := help
+
+.PHONY: all build clean test format cppcheck lint doc help
 .PHONY: package package-deb package-rpm package-ipk
 .PHONY: docker-build docker-configure docker-clean docker-shell docker-install docker-image docker-test
 .PHONY: docker-package docker-package-deb docker-package-rpm docker-package-ipk
-.PHONY: deploy deploy-a deploy-b run run-a run-b list setup-completion
+.PHONY: deploy deploy-a deploy-b run-a run-b list setup-completion
 
 # Build directories (separate to avoid CMake cache conflicts)
-NATIVE_BUILD_DIR := build/native
 CROSS_BUILD_DIR := build/cross
 
 # Parallel jobs (override with make JOBS=N)
@@ -38,18 +39,26 @@ SSH := $(SSHPASS) ssh -o StrictHostKeyChecking=no
 SCP := $(SSHPASS) scp -o StrictHostKeyChecking=no
 
 # Default target
-all: docker-build
+all: docker-build ## Default target: Docker cross-build (fleet standard)
 
 # Deploy to remote target: $(1)=IP address
 # Fails fast if no address or credentials were provided.
 _require_deploy_env = $(if $(strip $(1)),,$(error deploy requires an IP (set IP_A/IP_B or ACADIA_TARGET_ADDRESS)))
+# HAL-062: versioned deploy path (no more /tmp staging). Each deploy lands in
+# /opt/acadia/hal/<version> with a SHA-256 manifest, so bench targets keep
+# multiple versions side by side and nothing silently overwrites a running one.
+HAL_VERSION := $(shell grep -m1 'ACUFullTest VERSION' CMakeLists.txt | sed 's/.*VERSION \([0-9.]*\).*/\1/')
+ACADIA_DEPLOY_ROOT ?= /opt/acadia/hal
+DEPLOY_DIR := $(ACADIA_DEPLOY_ROOT)/$(HAL_VERSION)
+
 define deploy_remote
 	$(call _require_deploy_env,$(1))
 	$(if $(and $(PASS),$(SSHPASS)),,$(if $(ACADIA_TARGET_SSH_KEY),,$(error deploy: no SSH credentials configured; set ACADIA_TARGET_SSH_KEY or ACADIA_TARGET_USER/ACADIA_TARGET_PASS)))
-	@echo "Deploying to $(1)..."
-	$(SSH) $(USER)@$(1) "rm -rf /tmp/acu-test && mkdir -p /tmp/acu-test"
-	$(SCP) -r $(CROSS_BUILD_DIR)/lib $(USER)@$(1):/tmp/acu-test/
-	$(SCP) -r $(CROSS_BUILD_DIR)/bin $(USER)@$(1):/tmp/acu-test/
+	@echo "Deploying HAL $(HAL_VERSION) to $(1):$(DEPLOY_DIR) ..."
+	$(SSH) $(USER)@$(1) "rm -rf $(DEPLOY_DIR) && mkdir -p $(DEPLOY_DIR)"
+	$(SCP) -r $(CROSS_BUILD_DIR)/lib $(USER)@$(1):$(DEPLOY_DIR)/
+	$(SCP) -r $(CROSS_BUILD_DIR)/bin $(USER)@$(1):$(DEPLOY_DIR)/
+	$(SSH) $(USER)@$(1) "cd $(DEPLOY_DIR) && find . -type f -not -name MANIFEST -exec sha256sum {} \; | sed 's|  \./|  |' > MANIFEST && echo 'version: $(HAL_VERSION)' >> MANIFEST && date -u '+deployed: %Y-%m-%dT%H:%M:%SZ' >> MANIFEST"
 endef
 
 # Run apps on remote target: $(1)=IP address
@@ -69,54 +78,22 @@ define run_remote
 	fi
 endef
 
-define run_local
-	@APP="$(word 2, $(MAKECMDGOALS))"; \
-	ARGS="$(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))"; \
-	if [ -z "$$APP" ]; then \
-		echo "Running all test applications locally..."; \
-		for name in $$(ls $(NATIVE_BUILD_DIR)/bin/); do \
-			echo "--- Running $$name ---"; \
-			$(if $(V),echo "LD_LIBRARY_PATH=$(NATIVE_BUILD_DIR)/lib $(NATIVE_BUILD_DIR)/bin/$$name";) \
-			LD_LIBRARY_PATH=$(NATIVE_BUILD_DIR)/lib $(NATIVE_BUILD_DIR)/bin/$$name || true; \
-		done; \
-	else \
-		echo "Running $$APP locally with args: $$ARGS"; \
-		$(if $(V),echo "LD_LIBRARY_PATH=$(NATIVE_BUILD_DIR)/lib $(NATIVE_BUILD_DIR)/bin/$$APP $$ARGS";) \
-		LD_LIBRARY_PATH=$(NATIVE_BUILD_DIR)/lib $(NATIVE_BUILD_DIR)/bin/$$APP $$ARGS; \
-	fi
-endef
-
 # =============================================================================
-# Native builds (host architecture)
+# Build & test (Docker — the default build path)
 # =============================================================================
 
-configure:
-	@echo "Configuring project with Ninja..."
-	mkdir -p $(NATIVE_BUILD_DIR)
-	cd $(NATIVE_BUILD_DIR) && cmake -GNinja $(CURDIR)
-
-build: configure
-	@echo "Building project with Ninja..."
-	cd $(NATIVE_BUILD_DIR) && ninja -j$(JOBS)
-
-run: build
-	$(call run_local)
-
-test: build
-	@echo "Running tests with CTest..."
-	cd $(NATIVE_BUILD_DIR) && ctest --output-on-failure -j$(JOBS)
+build: docker-build ## Build the project in Docker (alias for docker-build)
+test: docker-test ## Run tests in Docker (ARM64 via QEMU)
 
 # =============================================================================
 # Common for native and Cross
 # =============================================================================
 
-clean:
+clean: ## Remove build directory
 	@echo "Cleaning build directory..."
 	rm -rf build
 
-list:
-	@echo "Native ($(NATIVE_BUILD_DIR)):"
-	@ls -1 $(NATIVE_BUILD_DIR)/bin/ 2>/dev/null | sed 's/^/    /' || echo "    (none - run 'make build' first)"
+list: ## List available test applications
 	@echo "Cross ($(CROSS_BUILD_DIR)):"
 	@ls -1 $(CROSS_BUILD_DIR)/bin/ 2>/dev/null | sed 's/^/    /' || echo "    (none - run 'make docker-build' first)"
 
@@ -129,7 +106,7 @@ list:
 # ccache volume: persist compilation cache across docker runs
 DOCKER_RUN := docker run --rm -t --init --platform linux/arm64 -v $(PWD):/workspace -v ccache-acu:/home/rpi/.ccache $(DOCKER_IMAGE) bash -c
 
-docker-install:
+docker-install: ## Install Docker if not present
 	@if ! command -v docker > /dev/null 2>&1; then \
 		echo "Docker not found. Installing Docker..."; \
 		sudo apt update && sudo apt install -y docker.io; \
@@ -137,7 +114,7 @@ docker-install:
 		echo "Docker is already installed."; \
 	fi
 
-docker-image: docker-install
+docker-image: docker-install ## Build Docker image if not exists
 	@if ! docker image inspect $(DOCKER_IMAGE) >/dev/null 2>&1; then \
 		echo "Building Docker image $(DOCKER_IMAGE)..."; \
 		make -C docker build; \
@@ -145,124 +122,76 @@ docker-image: docker-install
 		echo "Docker image $(DOCKER_IMAGE) already exists."; \
 	fi
 
-docker-configure: docker-image
+docker-configure: docker-image ## Configure project with Docker/Ninja
 	@echo "Configuring project with Docker/Ninja..."
 	$(DOCKER_RUN) "mkdir -p $(DOCKER_CROSS_BUILD_DIR) && cd $(DOCKER_CROSS_BUILD_DIR) && cmake -GNinja /workspace"
 
-docker-build: docker-image
+docker-build: docker-image ## Build project with Docker/Ninja
 	@echo "Building project with Docker/Ninja..."
 	$(DOCKER_RUN) "if [ ! -f $(DOCKER_CROSS_BUILD_DIR)/build.ninja ]; then mkdir -p $(DOCKER_CROSS_BUILD_DIR) && cd $(DOCKER_CROSS_BUILD_DIR) && cmake -GNinja /workspace; fi && cd $(DOCKER_CROSS_BUILD_DIR) && ninja -j$(JOBS)"
 
-docker-clean: docker-image
+docker-clean: docker-image ## Clean Docker build artifacts
 	@echo "Cleaning Docker build directory..."
 	$(DOCKER_RUN) "rm -rf $(DOCKER_CROSS_BUILD_DIR)"
 
-docker-shell: docker-image
+docker-shell: docker-image ## Start Docker shell for development
 	@echo "Starting Docker shell for development..."
 	docker run -it --rm --platform linux/arm64 -v $(PWD):/workspace -v ccache-acu:/home/rpi/.ccache $(DOCKER_IMAGE) bash
 
-docker-test: docker-build
+docker-test: docker-build ## Run CTest inside Docker (ARM64 via QEMU)
 	@echo "Running tests inside Docker (ARM64 via QEMU)..."
 	$(DOCKER_RUN) "cd $(DOCKER_CROSS_BUILD_DIR) && ctest --output-on-failure -j$(JOBS)"
 
-docker-package-deb: docker-build
+docker-package-deb: docker-build ## Generate DEB package (cross/ARM64)
 	@echo "Generating DEB package (cross/ARM64)..."
 	$(DOCKER_RUN) "cd $(DOCKER_CROSS_BUILD_DIR) && cpack -G DEB"
 
-docker-package-rpm: docker-build
+docker-package-rpm: docker-build ## Generate RPM package (cross/ARM64)
 	@echo "Generating RPM package (cross/ARM64, requires rpmbuild in image)..."
 	$(DOCKER_RUN) "cd $(DOCKER_CROSS_BUILD_DIR) && cpack -G RPM"
 
-docker-package-ipk: docker-build
+docker-package-ipk: docker-build ## Generate IPK package (cross/ARM64)
 	@echo "Generating IPK package (cross/ARM64)..."
 	$(DOCKER_RUN) "cd $(DOCKER_CROSS_BUILD_DIR) && cmake --build . --target package_ipk"
 
-docker-package: docker-package-deb docker-package-ipk
+docker-package: docker-package-deb docker-package-ipk ## Generate DEB + IPK (cross/ARM64)
 	@echo "Cross packages generated in build/cross/"
 
 # =============================================================================
 # Deploy & Run (on target device)
 # =============================================================================
 
-deploy: deploy-a deploy-b
+deploy: deploy-a deploy-b ## Deploy to all devices (deploy-a + deploy-b)
 
-deploy-a: docker-build
+deploy-a: docker-build ## Deploy lib and bin to $(IP_A)
 	$(call deploy_remote,$(IP_A))
 
-deploy-b: docker-build
+deploy-b: docker-build ## Deploy lib and bin to $(IP_B)
 	$(call deploy_remote,$(IP_B))
 
-run-a: deploy-a
+run-a: deploy-a ## Run test app on $(IP_A) (usage: make run-a [name] [args...])
 	$(call run_remote,$(IP_A))
 
-run-b: deploy-b
+run-b: deploy-b ## Run test app on $(IP_B) (usage: make run-b [name] [args...])
 	$(call run_remote,$(IP_B))
 
 # =============================================================================
-# Code quality & Docs
+# Code quality & Docs (run inside the Docker build container)
 # =============================================================================
 
-format: check-clang-format configure
-	@echo "Formatting C++ files with clang-format..."
-	cd $(NATIVE_BUILD_DIR) && ninja format
-	@echo "Formatting CMake files..."
-	@if command -v cmake-format > /dev/null 2>&1; then \
-		find . -name CMakeLists.txt -not -path './build/*' -not -path './cmake-build-debug/*' | xargs cmake-format -i; \
-	else \
-		echo "  cmake-format not found, skipping CMake file formatting. Install with: sudo apt install -y cmake-format"; \
-	fi
+format: docker-image ## Format code with clang-format (in Docker)
+	@echo "Running clang-format in Docker..."
+	$(DOCKER_RUN) "cd $(DOCKER_CROSS_BUILD_DIR) && ninja format"
 
-cppcheck: check-cppcheck configure
-	@echo "Running cppcheck static analysis..."
-	cd $(NATIVE_BUILD_DIR) && ninja cppcheck
+cppcheck: docker-image ## Run static analysis with cppcheck (in Docker)
+	@echo "Running cppcheck in Docker..."
+	$(DOCKER_RUN) "cd $(DOCKER_CROSS_BUILD_DIR) && ninja cppcheck"
 
-doc: check-doxygen configure
-	@echo "Generating documentation..."
-	cd $(NATIVE_BUILD_DIR) && ninja doc_doxygen
+doc: docker-image ## Generate Doxygen documentation (in Docker)
+	@echo "Generating documentation in Docker..."
+	$(DOCKER_RUN) "cd $(DOCKER_CROSS_BUILD_DIR) && ninja doc_doxygen"
 
-.PHONY: check-clang-format check-cppcheck check-doxygen
-check-clang-format:
-	@if ! command -v clang-format > /dev/null 2>&1; then \
-		echo "Error: clang-format not found." >&2; \
-		echo "Install with: sudo apt install -y clang-format" >&2; \
-		exit 1; \
-	fi
-
-check-cppcheck:
-	@if ! command -v cppcheck > /dev/null 2>&1; then \
-		echo "Error: cppcheck not found." >&2; \
-		echo "Install with: sudo apt install -y cppcheck" >&2; \
-		exit 1; \
-	fi
-
-check-doxygen:
-	@if ! command -v doxygen > /dev/null 2>&1; then \
-		echo "Error: doxygen not found." >&2; \
-		echo "Install with: sudo apt install -y doxygen graphviz" >&2; \
-		exit 1; \
-	fi
-
-# =============================================================================
-# Packaging (DEB / IPK / RPM)
-# =============================================================================
-
-package-deb: build
-	@echo "Generating DEB package..."
-	cd $(NATIVE_BUILD_DIR) && cpack -G DEB
-	@echo "Package: $$(ls $(NATIVE_BUILD_DIR)/acadia-hal_*.deb 2>/dev/null | head -1)"
-
-package-rpm: build
-	@echo "Generating RPM package (requires rpmbuild: sudo apt-get install rpm)..."
-	cd $(NATIVE_BUILD_DIR) && cpack -G RPM
-	@echo "Package: $$(ls $(NATIVE_BUILD_DIR)/acadia-hal-*.rpm 2>/dev/null | head -1)"
-
-package-ipk: build
-	@echo "Generating IPK package..."
-	cd $(NATIVE_BUILD_DIR) && cmake --build . --target package_ipk
-	@echo "Package: $$(ls $(NATIVE_BUILD_DIR)/acadia-hal_*.ipk 2>/dev/null | head -1)"
-
-package: package-deb package-ipk
-	@echo "All packages generated in $(NATIVE_BUILD_DIR)/"
+# Packaging: the docker-package* targets above cover all packaging (Docker).
 
 # =============================================================================
 # Misc
@@ -281,57 +210,22 @@ setup-completion:
 # Help
 # =============================================================================
 
-help:
-	@echo "Available targets:"
-	@echo "  Native builds (host architecture):"
-	@echo "    configure    - Configure the project with CMake/Ninja"
-	@echo "    build        - Build the project (configures if needed)"
-	@echo "    test         - Run tests with CTest"
-	@echo "    run          - Run test app locally (usage: make run [name] [args...], no args = run all)"
-	@echo ""
-	@echo "  Common (host and docker):"
-	@echo "    clean        - Remove build directory"
-	@echo "    list         - List available test applications"
-	@echo ""
-	@echo "  Cross builds (Docker / ARM64):"
-	@echo "    all                  - Alias for docker-build (default)"
-	@echo "    docker-install       - Install Docker if not present"
-	@echo "    docker-image         - Build Docker image if not exists"
-	@echo "    docker-configure     - Configure project with Docker/Ninja"
-	@echo "    docker-build         - Build project with Docker/Ninja"
-	@echo "    docker-test          - Run CTest inside Docker (ARM64 via QEMU)"
-	@echo "    docker-clean         - Clean Docker build artifacts"
-	@echo "    docker-shell         - Start Docker shell for development"
-	@echo ""
-	@echo "  Deploy & Run (on target device):"
-	@echo "    deploy       - Deploy to all devices (deploy-a + deploy-b)"
-	@echo "    deploy-a     - Deploy lib and bin to $(IP_A)"
-	@echo "    deploy-b     - Deploy lib and bin to $(IP_B)"
-	@echo "    run-a        - Run test app on $(IP_A) (usage: make run-a [name] [args...])"
-	@echo "    run-b        - Run test app on $(IP_B) (usage: make run-b [name] [args...])"
-	@echo "    Override IPs: make deploy IP_A=<addr> IP_B=<addr>"
-	@echo ""
-	@echo "  Packaging:"
-	@echo "    package-deb          - Generate DEB package (native build)"
-	@echo "    package-rpm          - Generate RPM package (requires rpmbuild)"
-	@echo "    package-ipk          - Generate IPK package (DEB renamed .ipk)"
-	@echo "    package              - Generate DEB + IPK (native build)"
-	@echo "    docker-package-deb   - Generate DEB package (cross/ARM64)"
-	@echo "    docker-package-rpm   - Generate RPM package (cross/ARM64)"
-	@echo "    docker-package-ipk   - Generate IPK package (cross/ARM64)"
-	@echo "    docker-package       - Generate DEB + IPK (cross/ARM64)"
-	@echo ""
-	@echo "  Code quality & Docs:"
-	@echo "    format       - Format code with clang-format (and cmake-format if available)"
-	@echo "    cppcheck     - Run static analysis with cppcheck"
-	@echo "    doc          - Generate Doxygen documentation"
-	@echo ""
-	@echo "  Misc:"
-	@echo "    setup-completion - Set up bash completion for make (adds to ~/.bashrc)"
-	@echo ""
-	@echo "  Environment variables:"
-	@echo "    ACADIA_TARGET_SSH_KEY - path to SSH private key (preferred auth)"
-	@echo "    ACADIA_TARGET_USER    - SSH username for deploy"
-	@echo "    ACADIA_TARGET_PASS    - SSH password for deploy (never commit)"
-	@echo "    HAL_SSH_USER/HAL_SSH_PASS - legacy env overrides"
-	@echo "    JOBS          - Parallel build jobs (default: nproc=$(JOBS))"
+# ── Fleet-standard aliases ────────────────────────────────────────────────────
+# Same verbs mean the same thing in every repo; these forward to this
+# repo's own targets rather than duplicating their recipes.
+.PHONY: fmt
+fmt: format ## Alias for format
+
+# ── Help ──────────────────────────────────────────────────────────────────────
+# Targets are self-documenting: text after `## ` on a target line is picked up
+# by `make help` automatically, so the listing can never drift from the rules.
+.PHONY: help
+version: ## Print the project version (CONV-004)
+	@echo "1.0.0"
+
+help: ## Show this help
+	@printf '\n  \033[1m%s\033[0m\n' 'Acadia-HAL'
+	@printf '  Usage: make <target> [VAR=value ...]\n'
+	@printf '\n'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_.\/-]+:.*?## / { printf "    \033[36m%-24s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@printf '\n'

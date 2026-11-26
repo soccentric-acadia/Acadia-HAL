@@ -4,3 +4,5 @@ target_include_directories(test_watchdog_and_reset PRIVATE ${CMAKE_SOURCE_DIR}/s
 add_test(NAME test_watchdog_and_reset COMMAND test_watchdog_and_reset)
 set_tests_properties(test_watchdog_and_reset PROPERTIES TIMEOUT 300)
 install(TARGETS test_watchdog_and_reset RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_watchdog_and_reset PROPERTIES LABELS "target-required")

@@ -1,0 +1,31 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+
+stages: [build, test]
+
+build:
+  stage: build
+  image: ubuntu:24.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config protobuf-compiler libprotobuf-dev libprotoc-dev libgrpc++-dev libgrpc-dev libgtest-dev libyaml-cpp-dev
+  script:
+    - cmake -S . -B build/ci -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+    - cmake --build build/ci --parallel
+  artifacts:
+    paths:
+      - build/ci/
+    expire_in: 1 week
+
+test:
+  stage: test
+  image: ubuntu:24.04
+  needs: [build]
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config protobuf-compiler libprotobuf-dev libprotoc-dev libgrpc++-dev libgrpc-dev libgtest-dev libyaml-cpp-dev
+  script:
+    - ctest --test-dir build/ci --output-on-failure
+    - ./scripts/verdict-integrity-gate.sh

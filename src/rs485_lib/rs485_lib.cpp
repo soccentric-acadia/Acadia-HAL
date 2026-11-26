@@ -1,104 +1,173 @@
 /**
  * @file rs485_lib.cpp
- * @brief Rs485Testing implementation — termios + RS-485 ioctl TIOCSRS485 (/dev/ttyS*)
- * @note HARDWARE-UNVERIFIED — on-target execution required to validate.
- */
+ * @brief Implementation of Rs485Testing for Raspberry Pi 5.
+ * @details Verifies the PL011 UART used in RS-485 half-duplex mode. Checks device
+ *          presence, termios configurability, and the RS485 direction-control
+ *          ioctl (TIOCSRS485) which is available on the Linux serial driver.
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+
 #include "rs485_lib.h"
-
-#include <chrono>
+#include "../platform_rpi5.h"
+#include <errno.h>
+#include <fcntl.h>
 #include <fstream>
-#include <sstream>
 #include <string>
+#include <sys/stat.h>
+#include <termios.h>
+#include <unistd.h>
 #include <vector>
+#include <cstring>
+#include <sys/ioctl.h>
+#include <linux/serial.h>
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-[[maybe_unused]] static std::string readSysfs(const std::string& path) {
-    std::ifstream f(path);
-    std::string line;
-    if (f.is_open()) std::getline(f, line);
-    return line;
+static bool pathExists(const std::string& p)
+{
+    struct stat s;
+    return stat(p.c_str(), &s) == 0;
 }
 
-// ── constructor / destructor ─────────────────────────────────────────────────
-Rs485Testing::Rs485Testing() = default;
-Rs485Testing::~Rs485Testing() = default;
+Rs485Testing::Rs485Testing() {}
+Rs485Testing::~Rs485Testing() {}
 
-// ── TestBase interface ────────────────────────────────────────────────────────
-std::vector<std::string> Rs485Testing::getAvailableTests() {
-    return {"testPresence", "testRs485Enable", "testBaudRate", "testLoopbackTx"};
-}
-
-std::vector<TestResult> Rs485Testing::runAllTests() {
-    auto names = getAvailableTests();
-    return runSelectedTests(names);
-}
-
-TestResult Rs485Testing::runSingleTest(const std::string& testName) {
-    auto names = getAvailableTests();
-    for (const auto& n : names) {
-        if (n == testName) return runSelectedTests({testName})[0];
+TestOutput Rs485Testing::testRs485PortPresent()
+{
+    std::vector<std::string> data;
+    data.push_back("=== RS-485 Port Presence ===");
+    // HAL-501: use the dedicated RS-485 port (never the debug console).
+    bool passed = pathExists(acadia_rs485_uart());
+    if (passed) {
+        data.push_back("[PASS] RS-485 UART present: " + std::string(acadia_rs485_uart()));
+    } else {
+        data.push_back("[FAIL] " + std::string(acadia_rs485_uart()) + " not present");
     }
-    TestResult r;
-    r.module_id        = "rs485";
-    r.test_id          = testName;
-    r.name             = testName;
-    r.timestamp        = std::chrono::system_clock::now();
-    r.output.status    = Status::ERROR;
-    r.output.severity  = Severity::ERROR;
-    r.output.error_message = "unknown test: " + testName;
-    return r;
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
 }
 
-// HARDWARE-UNVERIFIED: requires real rs485 hardware on target.
-TestOutput Rs485Testing::testPresence() {
+TestOutput Rs485Testing::testRs485ModeConfigure()
+{
+    std::vector<std::string> data;
+    data.push_back("=== RS-485 Mode Configuration ===");
+    bool passed = false;
+    int fd = open(acadia_rs485_uart(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if (fd >= 0) {
+        struct termios tio;
+        if (tcgetattr(fd, &tio) == 0) {
+            cfmakeraw(&tio);
+            cfsetspeed(&tio, B9600);
+            if (tcsetattr(fd, TCSANOW, &tio) == 0) {
+                data.push_back("[PASS] UART configured 9600 8N1 for RS-485");
+                passed = true;
+            } else {
+                data.push_back("[WARN] tcsetattr failed: " + std::string(strerror(errno)));
+            }
+        }
+        close(fd);
+    } else {
+        data.push_back("[FAIL] Cannot open UART: " + std::string(strerror(errno)));
+    }
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::FAIL;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::ERROR;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+}
+
+TestOutput Rs485Testing::testRs485HalfDuplex()
+{
+    std::vector<std::string> data;
+    data.push_back("=== RS-485 Half-Duplex (TIOCSRS485) ===");
+    bool passed = false;
+    int fd = open(acadia_rs485_uart(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if (fd >= 0) {
+        struct serial_rs485 rs485conf;
+        memset(&rs485conf, 0, sizeof(rs485conf));
+        rs485conf.flags = SER_RS485_ENABLED | SER_RS485_RTS_ON_SEND;
+        if (ioctl(fd, TIOCSRS485, &rs485conf) == 0) {
+            data.push_back("[PASS] RS485 mode enabled on " + std::string(acadia_rs485_uart()));
+            passed = true;
+            // HAL-506: restore normal UART mode — leaving SER_RS485_ENABLED
+            // set would keep the port in RS-485 mode after the test.
+            struct serial_rs485 rs485off;
+            memset(&rs485off, 0, sizeof(rs485off));
+            ioctl(fd, TIOCSRS485, &rs485off);
+        } else {
+            data.push_back("[SKIP] TIOCSRS485 not supported on " + std::string(acadia_rs485_uart()) +
+                           ": " + std::string(strerror(errno)) +
+                           " — driver lacks RS485 flag support (half-duplex control not applicable on this port)");
+        }
+        close(fd);
+    } else {
+        data.push_back("[SKIP] Cannot open RS-485 UART (" + std::string(acadia_rs485_uart()) +
+                       "): " + std::string(strerror(errno)) + " — port not present on this DUT");
+    }
+    {
+        TestOutput _out;
+        _out.status = passed ? hal::Status::PASS : hal::Status::SKIPPED;
+        _out.severity = passed ? hal::Severity::INFO : hal::Severity::INFO;
+        StampDiagnostics(_out, data);
+        return _out;
+    }
+}
+
+std::vector<TestResult> Rs485Testing::runAllTests()
+{
+    std::vector<TestResult> results;
+    const std::vector<std::pair<std::string, TestOutput (Rs485Testing::*)()>> tests = {
+        {"testRs485PortPresent", &Rs485Testing::testRs485PortPresent},
+        {"testRs485ModeConfigure", &Rs485Testing::testRs485ModeConfigure},
+        {"testRs485HalfDuplex", &Rs485Testing::testRs485HalfDuplex},
+    };
+    for (const auto& t : tests) {
+        auto start = std::chrono::high_resolution_clock::now();
+        TestOutput out = (this->*t.second)();
+        auto end = std::chrono::high_resolution_clock::now();
+        TestResult _tr;
+        _tr.name = t.first;
+        _tr.test_id = t.first;
+        _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        _tr.output = out;
+        results.push_back(std::move(_tr));
+    }
+    return results;
+}
+
+std::vector<std::string> Rs485Testing::getAvailableTests()
+{
+    return { "testRs485PortPresent", "testRs485ModeConfigure", "testRs485HalfDuplex" };
+}
+
+TestResult Rs485Testing::runSingleTest(const std::string& testName)
+{
+    auto start = std::chrono::high_resolution_clock::now();
     TestOutput out;
-    // Detect RS-485 serial device node
-    // Linux interface: termios + RS-485 ioctl TIOCSRS485 (/dev/ttyS*)
-    // TODO: implement against termios + RS-485 ioctl TIOCSRS485 (/dev/ttyS*)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["device_found"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testPresence: not yet implemented — HARDWARE-UNVERIFIED";
-    return out;
+    out.status = hal::Status::ERROR;
+    out.severity = hal::Severity::ERROR;
+    out.error_message = "test not dispatched";
+    bool known = true;
+    if (testName == "testRs485PortPresent") out = testRs485PortPresent();
+    else if (testName == "testRs485ModeConfigure") out = testRs485ModeConfigure();
+    else if (testName == "testRs485HalfDuplex") out = testRs485HalfDuplex();
+    else known = false;
+    auto end = std::chrono::high_resolution_clock::now();
+    TestResult _tr;
+    _tr.name = known ? testName : testName + " (UNKNOWN)";
+    _tr.test_id = testName;
+    _tr.duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+    if (!known) {
+        _tr.output.status = hal::Status::ERROR;
+        _tr.output.severity = hal::Severity::ERROR;
+        _tr.output.error_message = "Unknown test name: " + testName;
+    } else {
+        _tr.output = out;
+    }
+    return _tr;
 }
-
-// HARDWARE-UNVERIFIED: requires real rs485 hardware on target.
-TestOutput Rs485Testing::testRs485Enable() {
-    TestOutput out;
-    // Enable RS-485 mode via TIOCSRS485
-    // Linux interface: termios + RS-485 ioctl TIOCSRS485 (/dev/ttyS*)
-    // TODO: implement against termios + RS-485 ioctl TIOCSRS485 (/dev/ttyS*)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["rs485_enabled"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testRs485Enable: not yet implemented — HARDWARE-UNVERIFIED";
-    return out;
-}
-
-// HARDWARE-UNVERIFIED: requires real rs485 hardware on target.
-TestOutput Rs485Testing::testBaudRate() {
-    TestOutput out;
-    // Set and verify baud rate via termios
-    // Linux interface: termios + RS-485 ioctl TIOCSRS485 (/dev/ttyS*)
-    // TODO: implement against termios + RS-485 ioctl TIOCSRS485 (/dev/ttyS*)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["baud_rate"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testBaudRate: not yet implemented — HARDWARE-UNVERIFIED";
-    return out;
-}
-
-// HARDWARE-UNVERIFIED: requires real rs485 hardware on target.
-TestOutput Rs485Testing::testLoopbackTx() {
-    TestOutput out;
-    // Transmit and receive a frame in loopback mode
-    // Linux interface: termios + RS-485 ioctl TIOCSRS485 (/dev/ttyS*)
-    // TODO: implement against termios + RS-485 ioctl TIOCSRS485 (/dev/ttyS*)
-    out.status    = Status::SKIPPED;
-    out.severity  = Severity::INFO;
-    out.metrics["loopback_ok"] = std::string("HARDWARE-UNVERIFIED");
-    out.error_message = "testLoopbackTx: not yet implemented — HARDWARE-UNVERIFIED";
-    return out;
-}
-
-

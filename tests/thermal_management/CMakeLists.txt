@@ -4,3 +4,5 @@ target_include_directories(test_thermal_management PRIVATE ${CMAKE_SOURCE_DIR}/s
 add_test(NAME test_thermal_management COMMAND test_thermal_management)
 set_tests_properties(test_thermal_management PROPERTIES TIMEOUT 300)
 install(TARGETS test_thermal_management RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+set_tests_properties(test_thermal_management PROPERTIES LABELS "target-required")

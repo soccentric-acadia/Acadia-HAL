@@ -1,31 +1,31 @@
 /**
  * @file rs485_lib.h
- * @brief Rs485Testing — tests the rs485 peripheral.
- * @details Linux interface: termios + RS-485 ioctl TIOCSRS485 (/dev/ttyS*)
- * @note HARDWARE-UNVERIFIED — all test implementations require on-target
- *       execution against real hardware.
- */
-#pragma once
+ * @brief Header for Rs485Testing class (Raspberry Pi 5 RS-485 bus testing)
+ * @author sandesh ghimire
+ * @copyright (C) Soccentric LLC */
+#ifndef RS485TESTING_H
+#define RS485TESTING_H
 #include "lib_base.h"
-#include <string>
-#include <vector>
 
-class Rs485Testing : public TestBase {
-public:
+/**
+ * @class Rs485Testing
+ * @brief Tests RS-485 half-duplex serial bus capability via the PL011 UART.
+ */
+class Rs485Testing : public TestBase
+{
+  public:
     Rs485Testing();
-    ~Rs485Testing() override;
+    ~Rs485Testing();
 
-    // ── TestBase interface ──────────────────────────────────────────────
+    TestOutput testRs485PortPresent();
+    TestOutput testRs485ModeConfigure();
+    TestOutput testRs485HalfDuplex();
+
     std::vector<std::string> getAvailableTests() override;
-    std::vector<TestResult>  runAllTests()       override;
-    TestResult               runSingleTest(const std::string& testName) override;
+    TestResult runSingleTest(const std::string& testName) override;
 
-    // ── Module-specific tests ───────────────────────────────────────────
-    TestOutput testPresence(); // HARDWARE-UNVERIFIED
-    TestOutput testRs485Enable(); // HARDWARE-UNVERIFIED
-    TestOutput testBaudRate(); // HARDWARE-UNVERIFIED
-    TestOutput testLoopbackTx(); // HARDWARE-UNVERIFIED
-
-protected:
-    std::string device_path_; // resolved device path (may be empty if not found)
+  protected:
+    std::vector<TestResult> runAllTests() override;
 };
+
+#endif // RS485TESTING_H
