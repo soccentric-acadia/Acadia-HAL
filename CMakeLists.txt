@@ -149,6 +149,10 @@ set(SRC_SOURCES
     src/sd_card_lib/sd_card_lib.cpp
     src/spi_lib/spi_lib.cpp
     src/uart_lib/uart_lib.cpp
+    # ── Pi 5 feature set ─────────────────────────────────────────────────
+    src/fan_lib/fan_lib.cpp
+    src/hdmi_lib/hdmi_lib.cpp
+    src/wifi_lib/wifi_lib.cpp
 )
 
 # Create static library
