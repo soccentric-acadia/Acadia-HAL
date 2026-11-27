@@ -4,7 +4,7 @@
  *
  * All hardware-specific values for the Raspberry Pi 5 are centralised here.
  * Include this header in any library that was previously hard-coded against
- * NVIDIA Jetson the target SoC (legacy Jetson platform234) hardware.
+ * NVIDIA Jetson Orin (Tegra234) hardware.
  *
  * Raspberry Pi 5 key specs:
  *   SoC    : Broadcom BCM2712 (quad-core Cortex-A76 @ 2.4 GHz)

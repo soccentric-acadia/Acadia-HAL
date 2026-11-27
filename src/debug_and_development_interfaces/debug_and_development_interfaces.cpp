@@ -28,7 +28,7 @@
 // Pi5 – platform constants
 // ---------------------------------------------------------------------------
 // Debug UART on Pi5 is mapped to ttyAMA0 (RP1 High Speed UART)
-static constexpr const char* JETSON_DEBUG_UART = "/dev/ttyAMA0";
+static constexpr const char* DEBUG_UART = "/dev/ttyAMA0";
 // CoreSight bus sysfs root
 static constexpr const char* CORESIGHT_BUS_PATH = "/sys/bus/coresight/devices";
 // perf subsystem paranoid knob
@@ -36,7 +36,7 @@ static constexpr const char* PERF_PARANOID_PATH = "/proc/sys/kernel/perf_event_p
 // perf PMU event sources
 static constexpr const char* PERF_DEVICES_PATH = "/sys/bus/event_source/devices";
 // RP1 fuse driver sysfs – provides jtag/debug auth fuse readback
-static constexpr const char* TEGRA_OTP_PATH = "/sys/devices/platform/rp1-fuse";
+static constexpr const char* OTP_FUSE_PATH = "/sys/devices/platform/rp1-fuse";
 // debugfs mountpoint
 static constexpr const char* DEBUGFS_PATH = "/sys/kernel/debug";
 // JTAG character device (kernel JTAG driver)
@@ -178,11 +178,11 @@ TestOutput DebugAndDevelopmentInterfaces::testJtagInterface()
     }
 
     // 4. RP1-fuse driver (provides jtag_disable fuse readback)
-    bool fusePresent = isDir(TEGRA_OTP_PATH);
-    data.push_back(std::string("RP1-fuse sysfs (") + TEGRA_OTP_PATH + "): " + (fusePresent ? "present" : "not found"));
+    bool fusePresent = isDir(OTP_FUSE_PATH);
+    data.push_back(std::string("RP1-fuse sysfs (") + OTP_FUSE_PATH + "): " + (fusePresent ? "present" : "not found"));
     if (fusePresent) {
         // Try to read the jtag_disable fuse if available
-        std::string jtagFuse = readLine(std::string(TEGRA_OTP_PATH) + "/jtag_disable");
+        std::string jtagFuse = readLine(std::string(OTP_FUSE_PATH) + "/jtag_disable");
         if (!jtagFuse.empty()) {
             data.push_back("  jtag_disable fuse value: " + jtagFuse);
             if (jtagFuse == "1") {
@@ -641,7 +641,7 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
     bool passed = true;
 
     // 1. RP1-fuse driver availability
-    bool fusePresent = isDir(TEGRA_OTP_PATH);
+    bool fusePresent = isDir(OTP_FUSE_PATH);
     data.push_back(std::string("RP1-fuse sysfs: ") + (fusePresent ? "present" : "not found"));
     if (!fusePresent) {
         // Try alternative path used on older BSPs
@@ -666,10 +666,10 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
         bool fatalIfMissing;
     };
     std::vector<FuseEntry> fuseEntries = {
-        {"production_mode", std::string(TEGRA_OTP_PATH) + "/production_mode", false},
-        {"jtag_disable", std::string(TEGRA_OTP_PATH) + "/jtag_disable", false},
-        {"odm_lock", std::string(TEGRA_OTP_PATH) + "/odm_lock", false},
-        {"security_mode", std::string(TEGRA_OTP_PATH) + "/security_mode", false},
+        {"production_mode", std::string(OTP_FUSE_PATH) + "/production_mode", false},
+        {"jtag_disable", std::string(OTP_FUSE_PATH) + "/jtag_disable", false},
+        {"odm_lock", std::string(OTP_FUSE_PATH) + "/odm_lock", false},
+        {"security_mode", std::string(OTP_FUSE_PATH) + "/security_mode", false},
     };
 
     for (const auto& fe : fuseEntries) {
@@ -687,7 +687,7 @@ TestOutput DebugAndDevelopmentInterfaces::testDebugAuthentication()
 
     // 3. Chip-ID / SoC revision
     // /sys/devices/platform/rp1-fuse/chip_id or /proc/device-tree/compatible
-    std::string chipId = readLine(std::string(TEGRA_OTP_PATH) + "/chip_id");
+    std::string chipId = readLine(std::string(OTP_FUSE_PATH) + "/chip_id");
     if (!chipId.empty()) {
         data.push_back("RP1 chip_id: " + chipId + " (expected: 0x23 / 35 (BCM2712))");
     } else {
